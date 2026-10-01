@@ -75,11 +75,11 @@ model = keynote_io.read_key("deck.key")               # YAML-tree model
 Scripts (JSON on stdout; they auto-locate a pinned interpreter at `~/.hermes/iwork-venv/.venv` if present, otherwise run under the current Python):
 
 ```bash
-python scripts/read.py file.numbers        # or .key / .pages
-python scripts/edit_numbers.py --help
-python scripts/edit_key.py --help
-python scripts/edit_pages.py --help
-python scripts/verify_render.py file.key --assert-text "Expected text"
+python skill-pack/scripts/read.py file.numbers   # or .key / .pages
+python skill-pack/scripts/edit_numbers.py edit file.numbers --ref B2 --value 2500
+python skill-pack/scripts/edit_key.py --help
+python skill-pack/scripts/edit_pages.py --help
+python skill-pack/scripts/verify_render.py file.key --assert-text "Expected text"
 ```
 
 As an agent skill (any skill system with a `skills/` dir, e.g. Hermes): `bash skill-pack/install.sh` assembles a self-contained copy under `$HERMES_HOME/skills/iwork-studio` (default `~/.hermes/skills/`). See [`skill-pack/SKILL.md`](skill-pack/SKILL.md).
@@ -95,8 +95,9 @@ As an agent skill (any skill system with a `skills/` dir, e.g. Hermes): `bash sk
 ```
 src/iwork_studio/    numbers_io.py, keynote_io.py, pages_io.py,
                      keynote_applescript.py, render_verify.py
-skill-pack/          SKILL.md, install.sh, six scripts, references/
-scripts/             standalone CLI entry points + exploratory probes
+skill-pack/          SKILL.md, install.sh, six scripts (the CLI entry
+                     points), references/
+scripts/             exploratory probe scripts (phase evidence)
 tests/               pytest suite — 76/76 green (run twice, live GUI included)
 evidence/            verbatim phase logs + probe scripts + fixtures + outputs
 specs/               the original build spec, data model, pins
