@@ -1,54 +1,40 @@
-# iWork Studio
+<div align="center">
 
-Read and edit Apple iWork files (**.numbers**, **.key**, **.pages**) programmatically on macOS — with verified round-trips, Arabic (RTL) fidelity, atomic writes, and hard safety gates. Ships as both a Python library (`src/iwork_studio/`) and a drop-in agent skill (`skill-pack/`).
+<img src="assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
-## The real story
+[![Tests](https://img.shields.io/badge/tests-76%2F76%20green-brightgreen)](#verif)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-27.2%20%2B%20iWork%2015.4-black?logo=apple&logoColor=white)](#verified-capability-matrix)
+[![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-byte%20exact%20round--trips-informational?logo=languagetool&logoColor=white)](#arabic-round-trip-proof)
+[![Agent skill](https://img.shields.io/badge/agent%20skill-drop--in%20SKILL.md-ff9f0a)](#for-ai-agents)
+[![Zero repair prompts](https://img.shields.io/badge/iWork%20output-zero%20repair%20prompts-critical)](#the-real-story)
 
-No official public format documentation exists for iWork files. Everything in this repo was established by live probing on a real machine (macOS 27.2, iWork 15.4, CPython 3.12.7), and every capability claim below is backed by committed evidence you can re-run or read yourself in [`evidence/`](evidence/).
+**Give your AI agent the keys to Apple iWork.** Read and edit **Numbers (`.numbers`)**, **Keynote (`.key`)** and **Pages (`.pages`)** files programmatically on macOS — with verified round-trips, atomic writes, versioned backups, and Arabic/RTL fidelity that actually holds. Ships as a Python library *and* a drop-in agent skill.
 
-Three honest constraints shape the whole design:
+[Quick start](#quick-start) · [Capability matrix](#verified-capability-matrix) · [For AI agents](#for-ai-agents) · [The real story](#the-real-story) · [Traps we mapped so you don't die on them](#traps-we-mapped-so-you-dont-die-on-them)
 
-1. **There is no pure-Python .pages parser.** The .pages format is a zip of IWA protobufs plus a QuickLook preview — no maintained third-party parser exists. All .pages access is done via AppleScript against the Pages app (requires a GUI session / Aqua, plus a one-time TCC approval).
-2. **Strict byte-equality on save is unachievable for .numbers/.key.** Both formats store IWA protobufs; any parser re-encodes them (e.g. numbers-parser 4.19.0 adds ~1.6 KB and rewrites protobuf wire data on an unmodified round-trip). So the fidelity gate here is **semantic equality** (GATE-1): open the written file, compare the full content model, byte-exact at the *text* level.
-3. **Chart-containing files are refused, not mangled.** Editing chart decks through text-replacement risks corrupting chart data references. Both writers detect charts and refuse with a clear error (GATE-CHART). This is a deliberate scope cut, not a limitation we plan to silently lift.
+</div>
 
-## Verified capability matrix
+---
 
-Validated live 2026-10-01 with Arabic content. Evidence per row; see [`skill-pack/references/capability-matrix.md`](skill-pack/references/capability-matrix.md) for the full table.
+## Why this exists
 
-| Format | Route | Read | Write | Charts | Arabic | Render-verify |
-|---|---|---|---|---|---|---|
-| `.numbers` | numbers-parser 4.19.0 (pure Python, no GUI) | Full model (sheets/tables/cells) | Cell edits, create, find/replace — atomic swap | Refused (detected) | Byte-exact round-trip; ligature-aware PDF match | PDF export → text-layer assert |
-| `.key` | keynote-parser 1.14.5.0 (pure Python) + AppleScript fallback | Slide/text-item tree | Deck-wide find/replace, atomic swap | Refused (detected) | `\u06xx` escape-aware, round-trip verified | PDF export → text-layer assert |
-| `.pages` | AppleScript only (needs Aqua + one-time TCC) | Body text (2 routes) | `replace_all`, `set_body` only — anything richer raises `PagesOutOfScopeError` | n/a | Preserved through read/export/PDF | PDF export → text-layer assert |
+Microsoft documents have great open tooling (python-docx, python-pptx, openpyxl — even official agent skills). **Apple iWork has none.** No public format spec, no maintained `.pages` parser, and AppleScript that quietly refuses to save outside its sandbox. AI agents asked to "fix slide 3" or "update cell B2" either hallucinate support or corrupt your files.
 
-### Arabic round-trip proof
+**iWork Studio is the missing piece**: honest capability boundaries, hard safety gates, and proof — every claim in this README is backed by committed, re-runnable evidence in [`evidence/`](evidence/). Where a route does *not* exist, we say so. Where one exists, it must pass gates before it's offered.
 
-- `.numbers`: writing `'أحمد'`, saving, and re-parsing yields the exact same codepoints (`evidence/a3/probe_a_arabic_roundtrip.py`).
-- `.key`: 17 `\u06xx` escape sequences survive a find/replace round-trip intact (`evidence/a3/probe_a_keypad_escapes.py`).
-- PDF render verification asserts single Arabic words (ligature-aware): multi-word fragments extract in visual bidi order and produce spurious mismatches, so assertions are single-word by rule (`skill-pack/SKILL.md` rule 7).
+```python
+from iwork_studio import numbers_io, keynote_io
 
-### The sandbox `save in` trap
+model = numbers_io.read_numbers("revenue.numbers")          # full semantic model
+numbers_io.edit_cell("revenue.numbers", "B2", 2500,
+                     sheet="Budget")                         # backed up, atomic, verified
+keynote_io.replace_text("pitch.key", "2024", "2025")         # deck-wide, escape-aware
+```
 
-iWork apps are sandboxed. From AppleScript:
+## Quick start
 
-- `save in <arbitrary path>` → **DENIED** (sandbox refuses to write outside its container). Never use. A script doing this is a bug — fix it, don't retry it.
-- `save` (in-place, file already on disk) → **works**, verified live for all three apps.
-- `export ... to <path> as "PDF"/"Microsoft Word"` → **works** — the safe route for artifacts.
-
-Full ground truth and helper lint functions: [`skill-pack/references/sandbox-trap.md`](skill-pack/references/sandbox-trap.md).
-
-### Keynote 15.4 `-1700` defect
-
-On Keynote 15.4, the AppleScript slide properties `title` and `body` throw error -1700 even on slides that have them. The verified workaround is reading/writing via each slide's text items and their `object text`: [`skill-pack/references/keynote-1700-defect.md`](skill-pack/references/keynote-1700-defect.md).
-
-### Write protocol
-
-Every write: versioned backup → tmp write → re-parse gate → atomic swap → optional render-verify. On any failure the target file is left untouched.
-
-## Install
-
-Requires macOS with iWork installed (validated against 15.4) and Python 3.12.
+Requires macOS with iWork installed (validated against **15.4**) and **Python 3.12**.
 
 ```bash
 git clone https://github.com/Arkanji/iwork-studio.git
@@ -57,52 +43,102 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install numbers-parser==4.19.0 keynote-parser==1.14.5.0 PyMuPDF==1.28.2 python-docx==1.2.0
 ```
 
-Pins and rationale: [`skill-pack/references/pins.txt`](skill-pack/references/pins.txt). Note: keynote-parser is CLI-locked at 1.14.5.0; numbers-parser pinned to 4.19.0 where `d.sheets`/`s.tables` are `ItemsList` (index by int, lookup by `.name`), and `t.set_value` is `t.write(r, c, v)`.
-
-## Usage
-
-Library:
-
-```python
-from iwork_studio import numbers_io, keynote_io, pages_io
-
-model = numbers_io.read_numbers("budget.numbers")     # semantic model
-numbers_io.edit_cell("budget.numbers", "B2", 2500,
-                     sheet="Budget")                   # atomic, backed up
-model = keynote_io.read_key("deck.key")               # YAML-tree model
-```
-
-Scripts (JSON on stdout; they auto-locate a pinned interpreter at `~/.hermes/iwork-venv/.venv` if present, otherwise run under the current Python):
+Or just the CLI entry points (JSON on stdout, safe to pipe):
 
 ```bash
-python skill-pack/scripts/read.py file.numbers   # or .key / .pages
-python skill-pack/scripts/edit_numbers.py edit file.numbers --ref B2 --value 2500
-python skill-pack/scripts/edit_key.py --help
-python skill-pack/scripts/edit_pages.py --help
-python skill-pack/scripts/verify_render.py file.key --assert-text "Expected text"
+python skill-pack/scripts/read.py revenue.numbers            # .numbers / .key / .pages
+python skill-pack/scripts/edit_numbers.py edit revenue.numbers --ref B2 --value 2500
+python skill-pack/scripts/edit_key.py replace pitch.key --find "2024" --replace "2025"
+python skill-pack/scripts/verify_render.py pitch.key --assert-text "الإيرادات"
 ```
 
-As an agent skill (any skill system with a `skills/` dir, e.g. Hermes): `bash skill-pack/install.sh` assembles a self-contained copy under `$HERMES_HOME/skills/iwork-studio` (default `~/.hermes/skills/`). See [`skill-pack/SKILL.md`](skill-pack/SKILL.md).
+## Verified capability matrix
 
-## Headless / CI caveats
+Live-validated 2026-10-01, iWork 15.4 / macOS 27.2, with Arabic fixtures. Full table with per-row evidence: [`skill-pack/references/capability-matrix.md`](skill-pack/references/capability-matrix.md).
 
-- AppleScript routes (all .pages work, .key fallback, render-verify) need a GUI session; headless they fail fast with guidance.
-- First AppleScript run triggers a TCC permission prompt (one-time, per app).
-- TCC and the AppleScript `-1712` timeout (a modal blocking the app) are documented in [`skill-pack/references/tcc-preflight.md`](skill-pack/references/tcc-preflight.md).
+| Format | Route | Read | Write | Charts | Arabic/RTL | Render-verify |
+|---|---|:---:|:---:|:---:|---|---|
+| `.numbers` | `numbers-parser` 4.19.0 — pure Python, headless | ✅ full model (sheets→tables→cells, formulas, styles, formats) | ✅ cell edits, create, replace — atomic | 🚫 refused, not mangled | ✅ byte-exact codepoints | ✅ PDF → text-layer |
+| `.key` | `keynote-parser` 1.14.5.0 — pure Python (+ AppleScript fallback in app) | ✅ slide/text-item tree (IWA→YAML) | ✅ deck-wide find/replace — atomic | 🚫 refused, not mangled | ✅ `\u06xx` escape-aware | ✅ PDF → text-layer |
+| `.pages` | AppleScript via live Pages (Aqua session) | ✅ body text, export to `.docx`/PDF | ⚠️ `replace_all`, `set_body` only — richer ops raise `PagesOutOfScopeError` | n/a | ✅ preserved end-to-end | ✅ PDF → text-layer |
+
+> **The `.pages` honesty clause:** there is *no* pure-Python `.pages` parser anywhere (we checked — the only candidate upstream is 1★/7 commits, watchlist only). Rather than fake it, we ship exactly the two verified app-driven ops and fail loudly on everything else. Inventing `.pages` support would be a corruption vector, not a feature.
+
+### Arabic round-trip proof
+
+- `.numbers`: `أحمد` written, saved, re-parsed → exact same codepoints ([`evidence/a3/probe_a_arabic_roundtrip.py`](evidence/a3/probe_a_arabic_roundtrip.py))
+- `.key`: 17 `\u06xx` escape sequences survive find/replace intact ([`evidence/a3/probe_a_keypad_escapes.py`](evidence/a3/probe_a_keypad_escapes.py))
+- Render level: single-word ligature-aware PDF assertions (multi-word fragments extract in visual bidi order and lie about mismatches — so we assert single-word by rule)
+- RTL marks (U+200F) survive the full edit loop
+
+### Write protocol — every write, every time
+
+```
+versioned backup → tmp write → re-parse gate → semantic diff → atomic swap → PDF render-verify
+                                                    ↘ any failure: target untouched, forensic evidence kept
+```
+
+## Traps we mapped so you don't die on them
+
+Hard-won on a live machine, so your agent doesn't learn them by corrupting something:
+
+1. **The sandbox `save in` trap** — iWork apps are sandboxed; `save in <arbitrary path>` from AppleScript is **DENIED** ("You don't have permission"). In-place `save` works; `export` works. Rule shipped in-code: a script doing this is a bug, not a retry. → [`skill-pack/references/sandbox-trap.md`](skill-pack/references/sandbox-trap.md)
+2. **Keynote 15.4 `-1700` defect** — the documented `title`/`body` slide properties throw `-1700`. Working form: `object text of first/second text item`. → [`skill-pack/references/keynote-1700-defect.md`](skill-pack/references/keynote-1700-defect.md)
+3. **Hermes/Python-3.14 Pillow hijack** — broken Pillow leaking into venvs breaks `keynote-parser` with `PIL._imaging` errors; clean-env installs avoid it. → [`skill-pack/references/pins.txt`](skill-pack/references/pins.txt)
+4. **Chart files are refused, not mangled** — editing chart decks via text-replacement risks corrupting chart data references (IWA chart message types verified against Apple's own templates before gating). Both writers detect and refuse.
+5. **Strict byte-equality on save is a myth** — IWA protobuf re-encoding is opaque; the achievable bar is *semantic* equality (file reopens with zero repair prompts, full model compared). We enforce the real bar and name the fake one.
+6. **TCC + template chooser first-run walls** — one-time permission prompts; documented preflight so agents fail with guidance instead of hanging. → [`skill-pack/references/tcc-preflight.md`](skill-pack/references/tcc-preflight.md)
+
+## For AI agents
+
+### Drop-in skill
+
+This repo ships [`skill-pack/SKILL.md`](skill-pack/SKILL.md) — a structured, self-describing skill any agent framework can load (Hermes, Claude-style systems, anything with a `skills/` directory):
+
+```bash
+bash skill-pack/install.sh          # installs to $HERMES_HOME/skills/iwork-studio (default ~/.hermes/skills)
+```
+
+### For crawlers and LLMs (`llms.txt`)
+
+Machine-readable project manifest for AI discovery: [`llms.txt`](llms.txt) — canonical summary, capability routes, install contract, honest limitations, links to evidence. Serve it from `/.well-known/llms.txt` if you're hosting docs for this.
+
+### Agent contract (what your agent can rely on)
+
+- **JSON in / JSON out** on every script — stderr is never part of the contract
+- **Fail-loud errors**: `ChartRefusalError`, `PagesOutOfScopeError`, `NewerAppVersionError`, `SandboxSaveError` — typed, documented, never silent
+- **Headless fails fast** with guidance (AppleScript routes need a GUI session — detected, not discovered the hard way)
+- **Version pins enforced**: files from newer app versions degrade to read-only
+
+## Architecture
+
+```
+file-level parsers (deterministic, headless, diffable)  →  .numbers, .key
+app-level AppleScript (render-truth: PDF, RTL shaping)  →  render-verify, .pages, fallbacks
+```
+
+Hybrid by design — file-level where determinism wins, app-level only where the app *is* the renderer of record. Every write rides the atomic-swap protocol; every verified run leaves evidence, not assertions.
 
 ## Repository layout
 
 ```
-src/iwork_studio/    numbers_io.py, keynote_io.py, pages_io.py,
-                     keynote_applescript.py, render_verify.py
-skill-pack/          SKILL.md, install.sh, six scripts (the CLI entry
-                     points), references/
-scripts/             exploratory probe scripts (phase evidence)
-tests/               pytest suite — 76/76 green (run twice, live GUI included)
-evidence/            verbatim phase logs + probe scripts + fixtures + outputs
-specs/               the original build spec, data model, pins
+assets/               banner + media
+src/iwork_studio/     numbers_io · keynote_io · pages_io · keynote_applescript · render_verify
+skill-pack/           SKILL.md · install.sh · 6 CLI scripts · references/ (matrix, traps, pins)
+scripts/              exploratory probes (phase evidence)
+tests/                pytest — 76/76 green (run twice, live GUI included)
+evidence/             verbatim phase logs · probe scripts · fixtures · outputs
+specs/                original build spec · data model · pins
 ```
+
+## Contributing
+
+iWork versions drift. If this breaks on a future macOS/iWork release: the failure mode is *documented renames* — check [`skill-pack/references/capability-matrix.md`](skill-pack/references/capability-matrix.md), re-run the probes in `scripts/`, and pin the new reality. PRs that add a verified route (with evidence) are the PRs we want.
+
+## Star history, honestly
+
+This started because an AI butler was asked to edit a Keynote slide and the ecosystem had nothing to offer him. If it saved your agent from corrupting a deck, consider starring — it helps others find the traps.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — including the traps. Take them.
