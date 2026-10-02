@@ -16,7 +16,7 @@ from iwork_studio import apps  # noqa: E402
 @pytest.fixture()
 def fake_apps(tmp_path, monkeypatch):
     monkeypatch.setattr(apps, "_APP_DIRS", (str(tmp_path),))
-    for var in ("IWORK_STUDIO_PAGES_APP", "IWORK_STUDIO_KEYNOTE_APP", "IWORK_STUDIO_ALLOW_CREATOR_STUDIO"):
+    for var in ("IWORK_STUDIO_PAGES_APP", "IWORK_STUDIO_KEYNOTE_APP", "IWORK_STUDIO_NUMBERS_APP", "IWORK_STUDIO_ALLOW_CREATOR_STUDIO"):
         monkeypatch.delenv(var, raising=False)
 
     def install(*bundles):
@@ -41,9 +41,9 @@ def test_both_installed_prefers_verified_classic(fake_apps):
 
 
 def test_creator_studio_only_refused_loud(fake_apps):
-    fake_apps("Pages Creator Studio")
+    fake_apps("Numbers Creator Studio")
     with pytest.raises(apps.CreatorStudioUnverifiedError) as ei:
-        apps.app_name("Pages")
+        apps.app_name("Numbers")
     assert "IWORK_STUDIO_ALLOW_CREATOR_STUDIO" in str(ei.value)
 
 
@@ -52,10 +52,15 @@ def test_keynote_creator_studio_allowed_after_live_probe(fake_apps):
     assert apps.app_name("Keynote") == "Keynote Creator Studio"
 
 
-def test_creator_studio_opt_in(fake_apps, monkeypatch):
+def test_pages_creator_studio_allowed_after_live_run(fake_apps):
     fake_apps("Pages Creator Studio")
-    monkeypatch.setenv("IWORK_STUDIO_ALLOW_CREATOR_STUDIO", "1")
     assert apps.app_name("Pages") == "Pages Creator Studio"
+
+
+def test_creator_studio_opt_in(fake_apps, monkeypatch):
+    fake_apps("Numbers Creator Studio")
+    monkeypatch.setenv("IWORK_STUDIO_ALLOW_CREATOR_STUDIO", "1")
+    assert apps.app_name("Numbers") == "Numbers Creator Studio"
 
 
 def test_env_override_wins(fake_apps, monkeypatch):

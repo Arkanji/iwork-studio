@@ -9,11 +9,17 @@ Resolution order (evidence-first):
   2. the classic bundle "<App>.app" if installed — the VERIFIED route
      (capability matrix: iWork 15.4 build 7051.0.79)
   3. "<App> Creator Studio.app":
-     - Keynote: ALLOWED — in-place open/save/close observed working on
-       Keynote Creator Studio 15.3.1 (live probe 2026-10-02, 4 slide ops PASS).
-     - Numbers / Pages: refused with CreatorStudioUnverifiedError until
-       probed (upstream reports save hangs on a modal and export error 6 on
-       15.1.1). IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 opts in, for probing.
+     - Keynote: ALLOWED — open/in-place save/close + PDF export observed
+       working on Keynote Creator Studio 15.3.1 (live, 2026-10-02: slide ops
+       7/7, aqua suite PASS).
+     - Pages: ALLOWED — preflight, read, replace_all, set_body (in-place
+       save) and PDF export observed working on Pages Creator Studio
+       (live aqua suite, 2026-10-02).
+     - Numbers: refused with CreatorStudioUnverifiedError until probed. Its
+       only app route is render-verify (PDF export); the old AppleScript
+       export timed out on Numbers Creator Studio (live, 2026-10-02) and
+       has been replaced by the JXA form. IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1
+       opts in, for probing. (Numbers reads/edits never need the app.)
   4. nothing found → the classic name; the app route then fails loud as
      before (AquaSessionError / JXA error).
 
@@ -31,7 +37,7 @@ IWORK_APPS = ("Numbers", "Pages", "Keynote")
 _APP_DIRS = ("/Applications", "~/Applications")
 # Creator Studio apps whose open → in-place save → close loop has been
 # observed working live. Add one only with a passing live probe.
-CREATOR_STUDIO_OBSERVED = frozenset({"Keynote"})
+CREATOR_STUDIO_OBSERVED = frozenset({"Keynote", "Pages"})
 
 
 class CreatorStudioUnverifiedError(RuntimeError):

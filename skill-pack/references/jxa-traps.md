@@ -92,4 +92,5 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | L3 | JXA `app.move(slide, {to: slide})` produced a result the gate rejected | CONFIRMED | move uses AppleScript `move slide n to before/after slide t` — PASS live |
 | L4 | Text-item order inside a slide is not a stable identity across reorders | HANDLED | slide signature compares text items as a multiset |
 | L5 | A repo inside an iCloud-synced folder (Desktop/Documents) gets "name 2" conflict copies inside `.git` → `fatal: bad object refs/heads/main 2` | CONFIRMED | keep clones in a non-synced folder, e.g. `~/Developer` |
-
+| L6 | Numbers Creator Studio: AppleScript `open` + `delay` + `front document` + `export … as PDF` timed out (90 s) | CONFIRMED | replaced by JXA `export(doc_from_open, {as:'PDF'})` — the form that passes on Keynote/Pages Creator Studio |
+| L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | live aqua suite, Arabic body |

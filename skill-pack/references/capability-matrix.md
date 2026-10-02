@@ -82,8 +82,9 @@ internal (`~/.iwork-studio/probes/`), never committed.
 | Situation | Behaviour | Covered by |
 |---|---|---|
 | classic `<App>.app` installed (with or without Creator Studio) | classic used — the verified route | tests/test_apps.py |
-| only `Keynote Creator Studio.app` | ALLOWED — open/in-place save/close observed working | live probe, Creator Studio 15.3.1, 2026-10-02 |
-| only `Numbers`/`Pages Creator Studio.app` | REFUSED (CreatorStudioUnverifiedError) unless IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 | upstream: save hangs, export error 6 on 15.1.1 |
+| only `Keynote Creator Studio.app` | ALLOWED — slide ops 7/7, text fallback, PDF export | live, Creator Studio 15.3.1, 2026-10-02 |
+| only `Pages Creator Studio.app` | ALLOWED — preflight, read, replace_all, set_body, PDF export (Arabic) | live aqua suite, 2026-10-02 |
+| only `Numbers Creator Studio.app` | REFUSED for the app route (render-verify) unless IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1; reads/edits unaffected (no app) | live: AppleScript export timed out → replaced by JXA export, re-run `pytest -m aqua -k numbers` |
 | `IWORK_STUDIO_<APP>_APP` set | exact operator pin | tests/test_apps.py |
 
 ## Agent surface + CI
