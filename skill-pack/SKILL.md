@@ -1,13 +1,12 @@
 ---
 name: iwork-studio
-description: Use when reading, creating, or editing Apple iWork files — Numbers spreadsheets (.numbers), Keynote decks (.key), Pages documents (.pages). Triggers on any Pages/Keynote/Numbers file mention, iWork authoring request, spreadsheet cell edit, slide text change, or Pages body-text task. Routes through the verified iWork Studio library: versioned backup + atomic swap on every write, Arabic-safe round-trips, chart refusal, PDF render verification.
-version: 1.1.0
-author: iWork Studio
+description: Read and edit Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file, a spreadsheet cell, slide text, slides (add, duplicate, delete, move, hide), presenter notes, or Pages body text, including Arabic/RTL content. Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  hermes:
-    tags: [iwork, numbers, keynote, pages, applescript, arabic]
-    related_skills: [apple-iwork-automation, apple-iwork-files]
+  version: 1.1.0
+  author: iWork Studio
+  homepage: https://github.com/arkanji/iwork-studio
+  tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
 ---
 
 # iWork Studio — verified .numbers / .key / .pages read-write
@@ -25,7 +24,23 @@ including Arabic round-trips at file level AND render level.
 | `.key` slides | per-slide inventory | add / duplicate / delete / move / skip / presenter notes | AppleScript via Keynote (`iwork_studio.keynote_slides`), per-slide expectation gate + rollback |
 | `.pages` | body text (AppleScript + docx export) | the TWO verified body ops ONLY | AppleScript `bodyText`; richer edits = out of scope by design |
 
-## MCP server (preferred for MCP-capable agents)
+## Pick your interface (in this order)
+
+1. **iwork-studio MCP tools are available** (tool names start with `iwork_`,
+   `numbers_`, `keynote_`, `pages_`) → use them. Call `iwork_capabilities`
+   first if unsure what this machine can do.
+2. **No MCP, but you can run shell commands** → the scripts in the
+   Commands section below (JSON on stdout).
+3. **Writing Python** → `pip install -e <repo>` and import `iwork_studio`
+   (`numbers_io`, `keynote_io`, `keynote_slides`, `pages_io`, `backups`).
+
+What needs what: `.numbers` and `.key` text reads/edits are pure Python and
+work anywhere. Pages, render-verify and Keynote slide ops drive the real app:
+macOS + iWork + a logged-in GUI session. Elsewhere they fail fast with
+`AquaSessionError` — tell the user, don't retry.
+
+## MCP server
+
 
 ```bash
 claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
@@ -43,8 +58,9 @@ delete the last slide, and roll back if Keynote does anything unexpected.
 
 ## Commands (run from this skill's directory)
 
-All scripts auto-locate the pinned interpreter (`~/.hermes/iwork-venv/.venv/bin/python`)
-and re-exec into it if started with a bare python3. Scripts print JSON results.
+Run with a Python 3.12 that has the package installed (`pip install -e <repo>`).
+If a pinned venv exists at `~/.hermes/iwork-venv/.venv`, the scripts re-exec
+into it automatically. Scripts print JSON results.
 
 ```bash
 # READ any iWork file (dispatches on extension)
@@ -67,6 +83,16 @@ python scripts/edit_pages.py set-body <file.pages> "full new body text"   # or '
 
 # RENDER VERIFY any format (needs Aqua): export PDF -> PyMuPDF text-layer match
 python scripts/verify_render.py <file> --assert-text "expected visible text" [--pages N]
+```
+
+Keynote slide ops and undo (Python; the MCP tools wrap exactly these):
+
+```python
+from iwork_studio import keynote_slides as ks, backups
+ks.set_presenter_notes("deck.key", 1, "ملاحظات")   # 1-based slide numbers
+ks.duplicate_slide("deck.key", 2); ks.move_slide("deck.key", 3, 1)
+ks.add_slide("deck.key", after=0); ks.set_skipped("deck.key", 4, True); ks.delete_slide("deck.key", 5)
+backups.restore_backup("deck.key", backups.list_backups("deck.key")[0]["name"])   # undo last write
 ```
 
 ## Hard rules (every job)

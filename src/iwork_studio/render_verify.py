@@ -1,6 +1,6 @@
 """iWork Studio — render verification loop (B6): Numbers → PDF → PyMuPDF.
 
-Protocol (data-model.md VerificationLoop):
+Protocol (VerificationLoop):
   render_pdf(path) → PyMuPDF doc
   assert_page_count(expected)
   assert_text_layer(expected_fragment, page=None)

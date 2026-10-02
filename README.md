@@ -147,6 +147,12 @@ Plus ~25 more scripting traps imported (each marked by status, not taken as gosp
 
 ## For AI agents
 
+### Any agent, any tool
+
+- **[`AGENTS.md`](AGENTS.md)** — the cross-tool instruction file (Codex, Cursor, Copilot, Gemini, Claude Code via `CLAUDE.md`): which interface to use, what each route needs, the rules.
+- **MCP server instructions** — sent to the client on connect, so the model gets the rules even without this repo.
+- **Skill** — [`skill-pack/SKILL.md`](skill-pack/SKILL.md), standard frontmatter (`name`, `description`), auto-discovered by Claude Code here via `.claude/skills/`.
+
 ### Drop-in skill
 
 [`skill-pack/SKILL.md`](skill-pack/SKILL.md) is a self-describing skill any agent framework can load (Hermes, Claude-style systems, anything with a `skills/` directory):
@@ -185,7 +191,9 @@ skill-pack/           SKILL.md · install.sh · CLI scripts · references/ (matr
 tests/                pytest + fixtures/ — headless lane in CI · `pytest -m aqua` = live Mac lane
 scripts/              probe_keynote_slides.py — one-shot live check of slide ops on a Mac
 .github/workflows/    ci.yml — headless tests on every push and PR
-.mcp.json             project MCP config for Claude Code
+.mcp.json             project MCP config (Claude Code picks it up here)
+AGENTS.md · CLAUDE.md agent instructions (Codex, Cursor, Copilot, Gemini, Claude Code)
+.claude/skills/       the skill, auto-discovered by Claude Code in this repo
 assets/               banner + media
 ```
 

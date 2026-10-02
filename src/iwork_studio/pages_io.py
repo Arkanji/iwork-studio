@@ -1,6 +1,6 @@
 """iWork Studio — .pages read-mostly lane (Phase D).
 
-Verified ground truth (spec.md + this phase, live on this machine):
+Verified ground truth (live, iWork 15.4):
 - There is NO Python .pages parser (python-pages upstream 1-star, never
   vendored — watchlist only; numbers-parser and textutil both reject
   .pages — verified negatives).

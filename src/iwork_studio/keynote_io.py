@@ -1,6 +1,6 @@
 """iWork Studio — .key semantic reader/writer (Phase C).
 
-Built on keynote-parser 1.14.5.0 (pinned; see specs/001-iwork-studio/pins.txt).
+Built on keynote-parser 1.14.5.0 (pinned; see skill-pack/references/pins.txt).
 Same code path as the `keynote-parser unpack|pack` CLI:
 ``keynote_parser.file_utils.process(input, output, replacements=[])``.
 
@@ -31,7 +31,7 @@ separators, but Keynote stores paragraphs as "\\r" — any replacement on
 multi-paragraph text raises NotImplementedError. ``_FixedReplacement``
 splits on \\r too (UTF-16 index bookkeeping preserved).
 
-All writes follow the AtomicSwap protocol (data-model.md).
+All writes follow the AtomicSwap protocol.
 """
 
 from __future__ import annotations
@@ -230,7 +230,7 @@ def tree_hash(tree_dir: str | os.PathLike) -> str:
 
 def read_key(path: str | os.PathLike) -> dict:
     """C1: read a .key file into the JSON semantic model (disposable,
-    read-only view over the YAML tree, per data-model.md).
+    read-only view over the YAML tree).
 
     Model: {"file", "path", "parser_version", "contains_charts",
     "schema_hash", "slides": [{"source", "texts": [...]}]}

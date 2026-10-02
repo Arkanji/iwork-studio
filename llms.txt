@@ -52,6 +52,7 @@ Agent skill install: `bash skill-pack/install.sh`
 - Skill pack: skill-pack/SKILL.md
 - Capability matrix: skill-pack/references/capability-matrix.md
 - MCP config for this repo: .mcp.json
+- Agent instructions (any tool): AGENTS.md
 
 ## License
 

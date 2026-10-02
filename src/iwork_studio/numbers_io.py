@@ -1,6 +1,6 @@
 """iWork Studio — .numbers semantic reader/writer (Phase B).
 
-Built on numbers-parser 4.19.0 (pinned; see specs/001-iwork-studio/pins.txt).
+Built on numbers-parser 4.19.0 (pinned; see skill-pack/references/pins.txt).
 
 GATE-1 is enforced as SEMANTIC byte-equality (content identical, file openable):
 numbers-parser re-encodes IWA protobuf on save so strict zip byte-equality is
@@ -9,7 +9,7 @@ unachievable (verified). Do not re-litigate — pinned decision.
 GATE-CHART: the writer REFUSES chart-container files until a probe proves them
 (accepted scope cut — refusal is correct behaviour, not a gap).
 
-All writes follow the AtomicSwap protocol (data-model.md):
+All writes follow the AtomicSwap protocol:
   1. backup target (versioned, timestamped)
   2. write tmp file
   3. re-parse tmp (semantic check)

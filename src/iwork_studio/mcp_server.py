@@ -139,7 +139,7 @@ def _app_status() -> dict:
 
 @mcp.tool(annotations=READ)
 def iwork_capabilities() -> dict[str, Any]:
-    """What this machine can do right now: routes, GUI session, installed apps, which slide ops are verified."""
+    """What this machine can do right now: routes, GUI session, installed apps, Keynote slide-op status. Call first when unsure."""
     return {
         "version": __version__,
         "platform": platform.platform(),
