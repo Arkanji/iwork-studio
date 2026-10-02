@@ -91,6 +91,8 @@ internal (`~/.iwork-studio/probes/`), never committed.
 |---|---|---|
 | MCP server (stdio, mcp 2.2.0): 16 tools, read/destructive hints | VERIFIED headless | tests/test_mcp_server.py — real stdio subprocess |
 | MCP wire stays clean (no library stdout on the JSON-RPC stream) | VERIFIED headless | tests/test_mcp_server.py — fails without the fix |
+| Silent-success guard: app says ok but nothing changed → rollback | VERIFIED headless | tests/test_keynote_slides.py::TestSilentSuccess |
+| Numbers value fidelity: "$1,234.56", Arabic-Indic digits, `=…` text stored verbatim | VERIFIED headless | tests/test_value_fidelity.py |
 | Undo: list + atomic restore of versioned backups (re-parse gated, restore itself backed up) | VERIFIED headless | tests/test_backups.py |
 | Path fence IWORK_STUDIO_ROOTS | VERIFIED headless | tests/test_mcp_server.py |
 | Headless CI (GitHub Actions, Linux, `-m "not aqua"`) | WIRED | .github/workflows/ci.yml |

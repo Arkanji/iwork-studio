@@ -173,6 +173,47 @@ class TestExpectationGate:
         assert entries[-1]["verified_op"] is False
 
 
+class TestSilentSuccess:
+    """Failure class found in the wild (a fork of reichenbach/iwork_mcp):
+    Keynote's scripting bridge reports success for writes that did nothing —
+    writes to properties that don't exist, duplicates that land in another
+    document, no-op moves. The app says ok; only the re-read from disk tells
+    the truth. Each case must end in SlideOpVerificationError + byte-exact
+    rollback, never in "ok"."""
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            pytest.param(lambda f: ks.duplicate_slide(f, 1), id="duplicate-landed-elsewhere"),
+            pytest.param(lambda f: ks.set_presenter_notes(f, 1, "ملاحظات"), id="notes-write-ignored"),
+            pytest.param(lambda f: ks.set_skipped(f, 1, True), id="skip-write-ignored"),
+            pytest.param(lambda f: ks.move_slide(f, 1, 3), id="move-no-op"),
+            pytest.param(lambda f: ks.add_slide(f), id="add-no-op"),
+            pytest.param(lambda f: ks.delete_slide(f, 2), id="delete-no-op"),
+        ],
+    )
+    def test_app_reports_ok_but_nothing_changed(self, key_file, unverified_ok, fake_app, call):
+        original = _sha(key_file)
+        fake_app["after"] = [dict(s) for s in DECK]  # deck on disk is unchanged
+        with pytest.raises(ks.SlideOpVerificationError):
+            call(key_file)
+        assert _sha(key_file) == original
+
+    def test_notes_landed_on_wrong_slide(self, key_file, unverified_ok, fake_app):
+        after = [dict(s) for s in DECK]
+        after[1] = {**after[1], "notes": "hello"}  # asked for slide 1
+        fake_app["after"] = after
+        with pytest.raises(ks.SlideOpVerificationError, match="slide 1"):
+            ks.set_presenter_notes(key_file, 1, "hello")
+
+    def test_notes_mangled_arabic_rejected(self, key_file, unverified_ok, fake_app):
+        after = [dict(s) for s in DECK]
+        after[0] = {**after[0], "notes": "????????"}  # encoding loss
+        fake_app["after"] = after
+        with pytest.raises(ks.SlideOpVerificationError):
+            ks.set_presenter_notes(key_file, 1, "ملاحظات")
+
+
 # ── live probe contract (Mac, Aqua, Keynote 15.4) ────────────────────────────
 
 
