@@ -15,11 +15,12 @@ Resolution order (evidence-first):
      - Pages: ALLOWED — preflight, read, replace_all, set_body (in-place
        save) and PDF export observed working on Pages Creator Studio
        (live aqua suite, 2026-10-02).
-     - Numbers: refused with CreatorStudioUnverifiedError until probed. Its
-       only app route is render-verify (PDF export); the old AppleScript
-       export timed out on Numbers Creator Studio (live, 2026-10-02) and
-       has been replaced by the JXA form. IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1
-       opts in, for probing. (Numbers reads/edits never need the app.)
+     - Numbers: ALLOWED — PDF export (its only app route) observed working
+       on Numbers Creator Studio via the JXA form (live, 2026-10-02; the old
+       AppleScript `front document` export timed out and was replaced).
+     Any future Creator Studio app not in CREATOR_STUDIO_OBSERVED is refused
+     with CreatorStudioUnverifiedError until probed;
+     IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 opts in, for probing.
   4. nothing found → the classic name; the app route then fails loud as
      before (AquaSessionError / JXA error).
 
@@ -37,7 +38,7 @@ IWORK_APPS = ("Numbers", "Pages", "Keynote")
 _APP_DIRS = ("/Applications", "~/Applications")
 # Creator Studio apps whose open → in-place save → close loop has been
 # observed working live. Add one only with a passing live probe.
-CREATOR_STUDIO_OBSERVED = frozenset({"Keynote", "Pages"})
+CREATOR_STUDIO_OBSERVED = frozenset({"Keynote", "Pages", "Numbers"})
 
 
 class CreatorStudioUnverifiedError(RuntimeError):
