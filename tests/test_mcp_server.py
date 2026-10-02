@@ -90,8 +90,8 @@ def test_capabilities_reports_slide_ops_on_but_not_yet_observed():
 
     caps = _session(steps)
     assert caps["keynote_slide_ops"]["enabled"] is True
-    assert caps["keynote_slide_ops"]["observed_on_live_mac"] == []
-    assert "notes" in caps["keynote_slide_ops"]["not_yet_observed"]
+    assert caps["keynote_slide_ops"]["observed_on_live_mac"] == ["delete", "duplicate", "notes", "skip"]
+    assert caps["keynote_slide_ops"]["not_yet_observed"] == ["add", "move"]
 
 
 def test_read_edit_backup_restore_roundtrip(numbers_file):

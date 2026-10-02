@@ -16,7 +16,7 @@ from iwork_studio import apps  # noqa: E402
 @pytest.fixture()
 def fake_apps(tmp_path, monkeypatch):
     monkeypatch.setattr(apps, "_APP_DIRS", (str(tmp_path),))
-    for var in ("IWORK_STUDIO_PAGES_APP", "IWORK_STUDIO_ALLOW_CREATOR_STUDIO"):
+    for var in ("IWORK_STUDIO_PAGES_APP", "IWORK_STUDIO_KEYNOTE_APP", "IWORK_STUDIO_ALLOW_CREATOR_STUDIO"):
         monkeypatch.delenv(var, raising=False)
 
     def install(*bundles):
@@ -45,6 +45,11 @@ def test_creator_studio_only_refused_loud(fake_apps):
     with pytest.raises(apps.CreatorStudioUnverifiedError) as ei:
         apps.app_name("Pages")
     assert "IWORK_STUDIO_ALLOW_CREATOR_STUDIO" in str(ei.value)
+
+
+def test_keynote_creator_studio_allowed_after_live_probe(fake_apps):
+    fake_apps("Keynote Creator Studio")
+    assert apps.app_name("Keynote") == "Keynote Creator Studio"
 
 
 def test_creator_studio_opt_in(fake_apps, monkeypatch):

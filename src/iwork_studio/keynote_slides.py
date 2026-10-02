@@ -20,10 +20,11 @@ Slide signature = (skipped, presenter notes, `object text` of every text
 item). `object text` is the -1700-safe form on Keynote 15.4; the slide
 `title`/`body` properties are never used (keynote-1700-defect.md).
 
-STATUS: ON by default. The ops have not yet been observed on a live iWork
-15.4 Mac (VERIFIED_OPS is empty until `scripts/probe_keynote_slides.py`
-passes there); the expectation gate + rollback above is what makes running
-them before that safe — a wrong app result is rolled back, never kept.
+STATUS: ON by default. Live probe on Keynote Creator Studio 15.3.1
+(2026-10-02): notes, skip, duplicate, delete PASS → VERIFIED_OPS. add and
+move were refused/rolled back there and now use AppleScript; re-run
+`scripts/probe_keynote_slides.py` to observe them. The expectation gate +
+rollback is what makes running any op safe — a wrong result is never kept.
 Off switch: IWORK_STUDIO_DISABLE_SLIDE_OPS=1 (raises SlideOpsDisabledError).
 """
 
@@ -66,7 +67,8 @@ SLIDE_OPS = ("add", "duplicate", "delete", "move", "skip", "notes")
 APP_TIMEOUT = 180
 
 # Ops observed passing on a live Mac (scripts/probe_keynote_slides.py).
-VERIFIED_OPS: frozenset[str] = frozenset()
+# Keynote Creator Studio 15.3.1, macOS live probe 2026-10-02: 4/6 PASS.
+VERIFIED_OPS: frozenset[str] = frozenset({"notes", "skip", "duplicate", "delete"})
 
 
 class SlideOpsDisabledError(RuntimeError):
@@ -167,20 +169,15 @@ def read_slides(path: str | os.PathLike) -> list[dict]:
 
 
 # Op bodies run between open and in-place save. `doc` is in scope.
+# add/move use AppleScript instead (_OP_AS): on Keynote Creator Studio 15.3.1
+# the JXA `slides.splice(...)` insert fails with -10002 "Invalid key form" and
+# the JXA `move … {to: slide}` result did not match (live probe, 2026-10-02).
 _OP_JS = {
-    "add": """
-  const slide = app.Slide({});
-  if (params.after === null) doc.slides.push(slide);
-  else doc.slides.splice(params.after, 0, slide);
-""",
     "duplicate": """
   app.duplicate(doc.slides[params.n - 1]);
 """,
     "delete": """
   app.delete(doc.slides[params.n - 1]);
-""",
-    "move": """
-  app.move(doc.slides[params.n - 1], {to: doc.slides[params.to - 1]});
 """,
     "skip": """
   doc.slides[params.n - 1].skipped = params.skipped;
@@ -191,7 +188,67 @@ _OP_JS = {
 }
 
 
+# AppleScript op bodies (inside `tell d`, argv: path, then op ints).
+# `move slide n to before/after slide t` is Keynote's native reorder form.
+_OP_AS = {
+    "add": """
+      set a to (item 2 of argv) as integer
+      set c to count of slides
+      make new slide at end of slides
+      if a = 0 then
+        move slide (c + 1) to before slide 1
+      else if a > 0 and a < c then
+        move slide (c + 1) to after slide a
+      end if""",
+    "move": """
+      set n to (item 2 of argv) as integer
+      set t to (item 3 of argv) as integer
+      if n < t then
+        move slide n to after slide t
+      else
+        move slide n to before slide t
+      end if""",
+}
+
+
+def _applescript(target: Path, op: str, params: dict) -> None:
+    _assert_aqua()
+    name = app_name(_APP)
+    if '"' in name or "\\" in name:
+        raise SlideOpError(f"refusing unsafe app name {name!r}")
+    args = [str(target)]
+    if op == "add":
+        args.append(str(-1 if params["after"] is None else params["after"]))
+    else:
+        args += [str(params["n"]), str(params["to"])]
+    script = f"""on run argv
+  tell application "{name}"
+    set d to open (POSIX file (item 1 of argv))
+    try
+      tell d{_OP_AS[op]}
+      end tell
+      save d
+    on error errMsg number errNum
+      close d saving no
+      error errMsg number errNum
+    end try
+    close d saving no
+  end tell
+end run"""
+    result = subprocess.run(
+        ["osascript", "-e", script, *args],
+        capture_output=True, text=True, timeout=APP_TIMEOUT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"AppleScript failed (rc={result.returncode}): {result.stderr.strip()[:500]}"
+        )
+
+
 def _apply(target: Path, op: str, params: dict) -> None:
+    if op in _OP_AS:
+        _applescript(target, op, params)
+        return
     body = (
         "  const doc = app.open(Path(params.path));\n"
         + "  try {\n"
@@ -209,7 +266,10 @@ def _norm(sig: dict) -> dict:
     notes = sig.get("notes")
     if isinstance(notes, str):
         notes = notes.replace("\r\n", "\n").replace("\r", "\n")
-    return {"skipped": bool(sig.get("skipped")), "notes": notes, "texts": list(sig.get("texts", []))}
+    # Text items are compared as a multiset: Keynote does not keep text-item
+    # order stable across a slide reorder (live probe: move tripped on order
+    # alone). Content changes are still caught.
+    return {"skipped": bool(sig.get("skipped")), "notes": notes, "texts": sorted(sig.get("texts", []))}
 
 
 def _expected(before: list[dict], op: str, p: dict) -> list[dict] | None:

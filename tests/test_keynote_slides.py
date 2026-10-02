@@ -80,9 +80,10 @@ class TestGate:
         assert fake_app["calls"] == []
         assert not (key_file.parent / "deck.key.backups").exists()
 
-    def test_nothing_observed_on_live_mac_yet(self):
-        # flips only after scripts/probe_keynote_slides.py passes on the Mac
-        assert ks.VERIFIED_OPS == frozenset()
+    def test_verified_ops_match_live_probe(self):
+        # Keynote Creator Studio 15.3.1 probe, 2026-10-02: 4/6 PASS.
+        # Change only together with a new live probe run.
+        assert ks.VERIFIED_OPS == frozenset({"notes", "skip", "duplicate", "delete"})
 
     def test_non_key_refused(self, tmp_path, unverified_ok):
         f = tmp_path / "x.numbers"
@@ -170,7 +171,7 @@ class TestExpectationGate:
         entries = keynote_io.read_manifest(key_file)
         assert entries[-1]["op"] == "slide_skip"
         assert entries[-1]["route"] == "applescript"
-        assert entries[-1]["verified_op"] is False
+        assert entries[-1]["verified_op"] is True  # skip passed the live probe
 
 
 class TestSilentSuccess:
@@ -212,6 +213,69 @@ class TestSilentSuccess:
         fake_app["after"] = after
         with pytest.raises(ks.SlideOpVerificationError):
             ks.set_presenter_notes(key_file, 1, "ملاحظات")
+
+
+class TestAppleScriptRoute:
+    """add/move go through native AppleScript (JXA splice/move failed live on
+    Creator Studio 15.3.1). Pin the exact commands and argv sent."""
+
+    @pytest.fixture()
+    def captured(self, monkeypatch):
+        calls = []
+
+        class R:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        def fake_run(cmd, **kw):
+            calls.append(cmd)
+            return R()
+
+        monkeypatch.setattr(ks, "_assert_aqua", lambda: None)
+        monkeypatch.setattr(ks.subprocess, "run", fake_run)
+        monkeypatch.setattr(ks, "app_name", lambda app: "Keynote Creator Studio")
+        return calls
+
+    def test_move_forward_uses_after(self, tmp_path, captured):
+        ks._apply(tmp_path / "d.key", "move", {"n": 1, "to": 3})
+        cmd = captured[0]
+        assert cmd[:2] == ["osascript", "-e"]
+        assert 'tell application "Keynote Creator Studio"' in cmd[2]
+        assert "move slide n to after slide t" in cmd[2] and cmd[4:] == ["1", "3"]
+        assert "save d" in cmd[2] and "close d saving no" in cmd[2]
+
+    def test_move_backward_uses_before(self, tmp_path, captured):
+        ks._apply(tmp_path / "d.key", "move", {"n": 3, "to": 1})
+        assert "move slide n to before slide t" in captured[0][2]
+
+    def test_add_passes_position(self, tmp_path, captured):
+        ks._apply(tmp_path / "d.key", "add", {"after": None})
+        ks._apply(tmp_path / "d.key", "add", {"after": 0})
+        assert captured[0][-1] == "-1" and captured[1][-1] == "0"
+        assert "make new slide at end of slides" in captured[0][2]
+
+    def test_failure_raises_and_closes(self, tmp_path, captured, monkeypatch):
+        class Bad:
+            returncode = 1
+            stdout = ""
+            stderr = "execution error: Can't get slide 9. (-1728)"
+
+        monkeypatch.setattr(ks.subprocess, "run", lambda cmd, **kw: Bad())
+        with pytest.raises(RuntimeError, match="-1728"):
+            ks._apply(tmp_path / "d.key", "move", {"n": 1, "to": 2})
+
+    def test_unsafe_app_name_refused(self, tmp_path, captured, monkeypatch):
+        monkeypatch.setattr(ks, "app_name", lambda app: 'Keynote" to do shell script "x')
+        with pytest.raises(ks.SlideOpError):
+            ks._apply(tmp_path / "d.key", "move", {"n": 1, "to": 2})
+
+    def test_text_item_order_is_not_a_change(self, key_file, unverified_ok, fake_app):
+        after = [dict(s) for s in DECK]
+        after[1] = {**after[1], "texts": list(reversed(after[1]["texts"]))}
+        after[0], after[1] = after[1], after[0]
+        fake_app["after"] = after
+        assert ks.move_slide(key_file, 1, 2)["ok"]
 
 
 # ── live probe contract (Mac, Aqua, Keynote 15.4) ────────────────────────────
