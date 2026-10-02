@@ -13,6 +13,14 @@
 
 [Quick start](#quick-start) · [Capability matrix](#verified-capability-matrix) · [For AI agents](#for-ai-agents) · [The real story](#the-real-story) · [Traps we mapped so you don't die on them](#traps-we-mapped-so-you-dont-die-on-them)
 
+<br>
+
+<a href="https://arkanji.com/images/posts/iwork-studio-film-v3.mp4">
+  <img src="assets/iwork-studio-film.webp" alt="iWork Studio in action: an AI agent edits a Numbers cell and keeps its formula, updates every Keynote slide without touching the formatting, and writes an Arabic letter in Pages" width="100%">
+</a>
+
+<sub>▶ <a href="https://arkanji.com/images/posts/iwork-studio-film-v3.mp4"><b>Watch the full film with sound</b></a> (46s) · <a href="https://arkanji.com/posts/iwork-studio-launch/">Read the launch story</a></sub>
+
 </div>
 
 ---
