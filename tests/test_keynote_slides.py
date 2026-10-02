@@ -81,9 +81,9 @@ class TestGate:
         assert not (key_file.parent / "deck.key.backups").exists()
 
     def test_verified_ops_match_live_probe(self):
-        # Keynote Creator Studio 15.3.1 probe, 2026-10-02: 4/6 PASS.
+        # Keynote Creator Studio 15.3.1 probe, 2026-10-02: 7/7 PASS.
         # Change only together with a new live probe run.
-        assert ks.VERIFIED_OPS == frozenset({"notes", "skip", "duplicate", "delete"})
+        assert ks.VERIFIED_OPS == frozenset(ks.SLIDE_OPS)
 
     def test_non_key_refused(self, tmp_path, unverified_ok):
         f = tmp_path / "x.numbers"
