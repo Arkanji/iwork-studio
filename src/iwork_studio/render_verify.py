@@ -11,6 +11,7 @@ a PDF. If headless, this module FAILS LOUD — never silently (SC4).
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -65,11 +66,14 @@ def _assert_aqua() -> None:
 
 
 def render_pdf(numbers_path: str | os.PathLike, out_dir: str | os.PathLike | None = None) -> Path:
-    """Open `numbers_path` in Numbers via AppleScript and export a PDF.
+    """Open `numbers_path` in Numbers and export a PDF.
 
-    Returns the exported PDF path. Uses a tmp export path inside out_dir
-    (or a temp dir), never `save in <arbitrary path>` inside Numbers
-    (GATE-SAVE: sandbox denial is verified ground truth — export, not save).
+    Same JXA form the Keynote and Pages routes use (open → export as 'PDF'
+    → close, all on the document object `open` returned). The previous
+    AppleScript form (`front document` after a fixed delay) timed out on
+    Numbers Creator Studio 15.x (live run 2026-10-02) while the JXA form
+    passed for Keynote and Pages Creator Studio. Never `save in <path>`
+    (GATE-SAVE) — export only. Returns the exported PDF path.
     """
     _assert_aqua()
     numbers_path = Path(numbers_path).resolve()
@@ -84,26 +88,26 @@ def render_pdf(numbers_path: str | os.PathLike, out_dir: str | os.PathLike | Non
     pdf_path = out_dir / (numbers_path.stem + ".pdf")
 
     script = f"""
-tell application "{app_name('Numbers')}"
-    open POSIX file "{numbers_path}"
-    delay 1
-    set theDoc to front document
-    set docName to name of theDoc
-    with timeout of 30 seconds
-        export theDoc to POSIX file "{pdf_path}" as PDF
-    end timeout
-    close theDoc saving no
-end tell
+function run(argv) {{
+  const app = Application({json.dumps(app_name('Numbers'))});
+  const doc = app.open(Path(argv[0]));
+  try {{
+    app.export(doc, {{to: Path(argv[1]), as: 'PDF'}});
+  }} finally {{
+    app.close(doc, {{saving: 'no'}});
+  }}
+  return 'ok';
+}}
 """
     result = subprocess.run(
-        ["osascript", "-e", script],
+        ["osascript", "-l", "JavaScript", "-e", script, str(numbers_path), str(pdf_path)],
         capture_output=True,
         text=True,
-        timeout=90,
+        timeout=120,
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"AppleScript PDF export failed (rc={result.returncode}): "
+            f"Numbers PDF export failed (rc={result.returncode}): "
             f"{result.stderr.strip()}"
         )
     if not pdf_path.exists():
