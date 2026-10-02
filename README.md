@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![macOS](https://img.shields.io/badge/macOS-27.2%20%2B%20iWork%2015.4-black?logo=apple&logoColor=white)](#capability-matrix)
+[![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#capability-matrix)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-byte%20exact%20round--trips-informational?logo=languagetool&logoColor=white)](#arabicrtl)
 [![MCP server](https://img.shields.io/badge/MCP-one--line%20install-8A2BE2)](#mcp-server)
 [![Agent skill](https://img.shields.io/badge/agent%20skill-drop--in%20SKILL.md-ff9f0a)](#drop-in-skill)
@@ -44,7 +44,7 @@ backups.restore_backup("revenue.numbers", backups.list_backups("revenue.numbers"
 
 ## Quick start
 
-Requires **Python 3.12**. `.numbers` and `.key` reads and edits are pure Python and run anywhere (CI runs them on Linux). `.pages`, render verification and Keynote slide ops drive the real apps: macOS with iWork (validated on **15.4**) and a logged-in GUI session.
+Requires **Python 3.12**. `.numbers` and `.key` reads and edits are pure Python and run anywhere (CI runs them on Linux). `.pages`, render verification and Keynote slide ops drive the real apps: macOS with iWork and a logged-in GUI session. Works with classic iWork and the **Creator Studio** apps.
 
 **MCP server — one line** (Claude Code; same command shape for Codex and other MCP clients):
 
@@ -53,6 +53,15 @@ claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-s
 ```
 
 Working inside this repo? It ships a project [`.mcp.json`](.mcp.json): open Claude Code here, approve `iwork-studio` once, done.
+
+Then just ask, in English or Arabic:
+
+> *"Change 2025 to 2026 on every slide of ~/Decks/pitch.key"*
+> *"Duplicate slide 3, move the copy to the front, and add Arabic presenter notes: ملاحظات المتحدث"*
+> *"Set B2 in budget.numbers to 2500, then show me the backups"*
+> *"Undo the last change to pitch.key"*
+
+Close the deck in Keynote first — slide ops refuse a file that is open (it never closes a window that may hold unsaved edits).
 
 **Library:**
 
@@ -85,13 +94,14 @@ versioned backup → change a scratch copy → re-open + check it → atomic swa
 - **The scratch copy is re-read and compared**: exactly the requested change happened and nothing else did. A cell edit checks every other cell; a deck replace checks structure and every text; a slide op checks every other slide, in order.
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **Undo is a tool call**: `iwork_list_backups` / `iwork_restore_backup`. A restore is re-parse-gated and backs up the current version first, so it is undoable too.
+- **Never trust the app's "ok"**: scripting bridges report success for writes that did nothing — ignored properties, duplicates landing in another document, no-op moves. Every app-driven write is re-read from disk; "said ok, nothing changed" ends in rollback, never in a fake success.
 - **Refuse, don't mangle**: files with charts are refused for writes; Pages edits beyond the two supported ops are refused. The worst case is a clear "no", never a broken file.
 
 Why it matters: an agent edits files with nobody watching each edit. Without these gates, a bad edit silently corrupts a client deck or scrambles Arabic while the agent reports "done".
 
 ## Capability matrix
 
-Validated on iWork 15.4 / macOS 27.2 with Arabic fixtures. Full table: [`skill-pack/references/capability-matrix.md`](skill-pack/references/capability-matrix.md).
+Full table: [`skill-pack/references/capability-matrix.md`](skill-pack/references/capability-matrix.md).
 
 | Format | Route | Read | Write | Charts | Arabic/RTL | Render-verify |
 |---|---|:---:|:---:|:---:|---|---|
@@ -100,7 +110,7 @@ Validated on iWork 15.4 / macOS 27.2 with Arabic fixtures. Full table: [`skill-p
 | `.key` slides | AppleScript via live Keynote (GUI session) | ✅ per-slide inventory | ✅ add · duplicate · delete · move · skip · presenter notes ¹ | 🚫 refused | ✅ notes Arabic-safe | ✅ PDF → text layer |
 | `.pages` | AppleScript via live Pages (GUI session) | ✅ body text, export to `.docx`/PDF | ⚠️ `replace_all`, `set_body` only — richer ops raise `PagesOutOfScopeError` | n/a | ✅ preserved end-to-end | ✅ PDF → text layer |
 
-¹ **On by default, live-verified.** Each slide op runs the full safety model plus a per-slide expectation gate: if Keynote does anything other than the requested change, the deck is rolled back byte-exact. Refuses a deck that is open in Keynote (it never closes a window that may hold unsaved edits) and never deletes the last slide. **Live-tested on Keynote Creator Studio 15.3.1: 7/7 pass** (notes in Arabic, hide, duplicate, add at end and at front, move, delete). On the first run, add and move failed through JXA; the gate refused/rolled them back, and they now use Keynote's native AppleScript commands. Re-run `uv run python scripts/probe_keynote_slides.py` after any Keynote update. Off switch: `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
+¹ **On by default.** Each slide op runs the full safety model plus a per-slide expectation gate: if Keynote does anything other than the requested change, the deck is rolled back byte-exact. Refuses a deck that is open in Keynote (it never closes a window that may hold unsaved edits) and never deletes the last slide. Off switch: `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 
 > **The `.pages` honesty clause:** there is *no* pure-Python `.pages` parser anywhere. Rather than fake it, we ship exactly the two app-driven ops that pass their gates and fail loudly on everything else. Inventing `.pages` support would be a corruption vector, not a feature.
 
@@ -110,6 +120,8 @@ Validated on iWork 15.4 / macOS 27.2 with Arabic fixtures. Full table: [`skill-p
 - `.key`: `\u06xx` escape sequences survive find/replace intact
 - Render level: single-word, ligature-aware PDF assertions (multi-word Arabic extracts from PDF text layers in visual bidi order and produces false mismatches, so we assert one word by rule)
 - RTL marks (U+200F) survive the full edit loop
+- Values are stored exactly as written: Arabic-Indic digits (`١٢٣٫٤٥`), `٪١٥`, `"$1,234.56"`, European decimals and `=…` text stay strings — no silent auto-conversion (the Numbers *app* does convert these; our parser route doesn't)
+- Presenter notes in Arabic round-trip exactly through Keynote
 
 ## MCP server
 
@@ -140,8 +152,10 @@ Hard-won on a live machine, so your agent doesn't learn them by corrupting somet
 4. **Chart files are refused, not mangled** — text edits on chart files risk corrupting chart data references (chart message types checked against Apple's own templates). Every writer detects and refuses.
 5. **Strict byte-equality on save is a myth** — IWA protobuf re-encoding is opaque; the real bar is *semantic* equality (reopens with zero repair prompts, full model compared). We enforce the real bar and name the fake one.
 6. **TCC + template chooser first-run walls** — one-time permission prompts; a preflight makes agents fail with guidance instead of hanging. → [`tcc-preflight.md`](skill-pack/references/tcc-preflight.md)
-7. **"Creator Studio" is a different app** — iWork 15.1+ can install as `Numbers Creator Studio.app` etc.; a hardcoded `Application("Numbers")` drives the wrong app. Names are resolved per call and the classic app is preferred. All three Creator Studio apps are live-tested and allowed: Keynote (slide ops 7/7, export), Pages (both writes, export) and Numbers (export — its old AppleScript route hung; the JXA route passes). An untested Creator Studio app is refused with guidance. → [`apps.py`](src/iwork_studio/apps.py)
+7. **"Creator Studio" is a different app** — iWork 15.1+ can install as `Numbers Creator Studio.app` etc.; a hardcoded `Application("Numbers")` drives the wrong app. Names are resolved per call and the classic app is preferred. Numbers, Pages and Keynote Creator Studio are supported; an unknown Creator Studio app is refused with guidance. → [`apps.py`](src/iwork_studio/apps.py)
 8. **stdout is the MCP wire** — `import fitz` prints a deprecation warning and keynote-parser prints progress, both on stdout. In an MCP server that corrupts the protocol. We import `pymupdf` and keep import-time output off the wire.
+9. **Keynote JXA insert/move are broken on Creator Studio** — `slides.splice(...)` fails with `-10002`, and JXA `move` doesn't do what it says. Native AppleScript (`make new slide`, `move slide n to before/after slide t`) works, and that's what we use.
+10. **Don't keep the repo in iCloud** — Desktop/Documents sync creates "name 2" conflict copies inside `.git` (`fatal: bad object refs/heads/main 2`). Clone to a non-synced folder.
 
 Plus ~25 more scripting traps imported (each marked by status, not taken as gospel) from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp): colour ranges per app, PostScript font names, Numbers auto-parsing `"$1,234"`, Pages tables only reachable from AppleScript, and more → [`jxa-traps.md`](skill-pack/references/jxa-traps.md)
 
@@ -189,7 +203,7 @@ src/iwork_studio/     numbers_io · keynote_io · keynote_slides · keynote_appl
                       render_verify · backups · apps · mcp_server
 skill-pack/           SKILL.md · install.sh · CLI scripts · references/ (matrix, traps, pins)
 tests/                pytest + fixtures/ — headless lane in CI · `pytest -m aqua` = live Mac lane
-scripts/              probe_keynote_slides.py — one-shot live check of slide ops on a Mac
+scripts/              probe_keynote_slides.py — check slide ops against your own Keynote (throwaway copies)
 .github/workflows/    ci.yml — headless tests on every push and PR
 .mcp.json             project MCP config (Claude Code picks it up here)
 AGENTS.md · CLAUDE.md agent instructions (Codex, Cursor, Copilot, Gemini, Claude Code)
@@ -199,7 +213,7 @@ assets/               banner + media
 
 ## Contributing
 
-iWork versions drift. If this breaks on a future macOS/iWork release, the failure mode is usually *documented renames*: check the [capability matrix](skill-pack/references/capability-matrix.md) and [traps](skill-pack/references/jxa-traps.md), run `pytest -m aqua` on a Mac, and pin the new reality. PRs that add a route *with its gates and tests* are the PRs we want.
+iWork versions drift. If this breaks on a future macOS/iWork release, the failure mode is usually *documented renames*: check the [capability matrix](skill-pack/references/capability-matrix.md) and [traps](skill-pack/references/jxa-traps.md), run `pytest -m aqua` and `scripts/probe_keynote_slides.py` on a Mac (clone outside iCloud-synced folders), and pin the new reality. PRs that add a route *with its gates and tests* are the PRs we want.
 
 ## Star history, honestly
 

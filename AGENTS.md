@@ -54,7 +54,9 @@ and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
 ## Working on it: change this codebase
 
 - Python 3.12. `uv run --extra test pytest -m "not aqua"` = the headless suite
-  (what CI runs). `pytest -m aqua` = the live lane; it needs a Mac with iWork 15.4.
+  (what CI runs). `pytest -m aqua` + `scripts/probe_keynote_slides.py` = the live lane;
+  needs a Mac with iWork (classic or Creator Studio). Clone
+  outside iCloud-synced folders.
 - Dependency pins: `pyproject.toml` must equal `skill-pack/references/pins.txt`
   (a test enforces it).
 - Every new write route must ride the write protocol: versioned backup → change

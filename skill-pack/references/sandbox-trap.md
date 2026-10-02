@@ -1,6 +1,6 @@
 # GATE-SAVE — The AppleScript `save in` Sandbox Trap
 
-## Ground truth (verified live, Scout + Phases B/C/D)
+## Ground truth
 
 iWork apps (Numbers/Keynote/Pages 15.4) are sandboxed. From AppleScript/JXA:
 

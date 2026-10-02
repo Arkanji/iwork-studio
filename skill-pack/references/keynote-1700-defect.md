@@ -41,4 +41,3 @@ Never script `slide.title` / `slide.body` on Keynote 15.4. If a future iWork
 version fixes it, re-verify before switching — until then this is a hard
 property of the app version pin.
 
-Verified by live probes (Phase C).
