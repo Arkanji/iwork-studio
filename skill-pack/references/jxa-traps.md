@@ -64,3 +64,22 @@ New routes still need a probe and evidence first.
 | P6 | 15.x: table *creation* broken in both JXA and AppleScript (-2763); upstream falls back to menu clicks via System Events (needs Accessibility) | UPSTREAM | UI scripting is out of our safety model; do not adopt |
 | P7 | Paragraph styles (Title, Heading 1, …), alignment, indent, line spacing are not in the scripting dictionary | UPSTREAM | A hard wall: no route can offer these |
 | P8 | Synthetic keystrokes are silently blocked while any app has secure keyboard entry (e.g. a focused password field) | UPSTREAM | Another reason to never rely on UI scripting |
+
+## Silent success (found in a fork: lodgvideon/iwork_mcp, Sep 2026)
+
+The scripting bridge can say "ok" for writes that did nothing. Never trust a
+returned ok; re-read from disk. Every case below is a headless regression test
+(`tests/test_keynote_slides.py::TestSilentSuccess`).
+
+| # | Trap | Status | Notes |
+|---|---|---|---|
+| S1 | An ObjC `nil` is truthy in JXA: `if (!executeAndReturnError(...))` never fires, so every NSAppleScript failure reads as success | UPSTREAM | We don't use the NSAppleScript bridge; if added, check the error ref, not the return value |
+| S2 | Keynote accepts writes to non-existent properties without error (e.g. `textAlignment`) | UPSTREAM | Covered: slide-op readback + expectation gate rolls back |
+| S3 | Keynote `duplicate` can silently copy into another open document | UPSTREAM | Covered: count/order check; we also refuse decks already open in Keynote |
+| S4 | Positions passed in a shape/image constructor are ignored (lands at 0,0); colour written 0–1 into a 0–65535 property → near-black | UPSTREAM | No such route today; any future one needs readback of the property |
+| S5 | `add_slide` with an after-position silently drops the requested master slide | UPSTREAM | We don't offer master choice (-1700 family) |
+| S6 | UI scripting by menu **title** fails (-1728) on non-English macOS — Arabic Macs included. Use AXIdentifier, or better, no UI scripting | UPSTREAM | We never click menus |
+| S7 | Numbers app auto-parses `"$1,234.56"` and locale decimals into numbers | N/A (parser route) | `tests/test_value_fidelity.py`: strings, Arabic-Indic digits, `=…` text stay verbatim |
+| S8 | Creator Studio auto-save drafts pile up until saves time out | UPSTREAM | Reason Creator Studio stays refused by default |
+| S9 | Pages 15.x: `make new image` constructor gone (TMAScriptImageInfoProxy); table creation -2763 | UPSTREAM | Neither offered; Pages tables (existing) = Big Bet candidate |
+
