@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
-"""Probe — observe the Keynote slide ops on a live Mac (pinned iWork).
+"""Probe — observe the Keynote slide ops on a live Mac.
 
-Run on the Mac (logged-in GUI session, Keynote installed, Keynote NOT showing
-a dialog), from the repo root:
+Run on the Mac (logged-in GUI session, Keynote installed and not showing a
+dialog), from the repo root:
 
-    python scripts/probe_keynote_slides.py
+    uv run python scripts/probe_keynote_slides.py
+    uv run python scripts/probe_keynote_slides.py --allow-creator-studio   # Creator-Studio-only Mac
 
-Each op runs on a fresh copy of tests/fixtures/arabic.key through the
-full write protocol (backup → app op → in-place save → re-read → expectation
-gate → parser gate → rollback on failure). Results are INTERNAL: they go to
-~/.iwork-studio/probes/ (outside the repo, never committed). An op that
-PASSES may be added to keynote_slides.VERIFIED_OPS.
-An op that FAILS proved the gate works: the file was rolled back.
+Each op runs on a fresh throwaway copy of tests/fixtures/arabic.key (in a temp
+folder, never your files) through the full write protocol: backup → app op →
+in-place save → re-read → expectation gate → parser gate → rollback on failure.
+
+Keynote opens and closes on screen while it runs. The first run may ask
+"Terminal wants to control Keynote" — click OK.
+
+A step that hangs (e.g. the save dialog Creator Studio is reported to show)
+is abandoned after --timeout seconds, rolled back, and the probe stops so
+Keynote isn't hit again while stuck.
+
+Results are INTERNAL: ~/.iwork-studio/probes/keynote_slides.json (outside the
+repo, never committed, no hostname or user name). An op that PASSES may be
+added to keynote_slides.VERIFIED_OPS. An op that FAILS proved the gate works.
 """
 
 from __future__ import annotations
 
+import argparse
 import datetime as _dt
 import hashlib
 import json
@@ -32,75 +42,103 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 os.environ.pop("IWORK_STUDIO_DISABLE_SLIDE_OPS", None)
 
-from iwork_studio import keynote_io, keynote_slides as ks  # noqa: E402
-from iwork_studio.apps import app_name  # noqa: E402
-
 FIXTURE = REPO / "tests" / "fixtures" / "arabic.key"
 OUT = Path.home() / ".iwork-studio" / "probes" / "keynote_slides.json"
-
-PROBES = [
-    ("notes", lambda f: ks.set_presenter_notes(f, 1, "ملاحظات المتحدث — speaker notes")),
-    ("skip", lambda f: ks.set_skipped(f, 1, True)),
-    ("duplicate", lambda f: ks.duplicate_slide(f, 1)),
-    ("add", lambda f: ks.add_slide(f, after=1)),
-    ("move", lambda f: (ks.duplicate_slide(f, 1), ks.move_slide(f, 1, 2))[-1]),
-    ("delete", lambda f: (ks.duplicate_slide(f, 1), ks.delete_slide(f, 2))[-1]),
-]
 
 
 def _sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _keynote_version() -> str:
-    try:
-        return subprocess.run(
-            ["osascript", "-e", f'version of application "{app_name("Keynote")}"'],
-            capture_output=True, text=True, timeout=30,
-        ).stdout.strip()
-    except Exception as exc:  # noqa: BLE001
-        return f"unknown ({exc})"
-
-
 def main() -> int:
+    ap = argparse.ArgumentParser(description="Live probe of Keynote slide ops")
+    ap.add_argument("--allow-creator-studio", action="store_true",
+                    help="probe 'Keynote Creator Studio' when it is the only Keynote installed")
+    ap.add_argument("--timeout", type=int, default=90,
+                    help="seconds before a stuck Keynote call is abandoned (default 90)")
+    args = ap.parse_args()
+    if args.allow_creator_studio:
+        os.environ["IWORK_STUDIO_ALLOW_CREATOR_STUDIO"] = "1"
+
+    from iwork_studio import keynote_io, keynote_slides as ks
+    from iwork_studio.apps import CreatorStudioUnverifiedError, app_bundle_candidates, app_name
+
+    try:
+        keynote = app_name("Keynote")
+    except CreatorStudioUnverifiedError:
+        print("Only 'Keynote Creator Studio' is installed on this Mac.\n"
+              "Re-run with --allow-creator-studio to probe it (throwaway copies only):\n\n"
+              "    uv run python scripts/probe_keynote_slides.py --allow-creator-studio\n")
+        return 2
+    ks.APP_TIMEOUT = args.timeout
+
+    try:
+        version = subprocess.run(["osascript", "-e", f'version of application "{keynote}"'],
+                                 capture_output=True, text=True, timeout=30).stdout.strip()
+    except Exception as exc:  # noqa: BLE001
+        version = f"unknown ({exc})"
+
+    probes = [
+        ("notes", lambda f: ks.set_presenter_notes(f, 1, "ملاحظات المتحدث — speaker notes")),
+        ("skip", lambda f: ks.set_skipped(f, 1, True)),
+        ("duplicate", lambda f: ks.duplicate_slide(f, 1)),
+        ("add", lambda f: ks.add_slide(f, after=1)),
+        ("move", lambda f: (ks.duplicate_slide(f, 1), ks.move_slide(f, 1, 2))[-1]),
+        ("delete", lambda f: (ks.duplicate_slide(f, 1), ks.delete_slide(f, 2))[-1]),
+    ]
     results = {
         "ts": _dt.datetime.now().isoformat(timespec="seconds"),
-        "host": platform.node(),
         "macos": platform.mac_ver()[0],
-        "keynote_app": app_name("Keynote"),
-        "keynote_version": _keynote_version(),
+        "keynote_app": keynote,
+        "keynote_bundles": app_bundle_candidates("Keynote"),
+        "keynote_version": version,
         "parser_version": keynote_io.KEYPAD_VERSION,
-        "fixture": str(FIXTURE.relative_to(REPO)),
+        "timeout_s": args.timeout,
         "probes": [],
     }
-    for op, run in PROBES:
-        with tempfile.TemporaryDirectory(prefix=f"probe-g-{op}-") as tmp:
+    print(f"Probing {keynote} {version} — Keynote will open and close on screen.\n")
+
+    stuck = False
+    for op, run in probes:
+        if stuck:
+            results["probes"].append({"op": op, "status": "SKIPPED", "error": "Keynote stuck on an earlier step"})
+            print(f"{op:10s} SKIPPED  (Keynote stuck on an earlier step)")
+            continue
+        with tempfile.TemporaryDirectory(prefix=f"probe-{op}-") as tmp:
             f = Path(tmp) / "probe.key"
             shutil.copy2(FIXTURE, f)
             sha_before = _sha(f)
             entry = {"op": op}
             try:
                 entry["slides_before"] = len(ks.read_slides(f))
-                entry["result"] = run(f)
+                entry["result"] = {k: v for k, v in run(f).items() if k not in ("file", "backup")}
                 inv = ks.read_slides(f)
                 entry["slides_after"] = len(inv)
                 entry["inventory_after"] = inv
                 entry["status"] = "PASS"
+            except subprocess.TimeoutExpired:
+                stuck = True
+                entry["status"] = "HANG"
+                entry["error"] = (f"Keynote did not answer within {args.timeout}s — likely a dialog "
+                                  "on screen (Creator Studio save bug?). Dismiss it in Keynote.")
+                entry["rolled_back_byte_exact"] = _sha(f) == sha_before
             except Exception as exc:  # noqa: BLE001
                 entry["status"] = "FAIL"
                 entry["error"] = f"{type(exc).__name__}: {exc}"
-                entry["traceback"] = traceback.format_exc()[-2000:]
+                entry["traceback"] = traceback.format_exc()[-2000:].replace(str(Path.home()), "~")
                 entry["rolled_back_byte_exact"] = _sha(f) == sha_before
             results["probes"].append(entry)
-            print(f"{op:10s} {entry['status']}  {entry.get('error', '')}")
+            extra = ""
+            if entry["status"] != "PASS":
+                extra = f"  rolled back: {entry.get('rolled_back_byte_exact')}  {entry.get('error', '')[:160]}"
+            print(f"{op:10s} {entry['status']}{extra}")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    print(f"\nresults (internal) → {OUT}")
     passed = [p["op"] for p in results["probes"] if p["status"] == "PASS"]
-    print(f"PASS: {passed}\nIf these look right, set VERIFIED_OPS = frozenset({set(passed)!r}) "
-          "in src/iwork_studio/keynote_slides.py.")
-    return 0 if len(passed) == len(PROBES) else 1
+    print(f"\nPASS {len(passed)}/{len(probes)}: {passed}")
+    print("Full results (internal, not in the repo): ~/.iwork-studio/probes/keynote_slides.json")
+    return 0 if len(passed) == len(probes) else 1
 
 
 if __name__ == "__main__":

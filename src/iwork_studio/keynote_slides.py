@@ -61,6 +61,10 @@ __all__ = [
 
 _APP = "Keynote"
 SLIDE_OPS = ("add", "duplicate", "delete", "move", "skip", "notes")
+# Seconds to wait on Keynote per call. A hang (e.g. a save dialog that never
+# returns, reported on Creator Studio) ends as TimeoutExpired → rollback.
+APP_TIMEOUT = 180
+
 # Ops observed passing on a live Mac (scripts/probe_keynote_slides.py).
 VERIFIED_OPS: frozenset[str] = frozenset()
 
@@ -99,7 +103,7 @@ def _gate_op(op: str) -> None:
 # ── JXA runner: params as JSON argv (no string interpolation of content) ─────
 
 
-def _jxa(body: str, params: dict, timeout: int = 180) -> dict:
+def _jxa(body: str, params: dict, timeout: int | None = None) -> dict:
     _assert_aqua()
     script = (
         "function run(argv) {\n"
@@ -112,7 +116,7 @@ def _jxa(body: str, params: dict, timeout: int = 180) -> dict:
         ["osascript", "-l", "JavaScript", "-e", script, json.dumps(params)],
         capture_output=True,
         text=True,
-        timeout=timeout,
+        timeout=timeout or APP_TIMEOUT,
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -198,7 +202,7 @@ def _apply(target: Path, op: str, params: dict) -> None:
         + "  }\n"
         + "  return JSON.stringify({ok: true});"
     )
-    _jxa(body, {"path": str(target), **params}, timeout=300)
+    _jxa(body, {"path": str(target), **params})
 
 
 def _norm(sig: dict) -> dict:
