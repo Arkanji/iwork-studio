@@ -24,6 +24,8 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 
+from iwork_studio.apps import app_name
+
 __all__ = [
     "read_text_items",
     "write_text_item",
@@ -86,7 +88,7 @@ def read_text_items(path: str | os.PathLike) -> list[dict]:
     [{"slide": 1-based, "item": 0-based, "text": ...}]."""
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(path)}));
   const out = [];
   const slides = doc.slides();
@@ -113,7 +115,7 @@ def write_text_item(
     `save in <path>` — GATE-SAVE). 1-based slide, 0-based item."""
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(path)}));
   const ti = doc.slides[{slide - 1}].textItems[{item}];
   const before = ti.objectText().toString();
@@ -178,7 +180,7 @@ def render_pdf(key_path: str | os.PathLike, out_dir: str | os.PathLike | None = 
     pdf_path = out_dir / (key_path.stem + ".pdf")
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(key_path)}));
   app.export(doc, {{to: Path({_js_path(pdf_path)}), as: 'PDF'}});
   app.close(doc, {{saving: 'no'}});

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -290,6 +291,10 @@ class TestApplescriptFallback:
         assert result["changes"]
         assert "EN bullet" in _all_texts(key_file)
 
+    @pytest.mark.skipif(
+        hasattr(os, "geteuid") and os.geteuid() == 0,
+        reason="root ignores file modes, so chmod 0o444 is not a lock proxy",
+    )
     def test_locked_file_routes_to_fallback(self, key_file):
         """C6 contract: an unwritable file raises FileLockedError naming
         the AppleScript fallback route — never a silent write attempt."""

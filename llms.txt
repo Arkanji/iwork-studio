@@ -1,6 +1,6 @@
 # iWork Studio
 
-> Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. Python library + drop-in agent skill. Every capability claim backed by committed re-runnable evidence.
+> Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. Python library + MCP server + drop-in agent skill. Every capability claim backed by committed re-runnable evidence.
 
 ## Core routes (verified live, iWork 15.4 / macOS 27.2, 2026-10-01)
 
@@ -8,11 +8,14 @@
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Charts refused by design. AppleScript fallback inside live app.
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, export to .docx/PDF. Write: `replace_all` and `set_body` ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
 
+- **Keynote slide ops** (add/duplicate/delete/move/skip/presenter notes) — built on the app route with a per-slide expectation gate; PENDING live probe on 15.4, refused until verified.
+
 ## Safety contracts agents can rely on
 
 - Every write: versioned backup → tmp write → re-parse gate → semantic diff → atomic swap → PDF render-verify. Failure leaves target untouched.
 - Typed fail-loud errors: ChartRefusalError, PagesOutOfScopeError, NewerAppVersionError, SandboxSaveError.
 - Files from newer app versions degrade to read-only.
+- Undo: every write leaves a versioned backup; `iwork_restore_backup` restores one atomically (re-parse gated, and the restore is itself backed up).
 - Headless context: AppleScript routes fail fast with guidance.
 - Fidelity gate is semantic equality (reopens with zero repair prompts, full model compared) — strict zip byte-equality is unachievable for IWA protobuf formats and is not claimed.
 
@@ -22,14 +25,24 @@
 - Keynote 15.4: slide `title`/`body` AppleScript properties throw -1700; use `object text of first/second text item`.
 - First AppleScript run per app: TCC consent prompt (one-time).
 - Broken Pillow in some Python 3.14 envs hijacks sys.path and breaks keynote-parser; use clean-env venvs.
+- iWork 15.1+ "Creator Studio" ships as separate apps; names are resolved per call, classic preferred, Creator-Studio-only refused until probed.
+- ~25 more scripting traps (imported from reichenbach/iwork_mcp, each status-marked): skill-pack/references/jxa-traps.md
 
 ## Install
+
+MCP (Claude Code / Desktop / Codex):
+
+```bash
+claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
+```
+
+Library:
 
 ```bash
 git clone https://github.com/Arkanji/iwork-studio.git
 cd iwork-studio
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install numbers-parser==4.19.0 keynote-parser==1.14.5.0 PyMuPDF==1.28.2 python-docx==1.2.0
+pip install -e .
 ```
 
 Agent skill install: `bash skill-pack/install.sh`

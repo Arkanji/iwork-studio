@@ -26,6 +26,11 @@ PyMuPDF==1.28.2
 # (AppleScript export -> docx -> python-docx text extract).
 python-docx==1.2.0
 
+# ── agent surface ──────────────────────────────────────────────────────────
+# MCP server (src/iwork_studio/mcp_server.py). 2.x API: mcp.server.mcpserver
+# .MCPServer (FastMCP was renamed in 2.0 — v1 imports do not work).
+mcp==2.2.0
+
 # ── runtime constraints ────────────────────────────────────────────────────
 # Python interpreter: 3.12 (NOT system 3.9.6, NOT Hermes-bundled 3.14).
 # Selected via `uv venv --python /opt/homebrew/bin/python3.12 ...`.

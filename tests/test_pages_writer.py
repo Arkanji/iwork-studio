@@ -237,6 +237,7 @@ class TestD2RollbackContract:
         monkeypatch.setattr(pages_io, "read_body_text", real_read)
         assert real_read(dest) == original
 
+    @pytest.mark.aqua  # reads the live body via Pages before deciding
     def test_missing_find_zero_side_effects(self, pages_file):
         # a missing find must NOT create backups or open the app:
         # monkeypatch the backup helper to prove it never runs

@@ -50,6 +50,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from iwork_studio.apps import app_name
+
 __all__ = [
     "read_pages",
     "read_body_text",
@@ -148,7 +150,7 @@ def preflight(timeout: int = 20) -> dict:
     _assert_aqua()
     try:
         out = _jxa(
-            "(() => { const a = Application('Pages');"
+            f"(() => {{ const a = Application({app_name(_APP)!r});"
             " return a.documents.length; })()",
             timeout=timeout,
         )
@@ -187,7 +189,7 @@ def read_body_text(path: str | os.PathLike) -> str:
     without saving. Paragraph separator is \\r (same as Keynote)."""
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(path)}));
   const txt = doc.bodyText().toString();
   app.close(doc, {{saving: 'no'}});
@@ -216,7 +218,7 @@ def export_docx(
         out_path.parent.mkdir(parents=True, exist_ok=True)
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(path)}));
   app.export(doc, {{to: Path({_js_path(out_path)}), as: 'Microsoft Word'}});
   app.close(doc, {{saving: 'no'}});
@@ -362,7 +364,7 @@ def edit_pages_body(
     # ── the write: open → set bodyText → IN-PLACE save (GATE-SAVE) ────
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(target)}));
   doc.bodyText = {new_text!r};
   app.save(doc);            // IN-PLACE save only — GATE-SAVE
@@ -458,7 +460,7 @@ def render_pdf(
     pdf_path = out_dir / (pages_path.stem + ".pdf")
     script = f"""
 (() => {{
-  const app = Application({_APP!r});
+  const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(pages_path)}));
   app.export(doc, {{to: Path({_js_path(pdf_path)}), as: 'PDF'}});
   app.close(doc, {{saving: 'no'}});

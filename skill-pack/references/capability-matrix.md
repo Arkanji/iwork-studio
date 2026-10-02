@@ -53,6 +53,49 @@ them; use `object text` (see keynote-1700-defect.md).
 `save in <arbitrary path>` stays BANNED for on-disk files (sandbox denial).
 Naming a NEW unsaved doc with `save in` is not the trap (same as C fixture).
 
+## .key slide ops — AppleScript via live Keynote (Phase G, PENDING PROBE)
+
+Built 2026-10-02 (`src/iwork_studio/keynote_slides.py`), technique from
+reichenbach/iwork_mcp (14.5 / 15.1.1, open-document only, no safety net).
+Here each op runs: gates → inventory → backup → op + in-place save →
+fresh-open readback → per-slide expectation gate → parser re-parse gate →
+atomic restore on any failure. Protocol proven headless (tests/test_keynote_slides.py,
+app stubbed: rollback byte-exact, collateral-change detection, no-churn
+pre-flight). App behaviour on 15.4 NOT yet observed.
+
+| Capability | Status | Evidence |
+|---|---|---|
+| set presenter notes (Arabic) | PENDING PROBE — refused (UnverifiedRouteError) | run scripts/probe_g_keynote_slides.py → evidence/g1/ |
+| skip / unskip slide | PENDING PROBE — refused | same |
+| duplicate slide | PENDING PROBE — refused | same |
+| add slide (default layout; master-slide choice not offered: -1700 family) | PENDING PROBE — refused | same |
+| move slide (`app.move … {to:}` before/after semantics unknown — gate decides) | PENDING PROBE — refused | same |
+| delete slide (never the last one) | PENDING PROBE — refused | same |
+| deck open in Keynote → DocumentOpenError (never closes a user's window) | BUILT, pending probe | same |
+| chart decks | REFUSED (GATE-CHART) | same detector as C4 |
+
+Promotion rule: an op moves to VERIFIED only by adding it to
+`keynote_slides.VERIFIED_OPS` in the same commit as its PASS row in
+evidence/g1/probe_results.json.
+
+## App resolution (classic vs Creator Studio)
+
+| Situation | Behaviour | Evidence |
+|---|---|---|
+| classic `<App>.app` installed (with or without Creator Studio) | classic used — the verified route | tests/test_apps.py |
+| only `<App> Creator Studio.app` | REFUSED (CreatorStudioUnverifiedError) unless IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 | upstream: save hangs, export error 6 on 15.1.1 |
+| `IWORK_STUDIO_<APP>_APP` set | exact operator pin | tests/test_apps.py |
+
+## Agent surface + CI
+
+| Capability | Status | Evidence |
+|---|---|---|
+| MCP server (stdio, mcp 2.2.0): 10 tools, read/destructive hints | VERIFIED headless | tests/test_mcp_server.py — real stdio subprocess |
+| Undo: list + atomic restore of versioned backups (re-parse gated, restore itself backed up) | VERIFIED headless | tests/test_backups.py |
+| Path fence IWORK_STUDIO_ROOTS | VERIFIED headless | tests/test_mcp_server.py |
+| Headless CI (GitHub Actions, Linux, `-m "not aqua"`) | WIRED | .github/workflows/ci.yml |
+| keynote_io YAML parse via libyaml CSafeLoader (3.4 s vs 12.4 s read) | VERIFIED parse-identical | both .key fixtures: identical objects + schema_hash |
+
 ## Cross-format rules
 
 - NEVER author in docx/pptx/xlsx and convert to iWork — lossy, council-rejected.

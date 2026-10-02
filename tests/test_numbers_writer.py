@@ -216,6 +216,7 @@ class TestGateChart:
 
 
 class TestRenderVerify:
+    @pytest.mark.aqua
     def test_aqua_assertion_detects_session(self):
         # On this dev box we run under Aqua; the check must pass here.
         # (On a headless box the same call raises AquaSessionError —

@@ -19,6 +19,8 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 
+from iwork_studio.apps import app_name
+
 __all__ = [
     "render_pdf",
     "assert_page_count",
@@ -82,7 +84,7 @@ def render_pdf(numbers_path: str | os.PathLike, out_dir: str | os.PathLike | Non
     pdf_path = out_dir / (numbers_path.stem + ".pdf")
 
     script = f"""
-tell application "Numbers"
+tell application "{app_name('Numbers')}"
     open POSIX file "{numbers_path}"
     delay 1
     set theDoc to front document

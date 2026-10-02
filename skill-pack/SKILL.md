@@ -25,6 +25,20 @@ including Arabic round-trips at file level AND render level. Evidence:
 | `.key` | full text model (YAML tree) | find/replace text only | `keynote-parser` 1.14.5.0; AppleScript fallback ONLY for file locked in Keynote |
 | `.pages` | body text (AppleScript + docx export) | the TWO verified body ops ONLY | AppleScript `bodyText`; richer edits = out of scope by council |
 
+## MCP server (preferred for MCP-capable agents)
+
+```bash
+claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
+```
+
+Tools: `iwork_capabilities`, `iwork_read`, `numbers_edit_cell`,
+`keynote_replace_text`, `pages_preflight`, `pages_replace_all`,
+`pages_set_body`, `iwork_verify_render`, `iwork_list_backups`,
+`iwork_restore_backup`. Same library, same gates as the scripts below.
+Keynote slide ops (add/duplicate/delete/move/skip/notes) are built but
+PENDING PROBE: refused until `scripts/probe_g_keynote_slides.py` passes on
+15.4 (capability-matrix.md, Phase G).
+
 ## Commands (run from this skill's directory)
 
 All scripts auto-locate the pinned interpreter (`~/.hermes/iwork-venv/.venv/bin/python`)
@@ -78,7 +92,10 @@ python scripts/verify_render.py <file> --assert-text "expected visible text" [--
    split + bidi, an extraction artifact the matcher tolerates, not a defect).
    For render-verify assertions use SINGLE Arabic words — bidi reorders words in
    extracted text layers, so multi-word Arabic fragments fail spuriously.
-8. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B
+8. **Creator Studio**: if only `<App> Creator Studio.app` is installed, app
+   routes raise `CreatorStudioUnverifiedError` (upstream: its save hangs,
+   export fails). Never set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 except to probe.
+9. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B
    on unmodified .numbers save). GATE-1 is SEMANTIC equality — operator-pinned,
    do not re-litigate. See references/pins.txt.
 
@@ -96,6 +113,8 @@ python scripts/verify_render.py <file> --assert-text "expected visible text" [--
 - `references/sandbox-trap.md` — GATE-SAVE: the `save in` denial playbook
 - `references/keynote-1700-defect.md` — the Keynote 15.4 text-property defect
 - `references/tcc-preflight.md` — TCC / template-chooser / -1712 playbook
+- `references/jxa-traps.md` — ~25 upstream scripting traps (reichenbach/iwork_mcp), each marked UPSTREAM / AGREES / N/A
+- Undo: `iwork_studio.backups.list_backups(path)` / `restore_backup(path, name)`
 
 ## Source of truth
 
