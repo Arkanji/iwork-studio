@@ -10,7 +10,7 @@ With EITHER of these on screen, EVERY AppleEvent to the app — even
 
 System Events UI reads still work; only AppleEvents to the app are blocked.
 Dismissing the modal once (a single GUI click) instantly restores event
-handling — verified live during Phase D: with the dialog up, `count of
+handling: with the dialog up, `count of
 documents` timed out; after one GUI dismissal, the whole route probed clean.
 
 ## The rule
@@ -34,7 +34,7 @@ The verified protocol is: detect (-1712) → prompt the human once → they
 click → proceed. Automating the click was considered and rejected: TCC
 dialogs are deliberately resistant to synthetic clicks, and the Pages
 template chooser is an app-modal UI — a human's single click is the
-reliable path (re-verified live in Phase D).
+reliable path.
 
 ## Keynote / Numbers
 

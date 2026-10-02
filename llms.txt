@@ -2,7 +2,7 @@
 
 > Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. MCP server + Python library + drop-in agent skill. Every capability claim backed by re-runnable tests.
 
-## Core routes (verified live, iWork 15.4 / macOS 27.2, 2026-10-01)
+## Core routes (classic iWork and Creator Studio apps)
 
 - **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Writes: cell edits, create, find/replace, atomic swap. Charts refused by design. Arabic byte-exact.
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Charts refused by design. AppleScript fallback inside live app.
@@ -24,7 +24,11 @@
 - Keynote 15.4: slide `title`/`body` AppleScript properties throw -1700; use `object text of first/second text item`.
 - First AppleScript run per app: TCC consent prompt (one-time).
 - Broken Pillow in some Python 3.14 envs hijacks sys.path and breaks keynote-parser; use clean-env venvs.
-- iWork 15.1+ "Creator Studio" ships as separate apps; names are resolved per call, classic preferred, Creator-Studio-only refused until probed.
+- iWork 15.1+ "Creator Studio" ships as separate apps; names are resolved per call, classic preferred. Numbers, Pages and Keynote Creator Studio are supported; an unknown one is refused with guidance.
+- Keynote Creator Studio: JXA `slides.splice` (-10002) and JXA `move` are broken; native AppleScript `make new slide` / `move slide n to before/after slide t` work.
+- Numbers Creator Studio: AppleScript `front document` export hangs; JXA `export(doc, {as:'PDF'})` works.
+- Never trust a scripting bridge's "ok": every app-driven write is re-read from disk and rolled back if nothing (or the wrong thing) changed.
+- Keep clones out of iCloud-synced folders (conflict copies corrupt .git).
 - ~25 more scripting traps (imported from reichenbach/iwork_mcp, each status-marked): skill-pack/references/jxa-traps.md
 
 ## Install

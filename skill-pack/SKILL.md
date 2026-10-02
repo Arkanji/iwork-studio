@@ -121,7 +121,7 @@ backups.restore_backup("deck.key", backups.list_backups("deck.key")[0]["name"]) 
    For render-verify assertions use SINGLE Arabic words — bidi reorders words in
    extracted text layers, so multi-word Arabic fragments fail spuriously.
 8. **Creator Studio**: Numbers, Pages and Keynote Creator Studio are all
-   supported (live-tested). An app not yet tested raises
+   supported. An unknown Creator Studio app raises
    `CreatorStudioUnverifiedError`; never set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1
    except to probe.
 9. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B

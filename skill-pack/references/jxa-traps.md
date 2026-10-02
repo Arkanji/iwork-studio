@@ -2,7 +2,7 @@
 
 Source: [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp) (MIT),
 `CLAUDE.md` "Critical JXA Bugs", tested there on iWork **14.5** and **15.1.1
-Creator Studio**. Imported 2026-10-02. Facts only, no code copied.
+Creator Studio**. Facts only, no code copied.
 
 **Status legend**
 - `UPSTREAM` — reported upstream, **not yet verified on our pin (15.4)**. Treat
@@ -83,14 +83,14 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | S8 | Creator Studio auto-save drafts pile up until saves time out | UPSTREAM | Reason Creator Studio stays refused by default |
 | S9 | Pages 15.x: `make new image` constructor gone (TMAScriptImageInfoProxy); table creation -2763 | UPSTREAM | Neither offered; Pages tables (existing) = Big Bet candidate |
 
-## Observed live — Keynote Creator Studio 15.3.1 (our probe, 2026-10-02)
+## Creator Studio specifics (Keynote / Pages / Numbers 15.3)
 
 | # | Trap | Status | Notes |
 |---|---|---|---|
-| L1 | In-place open → save → close of an on-disk deck works (upstream's "save hangs" not reproduced for Keynote) | CONFIRMED | 4 slide ops passed end to end |
-| L2 | JXA `doc.slides.splice(i, 0, app.Slide({}))` fails: `-10002 Invalid key form` | CONFIRMED | add uses AppleScript `make new slide at end of slides` + `move` — PASS live |
-| L3 | JXA `app.move(slide, {to: slide})` produced a result the gate rejected | CONFIRMED | move uses AppleScript `move slide n to before/after slide t` — PASS live |
+| L1 | In-place open → save → close of an on-disk deck works (upstream's "save hangs" not reproduced for Keynote) | CONFIRMED | |
+| L2 | JXA `doc.slides.splice(i, 0, app.Slide({}))` fails: `-10002 Invalid key form` | CONFIRMED | add uses AppleScript `make new slide at end of slides` + `move` |
+| L3 | JXA `app.move(slide, {to: slide})` produced a result the gate rejected | CONFIRMED | move uses AppleScript `move slide n to before/after slide t` |
 | L4 | Text-item order inside a slide is not a stable identity across reorders | HANDLED | slide signature compares text items as a multiset |
 | L5 | A repo inside an iCloud-synced folder (Desktop/Documents) gets "name 2" conflict copies inside `.git` → `fatal: bad object refs/heads/main 2` | CONFIRMED | keep clones in a non-synced folder, e.g. `~/Developer` |
-| L6 | Numbers Creator Studio: AppleScript `open` + `delay` + `front document` + `export … as PDF` timed out (90 s) | CONFIRMED | replaced by JXA `export(doc_from_open, {as:'PDF'})` — PASS live in <4 s |
-| L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | live aqua suite, Arabic body |
+| L6 | Numbers Creator Studio: AppleScript `open` + `delay` + `front document` + `export … as PDF` timed out (90 s) | CONFIRMED | replaced by JXA `export(doc_from_open, {as:'PDF'})` |
+| L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | |
