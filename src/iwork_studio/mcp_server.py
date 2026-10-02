@@ -10,14 +10,15 @@ Install (Claude Code):
 Environment:
     IWORK_STUDIO_ROOTS              os.pathsep-separated folders the server may
                                     touch (unset = any path the user can reach)
-    IWORK_STUDIO_ENABLE_UNVERIFIED  "1" exposes Keynote slide ops that have not
-                                    passed a live probe yet (probing only)
+    IWORK_STUDIO_DISABLE_SLIDE_OPS  "1" hides and refuses the Keynote slide ops
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import platform
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +26,13 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from iwork_studio import __version__, apps, backups, keynote_slides
+# stdout IS the protocol wire. Libraries that print at import time must not
+# reach it (the SDK only diverts fd 1 once serving starts), so imports go to
+# stderr. keynote-parser's "Reading from …" prints during calls are covered by
+# the SDK's diversion while serving.
+with contextlib.redirect_stdout(sys.stderr):
+    from iwork_studio import __version__, apps, backups, keynote_slides
+    from iwork_studio import keynote_applescript, keynote_io, numbers_io, pages_io, render_verify  # noqa: F401
 
 INSTRUCTIONS = """\
 iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
@@ -38,6 +45,8 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   .numbers and .key reads/edits are pure Python (no app needed). .pages, render
   verification and Keynote slide ops drive the real app and need a logged-in
   macOS GUI session.
+- Keynote slide ops refuse a deck that is open in Keynote: ask the user to save
+  and close it. Slide numbers are 1-based.
 - Files containing charts are REFUSED for writes (ChartRefusalError). Do not try
   to work around it; tell the user.
 - Pages supports exactly two writes: pages_replace_all and pages_set_body.
@@ -87,7 +96,7 @@ _HINTS = {
     "FileLockedError": "the file is locked or open in Keynote; ask the user to close it",
     "DocumentOpenError": "ask the user to save and close the deck in Keynote first",
     "CreatorStudioUnverifiedError": "only the Creator Studio app is installed and it is not verified yet",
-    "UnverifiedRouteError": "this op has not passed its live probe yet",
+    "SlideOpsDisabledError": "slide ops are switched off on this machine",
 }
 
 
@@ -131,7 +140,6 @@ def _app_status() -> dict:
 @mcp.tool(annotations=READ)
 def iwork_capabilities() -> dict[str, Any]:
     """What this machine can do right now: routes, GUI session, installed apps, which slide ops are verified."""
-    slide_enabled = os.environ.get("IWORK_STUDIO_ENABLE_UNVERIFIED") == "1"
     return {
         "version": __version__,
         "platform": platform.platform(),
@@ -145,9 +153,10 @@ def iwork_capabilities() -> dict[str, Any]:
             "keynote_slide_ops": "add/duplicate/delete/move/skip/notes via the Keynote app (GUI session)",
         },
         "keynote_slide_ops": {
-            "verified": sorted(keynote_slides.VERIFIED_OPS),
-            "pending_live_probe": sorted(set(keynote_slides.SLIDE_OPS) - keynote_slides.VERIFIED_OPS),
-            "exposed_unverified": slide_enabled,
+            "enabled": keynote_slides.slide_ops_enabled(),
+            "observed_on_live_mac": sorted(keynote_slides.VERIFIED_OPS),
+            "not_yet_observed": sorted(set(keynote_slides.SLIDE_OPS) - keynote_slides.VERIFIED_OPS),
+            "safety_net": "backup + per-slide readback + rollback on any mismatch",
         },
         "refused_by_design": [
             "writes to files containing charts",
@@ -265,11 +274,11 @@ def iwork_restore_backup(path: str, backup: str) -> dict[str, Any]:
     return _call(backups.restore_backup, p, backup)
 
 
-# ── Keynote slide ops: exposed only once verified (or for probing) ───────────
+# ── Keynote slide ops (on unless IWORK_STUDIO_DISABLE_SLIDE_OPS=1) ───────────
 
 
-def _slide_tool(op: str):
-    return op in keynote_slides.VERIFIED_OPS or os.environ.get("IWORK_STUDIO_ENABLE_UNVERIFIED") == "1"
+def _slide_tool(op: str) -> bool:
+    return keynote_slides.slide_ops_enabled()
 
 
 if _slide_tool("add"):

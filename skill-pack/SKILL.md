@@ -1,7 +1,7 @@
 ---
 name: iwork-studio
 description: Use when reading, creating, or editing Apple iWork files — Numbers spreadsheets (.numbers), Keynote decks (.key), Pages documents (.pages). Triggers on any Pages/Keynote/Numbers file mention, iWork authoring request, spreadsheet cell edit, slide text change, or Pages body-text task. Routes through the verified iWork Studio library: versioned backup + atomic swap on every write, Arabic-safe round-trips, chart refusal, PDF render verification.
-version: 1.0.0
+version: 1.1.0
 author: iWork Studio
 license: MIT
 metadata:
@@ -14,16 +14,16 @@ metadata:
 
 One skill pack, three verified routes, zero repair prompts. Everything below was
 built and live-verified against iWork 15.4 (build 7051.0.79) on macOS 27.2,
-including Arabic round-trips at file level AND render level. Evidence:
-`the project repo`.
+including Arabic round-trips at file level AND render level.
 
 ## Route matrix (follow exactly; never freelance)
 
 | Format | Read | Write | Engine |
 |--------|------|-------|--------|
 | `.numbers` | full semantic model | create + per-cell edit | `numbers-parser` 4.19.0, pure Python, no GUI |
-| `.key` | full text model (YAML tree) | find/replace text only | `keynote-parser` 1.14.5.0; AppleScript fallback ONLY for file locked in Keynote |
-| `.pages` | body text (AppleScript + docx export) | the TWO verified body ops ONLY | AppleScript `bodyText`; richer edits = out of scope by council |
+| `.key` | full text model (YAML tree) | find/replace text | `keynote-parser` 1.14.5.0; AppleScript fallback ONLY for file locked in Keynote |
+| `.key` slides | per-slide inventory | add / duplicate / delete / move / skip / presenter notes | AppleScript via Keynote (`iwork_studio.keynote_slides`), per-slide expectation gate + rollback |
+| `.pages` | body text (AppleScript + docx export) | the TWO verified body ops ONLY | AppleScript `bodyText`; richer edits = out of scope by design |
 
 ## MCP server (preferred for MCP-capable agents)
 
@@ -34,10 +34,12 @@ claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-s
 Tools: `iwork_capabilities`, `iwork_read`, `numbers_edit_cell`,
 `keynote_replace_text`, `pages_preflight`, `pages_replace_all`,
 `pages_set_body`, `iwork_verify_render`, `iwork_list_backups`,
-`iwork_restore_backup`. Same library, same gates as the scripts below.
-Keynote slide ops (add/duplicate/delete/move/skip/notes) are built but
-PENDING PROBE: refused until `scripts/probe_g_keynote_slides.py` passes on
-15.4 (capability-matrix.md, Phase G).
+`iwork_restore_backup`, plus the Keynote slide ops `keynote_add_slide`,
+`keynote_duplicate_slide`, `keynote_delete_slide`, `keynote_move_slide`,
+`keynote_skip_slide`, `keynote_set_presenter_notes`. Same library, same gates
+as the scripts below. Slide ops are ON (off switch:
+IWORK_STUDIO_DISABLE_SLIDE_OPS=1); they refuse a deck open in Keynote, never
+delete the last slide, and roll back if Keynote does anything unexpected.
 
 ## Commands (run from this skill's directory)
 
@@ -96,10 +98,10 @@ python scripts/verify_render.py <file> --assert-text "expected visible text" [--
    routes raise `CreatorStudioUnverifiedError` (upstream: its save hangs,
    export fails). Never set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 except to probe.
 9. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B
-   on unmodified .numbers save). GATE-1 is SEMANTIC equality — operator-pinned,
+   on unmodified .numbers save). GATE-1 is SEMANTIC equality — pinned,
    do not re-litigate. See references/pins.txt.
 
-## Scope walls (council-validated)
+## Scope walls (by design)
 
 - Pages: ONLY `replace_all` and `set_body` body-text ops. Anything richer
   (styles, tables, sections, per-paragraph surgery) raises PagesOutOfScopeError.
@@ -108,7 +110,7 @@ python scripts/verify_render.py <file> --assert-text "expected visible text" [--
 
 ## References
 
-- `references/capability-matrix.md` — per-route verified ops + evidence pointers
+- `references/capability-matrix.md` — per-route verified ops
 - `references/pins.txt` — dependency pins, single source of truth
 - `references/sandbox-trap.md` — GATE-SAVE: the `save in` denial playbook
 - `references/keynote-1700-defect.md` — the Keynote 15.4 text-property defect
@@ -118,7 +120,7 @@ python scripts/verify_render.py <file> --assert-text "expected visible text" [--
 
 ## Source of truth
 
-Project repo: `the project repo` (specs, library source,
-pytest suite, evidence logs). This installed skill = pack sources + vendored copy
+Project repo: https://github.com/arkanji/iwork-studio (library source, pytest
+suite, fixtures). This installed skill = pack sources + vendored copy
 of `src/iwork_studio` at install time (`skill-pack/install.sh`). Re-run install
 after library changes.

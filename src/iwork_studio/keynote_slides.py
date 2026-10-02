@@ -1,4 +1,4 @@
-"""iWork Studio — Keynote slide operations via the app (Phase G, PENDING PROBE).
+"""iWork Studio — Keynote slide operations via the app (Phase G).
 
 Ops: add, duplicate, delete, move, skip/unskip, set presenter notes.
 Technique source: reichenbach/iwork_mcp (MIT), tested there on Keynote 14.5 /
@@ -20,10 +20,11 @@ Slide signature = (skipped, presenter notes, `object text` of every text
 item). `object text` is the -1700-safe form on Keynote 15.4; the slide
 `title`/`body` properties are never used (keynote-1700-defect.md).
 
-VERIFICATION STATUS: none of these ops has passed a live probe on iWork
-15.4 yet. Until `scripts/probe_g_keynote_slides.py` records evidence and the
-op is added to VERIFIED_OPS, calls raise UnverifiedRouteError — unless the
-operator sets IWORK_STUDIO_ENABLE_UNVERIFIED=1 (that is how the probe runs).
+STATUS: ON by default. The ops have not yet been observed on a live iWork
+15.4 Mac (VERIFIED_OPS is empty until `scripts/probe_keynote_slides.py`
+passes there); the expectation gate + rollback above is what makes running
+them before that safe — a wrong app result is rolled back, never kept.
+Off switch: IWORK_STUDIO_DISABLE_SLIDE_OPS=1 (raises SlideOpsDisabledError).
 """
 
 from __future__ import annotations
@@ -49,9 +50,10 @@ __all__ = [
     "set_skipped",
     "set_presenter_notes",
     "is_verified",
+    "slide_ops_enabled",
     "SLIDE_OPS",
     "VERIFIED_OPS",
-    "UnverifiedRouteError",
+    "SlideOpsDisabledError",
     "SlideOpError",
     "SlideOpVerificationError",
     "DocumentOpenError",
@@ -59,12 +61,12 @@ __all__ = [
 
 _APP = "Keynote"
 SLIDE_OPS = ("add", "duplicate", "delete", "move", "skip", "notes")
-# Flip an op in ONLY with committed live evidence (evidence/g1/).
+# Ops observed passing on a live Mac (scripts/probe_keynote_slides.py).
 VERIFIED_OPS: frozenset[str] = frozenset()
 
 
-class UnverifiedRouteError(RuntimeError):
-    """The op has not passed a live probe on the pinned iWork version."""
+class SlideOpsDisabledError(RuntimeError):
+    """Slide ops are switched off on this machine (IWORK_STUDIO_DISABLE_SLIDE_OPS=1)."""
 
 
 class SlideOpError(ValueError):
@@ -83,15 +85,15 @@ def is_verified(op: str) -> bool:
     return op in VERIFIED_OPS
 
 
+def slide_ops_enabled() -> bool:
+    return os.environ.get("IWORK_STUDIO_DISABLE_SLIDE_OPS") != "1"
+
+
 def _gate_op(op: str) -> None:
-    if op in VERIFIED_OPS or os.environ.get("IWORK_STUDIO_ENABLE_UNVERIFIED") == "1":
-        return
-    raise UnverifiedRouteError(
-        f"keynote slide op {op!r} has not passed a live probe on iWork 15.4. "
-        "Run scripts/probe_g_keynote_slides.py on the Mac, commit evidence/g1/, "
-        "then add the op to keynote_slides.VERIFIED_OPS. "
-        "(IWORK_STUDIO_ENABLE_UNVERIFIED=1 bypasses this for probing only.)"
-    )
+    if not slide_ops_enabled():
+        raise SlideOpsDisabledError(
+            f"keynote slide op {op!r} refused: IWORK_STUDIO_DISABLE_SLIDE_OPS=1 is set"
+        )
 
 
 # ── JXA runner: params as JSON argv (no string interpolation of content) ─────

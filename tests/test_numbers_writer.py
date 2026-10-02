@@ -3,9 +3,9 @@
 Gates:
 - GATE-1: SEMANTIC byte-equality (content identical, file openable).
   Strict zip byte-equality is unachievable: numbers-parser re-encodes IWA
-  protobuf on write (+1,632 B on unmodified save, verified evidence/a3).
-  Interpretation pinned by operator directive — do not re-litigate.
-- GATE-AR: Arabic round-trip ('أحمد') passes byte-exact on 4.19.0 (evidence/a3).
+  protobuf on write (+1,632 B on unmodified save).
+  Pinned interpretation — do not re-litigate.
+- GATE-AR: Arabic round-trip ('أحمد') passes byte-exact on 4.19.0.
 - GATE-CHART: writer refuses chart-container files (accepted scope cut).
 - B6: render-verify loop runs only under Aqua; fails loud otherwise.
 """
@@ -241,7 +241,7 @@ class TestRenderVerify:
     @pytest.mark.aqua
     def test_render_verify_numbers_pdf_text(self, numbers_file, tmp_path):
         """B6 live loop: Numbers → export PDF → PyMuPDF text-layer match."""
-        evidence_pdf = REPO / "evidence" / "b6" / "render_verify_output.pdf"
+        evidence_pdf = tmp_path / "render_verify_output.pdf"
         result = render_verify.verify_render(
             numbers_file,
             expected_fragment="الاسم",

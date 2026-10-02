@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF (`import fitz` prints a deprecation warning to stdout)
 
 from iwork_studio.apps import app_name
 

@@ -1,6 +1,6 @@
 # iWork Studio
 
-> Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. Python library + MCP server + drop-in agent skill. Every capability claim backed by committed re-runnable evidence.
+> Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. MCP server + Python library + drop-in agent skill. Every capability claim backed by re-runnable tests.
 
 ## Core routes (verified live, iWork 15.4 / macOS 27.2, 2026-10-01)
 
@@ -8,13 +8,12 @@
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Charts refused by design. AppleScript fallback inside live app.
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, export to .docx/PDF. Write: `replace_all` and `set_body` ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
 
-- **Keynote slide ops** (add/duplicate/delete/move/skip/presenter notes) — built on the app route with a per-slide expectation gate; PENDING live probe on 15.4, refused until verified.
+- **Keynote slide ops** (add/duplicate/delete/move/skip/presenter notes) — via the live Keynote app with a per-slide expectation gate and rollback; on by default.
 
 ## Safety contracts agents can rely on
 
 - Every write: versioned backup → tmp write → re-parse gate → semantic diff → atomic swap → PDF render-verify. Failure leaves target untouched.
-- Typed fail-loud errors: ChartRefusalError, PagesOutOfScopeError, NewerAppVersionError, SandboxSaveError.
-- Files from newer app versions degrade to read-only.
+- Typed fail-loud errors: ChartRefusalError, PagesOutOfScopeError, FileLockedError, DocumentOpenError, SchemaDriftError, SlideOpVerificationError, CreatorStudioUnverifiedError, AquaSessionError.
 - Undo: every write leaves a versioned backup; `iwork_restore_backup` restores one atomically (re-parse gated, and the restore is itself backed up).
 - Headless context: AppleScript routes fail fast with guidance.
 - Fidelity gate is semantic equality (reopens with zero repair prompts, full model compared) — strict zip byte-equality is unachievable for IWA protobuf formats and is not claimed.
@@ -52,7 +51,7 @@ Agent skill install: `bash skill-pack/install.sh`
 - README: https://github.com/Arkanji/iwork-studio#readme
 - Skill pack: skill-pack/SKILL.md
 - Capability matrix: skill-pack/references/capability-matrix.md
-- Evidence: evidence/
+- MCP config for this repo: .mcp.json
 
 ## License
 

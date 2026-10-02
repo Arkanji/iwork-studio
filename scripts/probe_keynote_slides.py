@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Phase G probe — live-verify the Keynote slide ops on the pinned iWork.
+"""Probe — observe the Keynote slide ops on a live Mac (pinned iWork).
 
 Run on the Mac (logged-in GUI session, Keynote installed, Keynote NOT showing
 a dialog), from the repo root:
 
-    python scripts/probe_g_keynote_slides.py
+    python scripts/probe_keynote_slides.py
 
-Each op runs on a fresh copy of evidence/a3/roundtrip_a3.key through the
+Each op runs on a fresh copy of tests/fixtures/arabic.key through the
 full write protocol (backup → app op → in-place save → re-read → expectation
-gate → parser gate → rollback on failure). Results go to
-evidence/g1/probe_results.json. An op that PASSES here may be added to
-keynote_slides.VERIFIED_OPS in the same commit as that evidence file.
+gate → parser gate → rollback on failure). Results are INTERNAL: they go to
+~/.iwork-studio/probes/ (outside the repo, never committed). An op that
+PASSES may be added to keynote_slides.VERIFIED_OPS.
 An op that FAILS proved the gate works: the file was rolled back.
 """
 
@@ -30,13 +30,13 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
-os.environ["IWORK_STUDIO_ENABLE_UNVERIFIED"] = "1"  # this IS the probe
+os.environ.pop("IWORK_STUDIO_DISABLE_SLIDE_OPS", None)
 
 from iwork_studio import keynote_io, keynote_slides as ks  # noqa: E402
 from iwork_studio.apps import app_name  # noqa: E402
 
-FIXTURE = REPO / "evidence" / "a3" / "roundtrip_a3.key"
-OUT = REPO / "evidence" / "g1" / "probe_results.json"
+FIXTURE = REPO / "tests" / "fixtures" / "arabic.key"
+OUT = Path.home() / ".iwork-studio" / "probes" / "keynote_slides.json"
 
 PROBES = [
     ("notes", lambda f: ks.set_presenter_notes(f, 1, "ملاحظات المتحدث — speaker notes")),
@@ -96,10 +96,10 @@ def main() -> int:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    print(f"\nevidence → {OUT.relative_to(REPO)}")
+    print(f"\nresults (internal) → {OUT}")
     passed = [p["op"] for p in results["probes"] if p["status"] == "PASS"]
     print(f"PASS: {passed}\nIf these look right, set VERIFIED_OPS = frozenset({set(passed)!r}) "
-          "in src/iwork_studio/keynote_slides.py and commit with the evidence file.")
+          "in src/iwork_studio/keynote_slides.py.")
     return 0 if len(passed) == len(PROBES) else 1
 
 

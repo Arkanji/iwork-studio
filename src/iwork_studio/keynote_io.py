@@ -7,7 +7,7 @@ Same code path as the `keynote-parser unpack|pack` CLI:
 GATE-1 is enforced as SEMANTIC equality (YAML-tree digest stable across
 repack; .key byte hash differs from protobuf re-encode but is byte-STABLE
 from the first repack on — verified scripts/c_preprobe.py P3,
-evidence/a3). Do not re-litigate — operator directive.
+verified). Do not re-litigate — pinned decision.
 
 GATE-CHART: the writer REFUSES chart-container decks until a probe proves
 them (accepted scope cut, same as Phase B). Detection = IWA message types
@@ -54,7 +54,7 @@ from keynote_parser.file_utils import process
 from keynote_parser.replacement import Replacement
 
 # libyaml C loader when available: ~25x faster on a 50-file deck tree and
-# parse-identical to SafeLoader (verified on both evidence fixtures,
+# parse-identical to SafeLoader (verified on both test fixtures,
 # roundtrip_a3.key + chart_fixture.key — same objects, same schema_hash).
 _YamlLoader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -295,7 +295,7 @@ def _unescape_u6(s: str) -> str:
     stores Arabic as \\uXXXX escapes; if the caller passes find/replace in
     that escaped form, unescape to real codepoints (data-level replace
     operates on real Unicode, not YAML bytes). 17 sequences verified
-    preserved through the tree (evidence/a3 probe A3-probe-4)."""
+    preserved through the tree (probe A3-probe-4)."""
     return _U6_ESCAPE_RE.sub(lambda m: chr(int(m.group(1), 16)), s)
 
 

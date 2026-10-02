@@ -41,5 +41,4 @@ Never script `slide.title` / `slide.body` on Keynote 15.4. If a future iWork
 version fixes it, re-verify before switching — until then this is a hard
 property of the app version pin.
 
-Evidence: Scout probe transcript (spec.md Verified Ground Truth table);
-Phase C live probes c_preprobe*.py.
+Verified by live probes (Phase C).

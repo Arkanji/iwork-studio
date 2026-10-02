@@ -32,7 +32,7 @@ from iwork_studio.pages_io import (  # noqa: E402
     PagesUnavailableError,
 )
 
-PAGES_SRC = REPO / "evidence" / "d4" / "pages_fixture.pages"
+PAGES_SRC = REPO / "tests" / "fixtures" / "arabic.pages"
 
 ARABIC_BODY = "تقرير المشروع السنوي — Annual project report.\rSecond paragraph: السعر التقديري 42.\rEdited paragraph: تعديل جديد."
 
@@ -346,7 +346,7 @@ class TestD2VerifiedOps:
 
 @pytest.mark.aqua
 class TestD4ArabicRenderBaseline:
-    def test_render_pdf_arabic_text_layer(self, pages_file):
+    def test_render_pdf_arabic_text_layer(self, pages_file, tmp_path):
         if not _aqua_available():
             pytest.skip("no Aqua session")
         # ensure Arabic content is present via a set_body write, then
@@ -360,7 +360,7 @@ class TestD4ArabicRenderBaseline:
             pages_file,
             "تقديري",
             expected_pages=1,
-            keep_pdf=REPO / "evidence" / "d4" / "render_verify_output.pdf",
+            keep_pdf=tmp_path / "render_verify_output.pdf",
         )
         assert result["ok"] is True
         assert result["pages"] == 1

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-CHART_SRC = REPO / "evidence" / "b6" / "chart_fixture.numbers"
+CHART_SRC = REPO / "tests" / "fixtures" / "chart.numbers"
 
 from mcp import Client, StdioServerParameters  # noqa: E402
 
@@ -46,11 +46,19 @@ def _params(**env) -> StdioServerParameters:
 
 
 def _session(steps, **env):
+    wire_errors: list = []
+
+    async def on_message(msg):
+        if isinstance(msg, Exception):  # a non-JSON-RPC line reached stdout
+            wire_errors.append(msg)
+
     async def go():
-        async with Client(_params(**env)) as client:
+        async with Client(_params(**env), message_handler=on_message) as client:
             return await steps(client)
 
-    return asyncio.run(go())
+    result = asyncio.run(go())
+    assert not wire_errors, f"stdout polluted (breaks strict MCP clients): {wire_errors[0]}"
+    return result
 
 
 def _payload(result) -> dict:
@@ -64,25 +72,26 @@ def test_tools_listed_with_safety_annotations():
         return (await c.list_tools()).tools
 
     tools = {t.name: t for t in _session(steps)}
-    assert set(tools) == CORE_TOOLS  # slide ops hidden until verified
+    assert set(tools) == CORE_TOOLS | SLIDE_TOOLS  # slide ops on by default
     assert tools["iwork_read"].annotations.read_only_hint is True
     assert tools["numbers_edit_cell"].annotations.destructive_hint is True
 
 
-def test_unverified_slide_tools_exposed_only_on_opt_in():
+def test_slide_tools_hidden_by_off_switch():
     async def steps(c):
         return {t.name for t in (await c.list_tools()).tools}
 
-    assert _session(steps, IWORK_STUDIO_ENABLE_UNVERIFIED="1") == CORE_TOOLS | SLIDE_TOOLS
+    assert _session(steps, IWORK_STUDIO_DISABLE_SLIDE_OPS="1") == CORE_TOOLS
 
 
-def test_capabilities_reports_pending_probe():
+def test_capabilities_reports_slide_ops_on_but_not_yet_observed():
     async def steps(c):
         return _payload(await c.call_tool("iwork_capabilities", {}))
 
     caps = _session(steps)
-    assert caps["keynote_slide_ops"]["verified"] == []
-    assert "notes" in caps["keynote_slide_ops"]["pending_live_probe"]
+    assert caps["keynote_slide_ops"]["enabled"] is True
+    assert caps["keynote_slide_ops"]["observed_on_live_mac"] == []
+    assert "notes" in caps["keynote_slide_ops"]["not_yet_observed"]
 
 
 def test_read_edit_backup_restore_roundtrip(numbers_file):
@@ -128,6 +137,18 @@ def test_roots_fence(numbers_file, tmp_path):
 
     result = _session(steps, IWORK_STUDIO_ROOTS=str(fenced))
     assert result.is_error and "outside IWORK_STUDIO_ROOTS" in result.content[0].text
+
+
+def test_keynote_read_keeps_the_wire_clean(tmp_path):
+    # keynote-parser prints "Reading from …" and PyMuPDF warns on stdout;
+    # _session fails if either reaches the protocol stream
+    deck = tmp_path / "deck.key"
+    shutil.copy2(REPO / "tests" / "fixtures" / "arabic.key", deck)
+
+    async def steps(c):
+        return _payload(await c.call_tool("iwork_read", {"path": str(deck)}))
+
+    assert _session(steps)["slides"]
 
 
 def test_wrong_extension_rejected(numbers_file):

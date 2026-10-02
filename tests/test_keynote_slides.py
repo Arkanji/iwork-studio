@@ -19,8 +19,8 @@ sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_io, keynote_slides as ks  # noqa: E402
 
-KEY_SRC = REPO / "evidence" / "a3" / "roundtrip_a3.key"
-CHART_SRC = REPO / "evidence" / "c7" / "chart_fixture.key"
+KEY_SRC = REPO / "tests" / "fixtures" / "arabic.key"
+CHART_SRC = REPO / "tests" / "fixtures" / "chart.key"
 
 DECK = [
     {"skipped": False, "notes": "", "texts": ["Title A"]},
@@ -42,7 +42,7 @@ def key_file(tmp_path) -> Path:
 
 @pytest.fixture()
 def unverified_ok(monkeypatch):
-    monkeypatch.setenv("IWORK_STUDIO_ENABLE_UNVERIFIED", "1")
+    monkeypatch.delenv("IWORK_STUDIO_DISABLE_SLIDE_OPS", raising=False)
 
 
 @pytest.fixture()
@@ -69,16 +69,19 @@ def fake_app(monkeypatch):
 
 
 class TestGate:
-    def test_unverified_op_refused_by_default(self, key_file, monkeypatch, fake_app):
-        monkeypatch.delenv("IWORK_STUDIO_ENABLE_UNVERIFIED", raising=False)
-        with pytest.raises(ks.UnverifiedRouteError) as ei:
+    def test_on_by_default(self, monkeypatch):
+        monkeypatch.delenv("IWORK_STUDIO_DISABLE_SLIDE_OPS", raising=False)
+        assert ks.slide_ops_enabled()
+
+    def test_off_switch_refuses_with_no_side_effects(self, key_file, monkeypatch, fake_app):
+        monkeypatch.setenv("IWORK_STUDIO_DISABLE_SLIDE_OPS", "1")
+        with pytest.raises(ks.SlideOpsDisabledError):
             ks.set_presenter_notes(key_file, 1, "hi")
-        assert "probe_g_keynote_slides.py" in str(ei.value)
         assert fake_app["calls"] == []
         assert not (key_file.parent / "deck.key.backups").exists()
 
-    def test_nothing_verified_yet(self):
-        # flips only with committed evidence/g1/ — this test is the tripwire
+    def test_nothing_observed_on_live_mac_yet(self):
+        # flips only after scripts/probe_keynote_slides.py passes on the Mac
         assert ks.VERIFIED_OPS == frozenset()
 
     def test_non_key_refused(self, tmp_path, unverified_ok):

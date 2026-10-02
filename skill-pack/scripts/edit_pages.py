@@ -8,7 +8,7 @@ set-body    : verified body op 2 — replace the ENTIRE body text.
               Use '-' as the text to read it from stdin (handles long bodies).
 
 Anything richer than these two ops is general Pages authoring, REJECTED at
-council — the library raises PagesOutOfScopeError. Do not bypass.
+design — the library raises PagesOutOfScopeError. Do not bypass.
 
 All AppleScript routes need an interactive Aqua session (headless = hard
 fail with guidance, SC4). Run `preflight` first; a -1712 means a human must
@@ -93,7 +93,7 @@ def main() -> int:
         except pages_io.PagesOutOfScopeError as exc:
             return _emit({"error": f"PagesOutOfScopeError: {exc}",
                           "hint": "general Pages authoring is out of scope "
-                                  "(council-rejected); only replace_all and "
+                                  "(out of scope by design); only replace_all and "
                                   "set_body are verified"}, 1)
         except Exception as exc:
             return _emit({"error": f"{type(exc).__name__}: {exc}"}, 1)
@@ -108,7 +108,7 @@ def main() -> int:
         except pages_io.PagesOutOfScopeError as exc:
             return _emit({"error": f"PagesOutOfScopeError: {exc}",
                           "hint": "general Pages authoring is out of scope "
-                                  "(council-rejected); only replace_all and "
+                                  "(out of scope by design); only replace_all and "
                                   "set_body are verified"}, 1)
         except Exception as exc:
             return _emit({"error": f"{type(exc).__name__}: {exc}"}, 1)

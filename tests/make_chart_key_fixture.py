@@ -5,9 +5,9 @@ Live Keynote `add chart` AppleScript (verified dictionary support, sdef
 enumeration legacy chart type): create a fresh deck, add one 2D bar chart,
 save IN-PLACE (GATE-SAVE), close, then verify with our detector BOTH ways:
   - detector(charts fixture) must be True
-  - detector(plain fixture evidence/a3/roundtrip_a3.key) must be False
+  - detector(plain fixture tests/fixtures/arabic.key) must be False
 
-Output: evidence/c7/chart_fixture.key
+Output: tests/fixtures/chart.key
 Run:    ~/.hermes/iwork-venv/.venv/bin/python tests/make_chart_key_fixture.py
 """
 import subprocess
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-DEST = REPO / "evidence" / "c7" / "chart_fixture.key"
+DEST = REPO / "tests" / "fixtures" / "chart.key"
 
 JXA_MAKE = """ (() => {
   const app = Application('Keynote');
@@ -58,7 +58,7 @@ def main() -> int:
     # Keynote sandbox: osascript runs as the user, and `save in` here is
     # the standard documented way to give an untitled document its path.
     # The GATE-SAVE trap (verified denial) applies to saves from WITHIN the
-    # app sandbox. We save directly to the evidence dir, then close.
+    # app sandbox. We save directly to tests/fixtures, then close.
     script = f"""
 (() => {{
   const app = Application('Keynote');
@@ -78,7 +78,7 @@ def main() -> int:
     sys.path.insert(0, str(REPO / "src"))
     from iwork_studio.keynote_io import contains_charts
 
-    plain = REPO / "evidence" / "a3" / "roundtrip_a3.key"
+    plain = REPO / "tests" / "fixtures" / "arabic.key"
     c1 = contains_charts(DEST)
     c2 = contains_charts(plain)
     print("contains_charts(chart_fixture):", c1)

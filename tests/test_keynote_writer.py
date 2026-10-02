@@ -4,9 +4,9 @@ Gates:
 - GATE-1 (semantic): YAML-tree content digest stable across repack
   (verified scripts/c_preprobe.py P3); .key bytes byte-stable from the
   first repack on; strict source-byte equality unachievable (protobuf
-  re-encode, evidence/a3) — pinned interpretation, do not re-litigate.
+  re-encode) — pinned interpretation, do not re-litigate.
 - GATE-CHART: writer refuses chart decks (live Keynote-built fixture,
-  evidence/c7/chart_fixture.key).
+  tests/fixtures/chart.key).
 - GATE-AR: Arabic round-trips escape-aware (backslash-u06xx) and codepoint-exact.
 - C5: schema-hash manifest on every write; skeleton invariant under
   text-only edits.
@@ -28,8 +28,8 @@ sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_io, keynote_applescript  # noqa: E402
 
-KEY_SRC = REPO / "evidence" / "a3" / "roundtrip_a3.key"
-CHART_SRC = REPO / "evidence" / "c7" / "chart_fixture.key"
+KEY_SRC = REPO / "tests" / "fixtures" / "arabic.key"
+CHART_SRC = REPO / "tests" / "fixtures" / "chart.key"
 
 AR_TITLE = "عرض تجريبي"
 AR_BODY = "مرحباً بكم في التحليل"
@@ -316,9 +316,8 @@ class TestApplescriptFallback:
 
 class TestRenderVerify:
     @pytest.mark.aqua
-    def test_render_verify_key_pdf_text(self, key_file):
-        evidence_pdf = REPO / "evidence" / "c7" / "render_verify_output.pdf"
-        evidence_pdf.parent.mkdir(exist_ok=True, parents=True)
+    def test_render_verify_key_pdf_text(self, key_file, tmp_path):
+        evidence_pdf = tmp_path / "render_verify_output.pdf"
         keynote_io.edit_text(key_file, "English", "السعر")
         result = keynote_applescript.verify_render(
             key_file, expected_fragment="السعر", keep_pdf=evidence_pdf

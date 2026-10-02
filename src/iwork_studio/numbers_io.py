@@ -4,7 +4,7 @@ Built on numbers-parser 4.19.0 (pinned; see specs/001-iwork-studio/pins.txt).
 
 GATE-1 is enforced as SEMANTIC byte-equality (content identical, file openable):
 numbers-parser re-encodes IWA protobuf on save so strict zip byte-equality is
-unachievable (verified, evidence/a3). Do not re-litigate — operator directive.
+unachievable (verified). Do not re-litigate — pinned decision.
 
 GATE-CHART: the writer REFUSES chart-container files until a probe proves them
 (accepted scope cut — refusal is correct behaviour, not a gap).

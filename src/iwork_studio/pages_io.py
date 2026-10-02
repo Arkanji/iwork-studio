@@ -3,13 +3,13 @@
 Verified ground truth (spec.md + this phase, live on this machine):
 - There is NO Python .pages parser (python-pages upstream 1-star, never
   vendored — watchlist only; numbers-parser and textutil both reject
-  .pages — verified negatives, evidence/a3).
+  .pages — verified negatives).
 - The ONLY route is AppleScript against Pages 15.4:
     read  = open → bodyText readback (op 2) and/or export to .docx →
             python-docx text extract (D1)
     write = set bodyText (op 1) — nothing else (D2)
 
-D2 SCOPE (per council — general Pages authoring REJECTED):
+D2 SCOPE (general Pages authoring is out of scope by design):
   edit_pages_body() accepts mode='replace_all' or mode='set_body' ONLY.
   Anything richer raises PagesOutOfScopeError — deliberately, not
   as a TODO.
@@ -297,7 +297,7 @@ def edit_pages_body(
 
     ANYTHING ELSE — styles, tables, sections, headers/footers, per-
     paragraph surgery, find-with-regex, … — is general Pages authoring,
-    which the council REJECTED. Raise PagesOutOfScopeError, loudly.
+    which is out of scope by design. Raise PagesOutOfScopeError, loudly.
 
     Safety: versioned backup BEFORE the write; in-place app save
     (GATE-SAVE, verified live); post-save readback must contain the
@@ -312,7 +312,7 @@ def edit_pages_body(
         raise PagesOutOfScopeError(
             f"mode {mode!r} is not one of the two verified ops "
             f"( {_ALLOWED_MODES} ). General Pages authoring is REJECTED "
-            "scope (council) — do not work around this error."
+            "scope (by design) — do not work around this error."
         )
     if mode == "replace_all":
         if not find:
@@ -484,7 +484,7 @@ def verify_render(
     """D4 full loop: Pages → export PDF → PyMuPDF text-layer match
     (ligature-aware Arabic matcher shared with Phases B/C —
     render_verify.assert_text_layer)."""
-    import fitz
+    import pymupdf as fitz
 
     from iwork_studio.render_verify import assert_page_count, assert_text_layer
 

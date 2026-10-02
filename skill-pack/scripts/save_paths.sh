@@ -1,7 +1,7 @@
 #!/bin/bash
 # iWork Studio — shared AppleScript save-path helpers (GATE-SAVE).
 #
-# Ground truth (verified, evidence/a3 + Phase B/C/D):
+# Ground truth (verified, Phase B/C/D):
 #   - `save in <arbitrary path>`  → DENIED by the iWork app sandbox. Never use.
 #   - in-place `save` (no path)   → VERIFIED WORKING for Numbers, Keynote, Pages
 #                                  (file must already exist on disk).

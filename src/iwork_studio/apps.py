@@ -65,5 +65,5 @@ def app_name(app: str) -> str:
         "save hangs on a modal and export fails with error 6 — the two calls "
         "every app route here depends on. Install classic "
         f"{app} from the App Store, or set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 "
-        "to run the probes and record evidence first."
+        "to run the probes first."
     )

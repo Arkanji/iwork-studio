@@ -17,7 +17,7 @@ Usage:
 NOTE on Arabic fragments: the matcher is ligature-aware but bidi visual
 order reorders WORDS in extracted text layers ('فقرة أولى' extracts as
 'أولى فقرة'). Use SINGLE Arabic WORDS (or Latin fragments) for assertions
-— same guidance as the Phase B/D evidence baselines.
+— same guidance as the Phase B/D baselines.
 """
 from __future__ import annotations
 
