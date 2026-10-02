@@ -40,7 +40,10 @@ def test_both_installed_prefers_verified_classic(fake_apps):
     assert apps.app_name("Pages") == "Pages"
 
 
-def test_creator_studio_only_refused_loud(fake_apps):
+def test_unobserved_creator_studio_refused_loud(fake_apps, monkeypatch):
+    # every shipping app is observed now; the gate must still hold for any
+    # Creator Studio app that has not passed a live run
+    monkeypatch.setattr(apps, "CREATOR_STUDIO_OBSERVED", frozenset())
     fake_apps("Numbers Creator Studio")
     with pytest.raises(apps.CreatorStudioUnverifiedError) as ei:
         apps.app_name("Numbers")
@@ -57,7 +60,13 @@ def test_pages_creator_studio_allowed_after_live_run(fake_apps):
     assert apps.app_name("Pages") == "Pages Creator Studio"
 
 
+def test_all_three_creator_studio_apps_allowed(fake_apps):
+    fake_apps("Numbers Creator Studio", "Pages Creator Studio", "Keynote Creator Studio")
+    assert [apps.app_name(a) for a in apps.IWORK_APPS] == [f"{a} Creator Studio" for a in apps.IWORK_APPS]
+
+
 def test_creator_studio_opt_in(fake_apps, monkeypatch):
+    monkeypatch.setattr(apps, "CREATOR_STUDIO_OBSERVED", frozenset())
     fake_apps("Numbers Creator Studio")
     monkeypatch.setenv("IWORK_STUDIO_ALLOW_CREATOR_STUDIO", "1")
     assert apps.app_name("Numbers") == "Numbers Creator Studio"
