@@ -78,13 +78,21 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         version = f"unknown ({exc})"
 
+    def two_distinct_slides(f):
+        # slide 2 = copy of slide 1 marked with a note, so order is observable
+        ks.duplicate_slide(f, 1)
+        ks.set_presenter_notes(f, 2, "B")
+
+    # (label, op, setup, action) — the rollback check compares against the
+    # deck as it was AFTER setup, i.e. right before the action under test.
     probes = [
-        ("notes", lambda f: ks.set_presenter_notes(f, 1, "ملاحظات المتحدث — speaker notes")),
-        ("skip", lambda f: ks.set_skipped(f, 1, True)),
-        ("duplicate", lambda f: ks.duplicate_slide(f, 1)),
-        ("add", lambda f: ks.add_slide(f, after=1)),
-        ("move", lambda f: (ks.duplicate_slide(f, 1), ks.move_slide(f, 1, 2))[-1]),
-        ("delete", lambda f: (ks.duplicate_slide(f, 1), ks.delete_slide(f, 2))[-1]),
+        ("notes", "notes", None, lambda f: ks.set_presenter_notes(f, 1, "ملاحظات المتحدث — speaker notes")),
+        ("skip", "skip", None, lambda f: ks.set_skipped(f, 1, True)),
+        ("duplicate", "duplicate", None, lambda f: ks.duplicate_slide(f, 1)),
+        ("add-end", "add", None, lambda f: ks.add_slide(f)),
+        ("add-front", "add", None, lambda f: ks.add_slide(f, after=0)),
+        ("move", "move", two_distinct_slides, lambda f: ks.move_slide(f, 2, 1)),
+        ("delete", "delete", two_distinct_slides, lambda f: ks.delete_slide(f, 1)),
     ]
     results = {
         "ts": _dt.datetime.now().isoformat(timespec="seconds"),
@@ -99,17 +107,20 @@ def main() -> int:
     print(f"Probing {keynote} {version} — Keynote will open and close on screen.\n")
 
     stuck = False
-    for op, run in probes:
+    for label, op, setup, run in probes:
         if stuck:
-            results["probes"].append({"op": op, "status": "SKIPPED", "error": "Keynote stuck on an earlier step"})
-            print(f"{op:10s} SKIPPED  (Keynote stuck on an earlier step)")
+            results["probes"].append({"probe": label, "op": op, "status": "SKIPPED", "error": "Keynote stuck on an earlier step"})
+            print(f"{label:10s} SKIPPED  (Keynote stuck on an earlier step)")
             continue
         with tempfile.TemporaryDirectory(prefix=f"probe-{op}-") as tmp:
             f = Path(tmp) / "probe.key"
             shutil.copy2(FIXTURE, f)
-            sha_before = _sha(f)
-            entry = {"op": op}
+            entry = {"probe": label, "op": op}
+            sha_before = None
             try:
+                if setup:
+                    setup(f)
+                sha_before = _sha(f)
                 entry["slides_before"] = len(ks.read_slides(f))
                 entry["result"] = {k: v for k, v in run(f).items() if k not in ("file", "backup")}
                 inv = ks.read_slides(f)
@@ -121,21 +132,21 @@ def main() -> int:
                 entry["status"] = "HANG"
                 entry["error"] = (f"Keynote did not answer within {args.timeout}s — likely a dialog "
                                   "on screen (Creator Studio save bug?). Dismiss it in Keynote.")
-                entry["rolled_back_byte_exact"] = _sha(f) == sha_before
+                entry["rolled_back_byte_exact"] = sha_before is not None and _sha(f) == sha_before
             except Exception as exc:  # noqa: BLE001
                 entry["status"] = "FAIL"
                 entry["error"] = f"{type(exc).__name__}: {exc}"
                 entry["traceback"] = traceback.format_exc()[-2000:].replace(str(Path.home()), "~")
-                entry["rolled_back_byte_exact"] = _sha(f) == sha_before
+                entry["rolled_back_byte_exact"] = (_sha(f) == sha_before) if sha_before else "setup failed"
             results["probes"].append(entry)
             extra = ""
             if entry["status"] != "PASS":
-                extra = f"  rolled back: {entry.get('rolled_back_byte_exact')}  {entry.get('error', '')[:160]}"
-            print(f"{op:10s} {entry['status']}{extra}")
+                extra = f"  rolled back: {entry.get('rolled_back_byte_exact')}\n           {entry.get('error', '')[:600]}"
+            print(f"{label:10s} {entry['status']}{extra}")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    passed = [p["op"] for p in results["probes"] if p["status"] == "PASS"]
+    passed = [p["probe"] for p in results["probes"] if p["status"] == "PASS"]
     print(f"\nPASS {len(passed)}/{len(probes)}: {passed}")
     print("Full results (internal, not in the repo): ~/.iwork-studio/probes/keynote_slides.json")
     return 0 if len(passed) == len(probes) else 1

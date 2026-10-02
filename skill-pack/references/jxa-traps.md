@@ -83,3 +83,13 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | S8 | Creator Studio auto-save drafts pile up until saves time out | UPSTREAM | Reason Creator Studio stays refused by default |
 | S9 | Pages 15.x: `make new image` constructor gone (TMAScriptImageInfoProxy); table creation -2763 | UPSTREAM | Neither offered; Pages tables (existing) = Big Bet candidate |
 
+## Observed live — Keynote Creator Studio 15.3.1 (our probe, 2026-10-02)
+
+| # | Trap | Status | Notes |
+|---|---|---|---|
+| L1 | In-place open → save → close of an on-disk deck works (upstream's "save hangs" not reproduced for Keynote) | CONFIRMED | 4 slide ops passed end to end |
+| L2 | JXA `doc.slides.splice(i, 0, app.Slide({}))` fails: `-10002 Invalid key form` | CONFIRMED | add now uses AppleScript `make new slide at end of slides` + `move` |
+| L3 | JXA `app.move(slide, {to: slide})` produced a result the gate rejected | CONFIRMED | move now uses AppleScript `move slide n to before/after slide t` |
+| L4 | Text-item order inside a slide is not a stable identity across reorders | HANDLED | slide signature compares text items as a multiset |
+| L5 | A repo inside an iCloud-synced folder (Desktop/Documents) gets "name 2" conflict copies inside `.git` → `fatal: bad object refs/heads/main 2` | CONFIRMED | keep clones in a non-synced folder, e.g. `~/Developer` |
+

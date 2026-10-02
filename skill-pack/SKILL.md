@@ -120,9 +120,10 @@ backups.restore_backup("deck.key", backups.list_backups("deck.key")[0]["name"]) 
    split + bidi, an extraction artifact the matcher tolerates, not a defect).
    For render-verify assertions use SINGLE Arabic words — bidi reorders words in
    extracted text layers, so multi-word Arabic fragments fail spuriously.
-8. **Creator Studio**: if only `<App> Creator Studio.app` is installed, app
-   routes raise `CreatorStudioUnverifiedError` (upstream: its save hangs,
-   export fails). Never set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 except to probe.
+8. **Creator Studio**: Keynote Creator Studio is supported (live-tested on
+   15.3.1). If only Numbers/Pages Creator Studio is installed, those routes raise
+   `CreatorStudioUnverifiedError` (upstream: save hangs, export fails). Never set
+   IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 except to probe.
 9. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B
    on unmodified .numbers save). GATE-1 is SEMANTIC equality — pinned,
    do not re-litigate. See references/pins.txt.

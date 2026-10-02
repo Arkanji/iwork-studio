@@ -64,12 +64,12 @@ failure. ON by default; off switch IWORK_STUDIO_DISABLE_SLIDE_OPS=1.
 | Capability | Status | Covered by |
 |---|---|---|
 | protocol: rollback byte-exact, collateral-change detection, no-churn pre-flight | VERIFIED headless (app stubbed) | tests/test_keynote_slides.py |
-| set presenter notes (Arabic) | ON — not yet run on a live 15.4 Mac | `pytest -m aqua` / scripts/probe_keynote_slides.py |
-| skip / unskip slide | ON — not yet run live | same |
-| duplicate slide | ON — not yet run live | same |
-| add slide (default layout; master-slide choice not offered: -1700 family) | ON — not yet run live | same |
-| move slide (`app.move … {to:}` before/after semantics unknown — gate decides) | ON — not yet run live | same |
-| delete slide (never the last one) | ON — not yet run live | same |
+| set presenter notes (Arabic) | VERIFIED LIVE — Creator Studio 15.3.1 | `pytest -m aqua` / scripts/probe_keynote_slides.py |
+| skip / unskip slide | VERIFIED LIVE — Creator Studio 15.3.1 | same |
+| duplicate slide | VERIFIED LIVE — Creator Studio 15.3.1 | same |
+| add slide (default layout; master-slide choice not offered: -1700 family) | ON — JXA splice failed -10002 on CS 15.3.1 (refused, untouched); now AppleScript `make new slide` + `move`, re-probe | same |
+| move slide | ON — JXA move mismatched on CS 15.3.1 (rolled back); now AppleScript `move slide n to before/after slide t`, re-probe | same |
+| delete slide (never the last one) | VERIFIED LIVE — Creator Studio 15.3.1 | same |
 | deck open in Keynote → DocumentOpenError (never closes a user's window) | ON — not yet run live | same |
 | chart decks | REFUSED (GATE-CHART) | same detector as C4 |
 
@@ -82,7 +82,8 @@ internal (`~/.iwork-studio/probes/`), never committed.
 | Situation | Behaviour | Covered by |
 |---|---|---|
 | classic `<App>.app` installed (with or without Creator Studio) | classic used — the verified route | tests/test_apps.py |
-| only `<App> Creator Studio.app` | REFUSED (CreatorStudioUnverifiedError) unless IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 | upstream: save hangs, export error 6 on 15.1.1 |
+| only `Keynote Creator Studio.app` | ALLOWED — open/in-place save/close observed working | live probe, Creator Studio 15.3.1, 2026-10-02 |
+| only `Numbers`/`Pages Creator Studio.app` | REFUSED (CreatorStudioUnverifiedError) unless IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1 | upstream: save hangs, export error 6 on 15.1.1 |
 | `IWORK_STUDIO_<APP>_APP` set | exact operator pin | tests/test_apps.py |
 
 ## Agent surface + CI
