@@ -20,10 +20,9 @@ Slide signature = (skipped, presenter notes, `object text` of every text
 item). `object text` is the -1700-safe form on Keynote 15.4; the slide
 `title`/`body` properties are never used (keynote-1700-defect.md).
 
-STATUS: ON by default. Live probe on Keynote Creator Studio 15.3.1
-(2026-10-02): notes, skip, duplicate, delete PASS → VERIFIED_OPS. add and
-move were refused/rolled back there and now use AppleScript; re-run
-`scripts/probe_keynote_slides.py` to observe them. The expectation gate +
+STATUS: ON by default. All six ops VERIFIED live on Keynote Creator Studio
+15.3.1 (2026-10-02, probe 7/7). First run: add/move failed via JXA and were
+refused/rolled back; they now use native AppleScript and pass. The expectation gate +
 rollback is what makes running any op safe — a wrong result is never kept.
 Off switch: IWORK_STUDIO_DISABLE_SLIDE_OPS=1 (raises SlideOpsDisabledError).
 """
@@ -67,8 +66,9 @@ SLIDE_OPS = ("add", "duplicate", "delete", "move", "skip", "notes")
 APP_TIMEOUT = 180
 
 # Ops observed passing on a live Mac (scripts/probe_keynote_slides.py).
-# Keynote Creator Studio 15.3.1, macOS live probe 2026-10-02: 4/6 PASS.
-VERIFIED_OPS: frozenset[str] = frozenset({"notes", "skip", "duplicate", "delete"})
+# Keynote Creator Studio 15.3.1, live probe 2026-10-02: 7/7 PASS
+# (notes, skip, duplicate, add at end, add at front, move, delete).
+VERIFIED_OPS: frozenset[str] = frozenset(SLIDE_OPS)
 
 
 class SlideOpsDisabledError(RuntimeError):

@@ -53,7 +53,7 @@ them; use `object text` (see keynote-1700-defect.md).
 `save in <arbitrary path>` stays BANNED for on-disk files (sandbox denial).
 Naming a NEW unsaved doc with `save in` is not the trap (same as C fixture).
 
-## .key slide ops — AppleScript via live Keynote (Phase G, ON)
+## .key slide ops — AppleScript via live Keynote (Phase G, VERIFIED LIVE)
 
 `src/iwork_studio/keynote_slides.py`; technique from reichenbach/iwork_mcp
 (14.5 / 15.1.1, open-document only, no safety net). Here each op runs:
@@ -67,10 +67,10 @@ failure. ON by default; off switch IWORK_STUDIO_DISABLE_SLIDE_OPS=1.
 | set presenter notes (Arabic) | VERIFIED LIVE — Creator Studio 15.3.1 | `pytest -m aqua` / scripts/probe_keynote_slides.py |
 | skip / unskip slide | VERIFIED LIVE — Creator Studio 15.3.1 | same |
 | duplicate slide | VERIFIED LIVE — Creator Studio 15.3.1 | same |
-| add slide (default layout; master-slide choice not offered: -1700 family) | ON — JXA splice failed -10002 on CS 15.3.1 (refused, untouched); now AppleScript `make new slide` + `move`, re-probe | same |
-| move slide | ON — JXA move mismatched on CS 15.3.1 (rolled back); now AppleScript `move slide n to before/after slide t`, re-probe | same |
+| add slide at end / at front (default layout; master-slide choice not offered: -1700 family) | VERIFIED LIVE — Creator Studio 15.3.1 (AppleScript `make new slide` + `move`; JXA splice fails -10002) | same |
+| move slide | VERIFIED LIVE — Creator Studio 15.3.1 (AppleScript `move slide n to before/after slide t`) | same |
 | delete slide (never the last one) | VERIFIED LIVE — Creator Studio 15.3.1 | same |
-| deck open in Keynote → DocumentOpenError (never closes a user's window) | ON — not yet run live | same |
+| deck open in Keynote → DocumentOpenError (never closes a user's window) | BUILT — not exercised by the probe | same |
 | chart decks | REFUSED (GATE-CHART) | same detector as C4 |
 
 When the probe passes on a Mac, add the op to `keynote_slides.VERIFIED_OPS`
