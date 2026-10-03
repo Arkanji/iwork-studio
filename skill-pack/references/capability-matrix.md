@@ -12,7 +12,14 @@ iWork and the Creator Studio apps. Arabic/RTL content is supported throughout.
 | Edit one cell (backup → scratch copy → re-parse → atomic swap; every other cell checked unchanged) | Supported |
 | Values stored verbatim (`"$1,234.56"`, Arabic-Indic digits, `=…` text stay strings) | Supported |
 | Arabic round-trip, file level and rendered PDF | Supported |
+| Cell style: font, size, bold/italic/underline/strike, font colour, fill, alignment, wrap (only requested attributes change) | Supported |
+| Number format: number, currency (ISO code), percentage, scientific, fraction, datetime, text; decimals, separators, negative style | Supported |
+| Borders: all / outline / inner / per side; width, colour, solid/dashes/dots | Supported |
+| Column widths, row heights, header rows/columns | Supported |
+| Merge a range (refused if it would hide data or cross the header edge) | Supported |
+| Table styles (named table themes) | Not exposed — neither AppleScript nor the parser |
 | Render-verify (export PDF via Numbers → text-layer check) | Supported — needs Numbers + GUI session |
+| Format-verify (PDF font/size/colour/page size) | Supported — needs the app + GUI session |
 | Files containing charts | REFUSED for writes (do not bypass) |
 
 Equality bar is semantic (file reopens, full model identical); strict zip
@@ -81,7 +88,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 16 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 24 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

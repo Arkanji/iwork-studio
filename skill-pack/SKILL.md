@@ -36,11 +36,19 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 | Read any iWork file to JSON | `iwork_read` | anywhere (.pages needs the Mac app) |
 | What this machine can do | `iwork_capabilities` | anywhere — call it first when unsure |
 | Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere, no app needed |
+| See a Numbers table's formatting | `numbers_inspect_format` | anywhere |
+| Format Numbers: style · number format · borders · widths/heights · headers · merge | `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere, no app needed |
+| Check rendered font/size/colour/page size | `iwork_verify_format` | Mac + the app |
 | Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere, no app needed |
 | Presenter notes · hide/show · duplicate · delete · move · add slide | `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
 | Pages: replace text everywhere / replace the whole body | `pages_replace_all` · `pages_set_body` | Mac + Pages; run `pages_preflight` first |
 | Check the rendered PDF shows a word | `iwork_verify_render` | Mac + the app |
 | Undo | `iwork_list_backups` · `iwork_restore_backup` | anywhere |
+
+Formatting tips: inspect first; ranges are `A1` or `A1:D9`; colours are `#RRGGBB`;
+only the attributes you pass change. Merges are refused if they'd hide data. Numbers
+has no scriptable table styles; Pages margins/page setup/paragraph styles and
+Keynote shape fill/text alignment are not exposed by Apple — say so, don't improvise.
 
 Slide numbers are 1-based. `keynote_move_slide(slide, to)` puts the slide *at*
 position `to`. `keynote_add_slide(after=0)` adds at the front, no `after` adds at

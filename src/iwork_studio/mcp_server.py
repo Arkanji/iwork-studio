@@ -34,6 +34,7 @@ from mcp.types import ToolAnnotations
 # the SDK's diversion while serving.
 with contextlib.redirect_stdout(sys.stderr):
     from iwork_studio import __version__, apps, backups, keynote_slides
+    from iwork_studio import format_check, numbers_format  # noqa: F401
     from iwork_studio import keynote_applescript, keynote_io, numbers_io, pages_io, render_verify  # noqa: F401
 
 INSTRUCTIONS = """\
@@ -99,6 +100,9 @@ _HINTS = {
     "DocumentOpenError": "ask the user to save and close the deck in Keynote first",
     "CreatorStudioUnverifiedError": "only the Creator Studio app is installed and it is not verified yet",
     "SlideOpsDisabledError": "slide ops are switched off on this machine",
+    "FormatError": "fix the request (range, colour as #RRGGBB, option names) and try again",
+    "CellRefError": "the cell/range is outside the table; check with numbers_inspect_format",
+    "FormatMismatch": "the rendered file does not show that formatting",
 }
 
 
@@ -207,6 +211,25 @@ def pages_preflight() -> dict[str, Any]:
 
 
 @mcp.tool(annotations=APP_READ)
+def iwork_verify_format(
+    path: str,
+    text: str,
+    font: str | None = None,
+    size: float | None = None,
+    color: str | None = None,
+    bold: bool | None = None,
+    page_width: float | None = None,
+    page_height: float | None = None,
+) -> dict[str, Any]:
+    """Independent check of formatting: export a PDF through the app and confirm `text` is drawn with the given font (name contains), size (pt), color (#RRGGBB), bold, and page size (pt). Needs macOS + the app."""
+    from iwork_studio import format_check as fc
+
+    page = (page_width, page_height) if page_width and page_height else None
+    return _call(fc.verify_format, _path(path, ".numbers", ".key", ".pages"), text, font=font, size=size,
+                 color=color, bold=bold, page_size=page)
+
+
+@mcp.tool(annotations=APP_READ)
 def iwork_verify_render(path: str, assert_text: str, expected_pages: int | None = None) -> dict[str, Any]:
     """Export the file to PDF through its app and assert `assert_text` is visibly rendered. For Arabic, use one word."""
     p = _path(path, ".numbers", ".key", ".pages")
@@ -240,6 +263,122 @@ def numbers_edit_cell(
 
     p = _path(path, ".numbers")
     return _call(numbers_io.edit_cell, p, ref, value, sheet=sheet, table=table)
+
+
+# ── Numbers formatting (file-level, no app needed) ───────────────────────────
+
+
+@mcp.tool(annotations=READ)
+def numbers_inspect_format(path: str, sheet: str | None = None, table: str | None = None) -> dict[str, Any]:
+    """Current formatting of a Numbers table: column widths, row heights, header rows/cols, merges, and per-cell font/colour/fill/alignment, number format (shown_as) and borders. Read this before formatting."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.read_layout, _path(path, ".numbers"), sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_dimensions(
+    path: str,
+    columns: dict[str, float] | None = None,
+    rows: dict[str, float] | None = None,
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """Set column widths and/or row heights in points, e.g. columns={"A": 160, "C": 90}, rows={"1": 32} (rows are 1-based). Nothing else changes."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.set_dimensions, _path(path, ".numbers"), columns=columns, rows=rows, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_number_format(
+    path: str,
+    cells: str,
+    format: str,
+    decimal_places: int | None = None,
+    thousands_separator: bool | None = None,
+    negative_style: str | None = None,
+    currency_code: str | None = None,
+    accounting: bool | None = None,
+    date_format: str | None = None,
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """How numbers display in a range ("B2:B9"): format = number | currency | percentage | scientific | fraction | datetime | text. Options: decimal_places, thousands_separator, negative_style (minus|red|parentheses|red_parentheses), currency_code (ISO, e.g. SAR, USD), accounting, date_format (e.g. "d MMM yyyy"). Values are not changed; the result shows how each cell now displays."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.set_number_format, _path(path, ".numbers"), cells, format, decimal_places=decimal_places,
+                 thousands_separator=thousands_separator, negative_style=negative_style,
+                 currency_code=currency_code, accounting=accounting, date_format=date_format,
+                 sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_cell_style(
+    path: str,
+    cells: str,
+    font_name: str | None = None,
+    font_size: float | None = None,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    strikethrough: bool | None = None,
+    font_color: str | None = None,
+    fill_color: str | None = None,
+    align: str | None = None,
+    valign: str | None = None,
+    wrap: bool | None = None,
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """Style a range ("A1:D1"): font_name, font_size, bold, italic, underline, strikethrough, font_color / fill_color as "#RRGGBB", align (left|center|right|justify|auto), valign (top|middle|bottom), wrap. Only the attributes you pass change; every other cell is verified untouched."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.set_cell_style, _path(path, ".numbers"), cells, font_name=font_name, font_size=font_size,
+                 bold=bold, italic=italic, underline=underline, strikethrough=strikethrough,
+                 font_color=font_color, fill_color=fill_color, align=align, valign=valign, wrap=wrap,
+                 sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_borders(
+    path: str,
+    cells: str,
+    sides: str = "all",
+    width: float = 1.0,
+    color: str = "#000000",
+    style: str = "solid",
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """Cell borders on a range: sides = all | outline | inner | top | right | bottom | left; width in points; color "#RRGGBB"; style = solid | dashes | dots | none."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.set_borders, _path(path, ".numbers"), cells, sides=sides, width=width, color=color,
+                 style=style, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_headers(
+    path: str,
+    header_rows: int | None = None,
+    header_columns: int | None = None,
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """Set how many header rows / header columns a table has (0–5)."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.set_headers, _path(path, ".numbers"), header_rows=header_rows,
+                 header_columns=header_columns, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_merge_cells(path: str, cells: str, sheet: str | None = None, table: str | None = None) -> dict[str, Any]:
+    """Merge a rectangular range ("A1:C1"). Refused if any cell other than the top-left holds data (it would be hidden) or the range crosses the header edge."""
+    from iwork_studio import numbers_format as nf
+
+    return _call(nf.merge_cells, _path(path, ".numbers"), cells, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)

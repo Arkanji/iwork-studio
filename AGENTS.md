@@ -37,10 +37,11 @@ and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
 | Task | Tools | Needs |
 |---|---|---|
 | Read / edit `.numbers` cells | `iwork_read`, `numbers_edit_cell` | Python only — works anywhere |
+| Format `.numbers` (style, number format, borders, widths/heights, headers, merge) | `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only — works anywhere |
 | Read / find-replace `.key` text | `iwork_read`, `keynote_replace_text` | Python only — works anywhere |
 | Keynote slides: add, duplicate, delete, move, hide, presenter notes | `keynote_*_slide`, `keynote_set_presenter_notes` | macOS + Keynote + logged-in GUI session |
 | Pages body text | `pages_preflight`, `pages_replace_all`, `pages_set_body` | macOS + Pages + GUI session |
-| Check the rendered result | `iwork_verify_render` | macOS + the app + GUI session |
+| Check the rendered result | `iwork_verify_render`, `iwork_verify_format` (font/size/colour/page size) | macOS + the app + GUI session |
 | Undo any write | `iwork_list_backups`, `iwork_restore_backup` | works anywhere |
 
 **Rules — follow them, don't work around them**
