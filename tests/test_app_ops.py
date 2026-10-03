@@ -217,6 +217,21 @@ def test_placeholder_reader_opens_with_jxa_and_finds_by_path(monkeypatch, tmp_pa
     assert calls[1][-1] == "close"
 
 
+def test_fill_placeholders_order_change_is_fine(letter):
+    p, state = letter
+    state["phs"] = [{"tag": "Name", "text": "[Name]"}, {"tag": "A", "text": "a"}, {"tag": "B", "text": "b"}]
+    state["before"] = {"body": None, "items": ["[Name]", "a", "b"]}
+    state["after"] = {"body": None, "items": ["سارة", "a", "b"]}
+    state["after_phs"] = [{"tag": "B", "text": "b"}, {"tag": "A", "text": "a"}]
+    assert app_ops.fill_placeholders(p, {"Name": "سارة"})["ok"]
+
+
+def test_fill_placeholders_refuses_untagged(letter):
+    p, _ = letter
+    with pytest.raises(app_ops.AppOpError, match="untagged"):
+        app_ops.fill_placeholders(p, {"": "x"})
+
+
 def test_fill_placeholders_unknown_tag(letter):
     p, _ = letter
     with pytest.raises(app_ops.AppOpError, match="Nope"):
@@ -416,7 +431,7 @@ def test_live_pages_placeholders(tmp_path):
     for i, name in enumerate(names[:4]):
         doc = tmp_path / f"letter{i}.pages"
         app_ops.create_document(doc, name)  # page-layout templates must create fine too
-        tags = app_ops.list_placeholders(doc)["tags"]
+        tags = [t for t in app_ops.list_placeholders(doc)["tags"] if t]
         if tags:
             out = app_ops.fill_placeholders(doc, {tags[0]: "تجربة"})
             assert out["ok"]

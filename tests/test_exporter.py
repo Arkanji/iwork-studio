@@ -161,3 +161,10 @@ def test_live_numbers_export(numbers_file, fmt):
 @pytest.mark.parametrize("fmt", ["pdf", "pptx", "images"])
 def test_live_keynote_export(key_file, fmt):
     assert ex.export(key_file, fmt)["ok"]
+
+
+def test_cellnorm_uses_spreadsheet_precision():
+    # an xlsx keeps 33.999999999999996 (an older numbers-parser write of 34); the source reads 34
+    assert ex._cellnorm(33.999999999999996) == ex._cellnorm(34.0) == "34"
+    assert ex._cellnorm(0.1 + 0.2) == ex._cellnorm(0.3)
+    assert ex._cellnorm(3.14) == "3.14"
