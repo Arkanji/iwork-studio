@@ -813,6 +813,26 @@ if keynote_slides.slide_ops_enabled():
                      automatic=automatic)
 
     @mcp.tool(annotations=WRITE)
+    def keynote_build_deck(
+        path: str,
+        slides: list[dict[str, Any]],
+        theme: str | None = None,
+        transition: str | None = None,
+    ) -> dict[str, Any]:
+        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. Needs macOS + Keynote."""
+        from iwork_studio import keynote_deck
+
+        return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_set_slide_text(path: str, slide: int, title: str | None = None, body: Any = None,
+                               dry_run: bool = False) -> dict[str, Any]:
+        """Fill a slide's title and/or body box (body may be a list of bullet lines). The title box is the top-most text box, the body the largest other one. Other slides and text boxes are verified untouched. dry_run=true previews the change on a copy without touching the file."""
+        from iwork_studio import keynote_deck
+
+        return _write(dry_run, keynote_deck.set_slide_text, _path(path, ".key"), slide, title=title, body=body)
+
+    @mcp.tool(annotations=WRITE)
     def keynote_add_chart(
         path: str,
         slide: int,
