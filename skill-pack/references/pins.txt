@@ -30,6 +30,10 @@ python-docx==1.2.0
 # .MCPServer (FastMCP was renamed in 2.0 — v1 imports do not work).
 mcp==2.2.0
 
+# ── export verification (read the exported file with a second, independent tool)
+openpyxl==3.1.5
+python-pptx==1.0.2
+
 # ── runtime constraints ────────────────────────────────────────────────────
 # Python interpreter: 3.12 (NOT system 3.9.6, NOT Hermes-bundled 3.14).
 # Selected via `uv venv --python /opt/homebrew/bin/python3.12 ...`.

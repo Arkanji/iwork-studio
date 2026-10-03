@@ -91,6 +91,28 @@ def _path(path: str, *exts: str) -> Path:
     return p
 
 
+def _fenced(p: Path) -> Path:
+    roots = os.environ.get("IWORK_STUDIO_ROOTS")
+    if roots:
+        allowed = [Path(os.path.expanduser(r)).resolve() for r in roots.split(os.pathsep) if r]
+        if not any(p == r or r in p.parents for r in allowed):
+            raise ToolError(f"{p} is outside IWORK_STUDIO_ROOTS; refusing to touch it")
+    return p
+
+
+def _out_path(path: str | None) -> Path | None:
+    return None if not path else _fenced(Path(os.path.expanduser(path)).resolve())
+
+
+def _search_folders(folder: str | None) -> list[str]:
+    if folder:
+        return [str(_fenced(Path(os.path.expanduser(folder)).resolve()))]
+    roots = os.environ.get("IWORK_STUDIO_ROOTS")
+    if roots:
+        return [r for r in roots.split(os.pathsep) if r]
+    return [str(Path.home() / d) for d in ("Documents", "Desktop", "Downloads") if (Path.home() / d).exists()] or [str(Path.home())]
+
+
 _HINTS = {
     "AquaSessionError": "needs a logged-in macOS GUI session; .numbers/.key reads and edits work without one",
     "PagesUnavailableError": "a dialog is blocking Pages: ask the user to dismiss it once, then retry once",
@@ -104,6 +126,7 @@ _HINTS = {
     "CellRefError": "the cell/range is outside the table; check with numbers_inspect_format",
     "FormatMismatch": "the rendered file does not show that formatting",
     "ThemeError": "fix the request: check names with keynote_list_themes / keynote_inspect_style",
+    "ExportError": "the export was refused or didn't match the source; nothing was written",
 }
 
 
@@ -471,9 +494,74 @@ if _slide_tool("notes"):
         return _call(keynote_slides.set_presenter_notes, _path(path, ".key"), slide, notes)
 
 
+# ── export (via the app; output verified by a second tool) ───────────────────
+
+
+@mcp.tool(annotations=WRITE)
+def iwork_export(
+    path: str,
+    format: str,
+    out: str | None = None,
+    password: str | None = None,
+    password_hint: str | None = None,
+    image_quality: str | None = None,
+    image_format: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Export to another format. Numbers: pdf | xlsx | csv. Pages: pdf | docx | epub | txt | rtf. Keynote: pdf | pptx | images | movie. Optional password (+hint) for pdf/xlsx/docx/pptx, image_quality (good|better|best), image_format for slide images (jpeg|png|tiff). Default output sits next to the source. The export is checked against the source with a second tool and the source is verified unchanged. Needs macOS + the app."""
+    from iwork_studio import exporter
+
+    return _call(exporter.export, _path(path, ".numbers", ".pages", ".key"), format, _out_path(out),
+                 password=password, password_hint=password_hint, image_quality=image_quality,
+                 image_format=image_format, overwrite=overwrite)
+
+
+# ── read-only helpers ─────────────────────────────────────────────────────────
+
+
+@mcp.tool(annotations=READ)
+def iwork_metadata(path: str) -> dict[str, Any]:
+    """What a file says about itself, without the app: kind, size, modified, template it was made from, app builds that saved it, file format version, slide count (Keynote), embedded media count."""
+    from iwork_studio import helpers
+
+    return _call(helpers.metadata, _path(path, ".numbers", ".pages", ".key"))
+
+
+@mcp.tool(annotations=READ)
+def iwork_thumbnail(path: str, out_dir: str | None = None) -> dict[str, Any]:
+    """Extract the preview image stored in the file (first page/slide) to a JPEG and return its path — a quick look without opening the app. Reflects the app's last save."""
+    from iwork_studio import helpers
+
+    return _call(helpers.thumbnail, _path(path, ".numbers", ".pages", ".key"), _out_path(out_dir))
+
+
+@mcp.tool(annotations=READ)
+def iwork_find(folder: str | None = None, kind: str | None = None, name: str | None = None, limit: int = 50) -> dict[str, Any]:
+    """Find Numbers / Keynote / Pages files (newest first). kind: numbers | keynote | pages; name: part of the file name. Searches `folder`, else the allowed folders, else Documents/Desktop/Downloads. Uses Spotlight on macOS."""
+    from iwork_studio import helpers
+
+    return _call(helpers.find_files, _search_folders(folder), kind=kind, name=name, limit=max(1, min(limit, 500)))
+
+
+@mcp.tool(annotations=APP_READ)
+def iwork_list_templates(app: str) -> dict[str, Any]:
+    """Built-in templates for Numbers or Pages, or themes for Keynote (app: numbers | pages | keynote). Needs macOS + the app."""
+    from iwork_studio import helpers
+
+    return _call(helpers.list_templates, app)
+
+
 # ── Keynote theming (via the app) ────────────────────────────────────────────
 
 if keynote_slides.slide_ops_enabled():
+
+    @mcp.tool(annotations=APP_READ)
+    def keynote_list_slides(path: str) -> dict[str, Any]:
+        """Every slide with its text, presenter notes and whether it is hidden (via Keynote). Use slide numbers from here for slide operations."""
+        def run(p):
+            return {"slides": [{"slide": i, **s} for i, s in enumerate(keynote_slides.read_slides(p), start=1)]}
+
+        return _call(run, _path(path, ".key"))
 
     @mcp.tool(annotations=APP_READ)
     def keynote_list_themes() -> dict[str, Any]:
