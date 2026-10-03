@@ -146,6 +146,8 @@ _HINTS = {
     "FormatMismatch": "the rendered file does not show that formatting",
     "ThemeError": "fix the request: check names with keynote_list_themes / keynote_inspect_style",
     "ExportError": "the export was refused or didn't match the source; nothing was written",
+    "DesignError": "check the kit name with iwork_list_design_kits, or fix the custom colours/fonts",
+    "DeckError": "fix the outline: layout names come from keynote_inspect_style",
 }
 
 
@@ -572,6 +574,24 @@ def iwork_find(folder: str | None = None, kind: str | None = None, name: str | N
     return _call(helpers.find_files, _search_folders(folder), kind=kind, name=name, limit=max(1, min(limit, 500)))
 
 
+@mcp.tool(annotations=READ)
+def iwork_list_design_kits() -> dict[str, Any]:
+    """Design kits for good-looking decks and tables: font pairs (Latin + Arabic, bundled with macOS), contrast-checked palettes and a type scale. Use with keynote_build_deck(kit=…), keynote_apply_design, numbers_apply_design. Custom kits: pass {"fonts": {...}, "colors": {...}}."""
+    from iwork_studio import design
+
+    return _call(lambda: {"kits": design.list_kits()})
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_apply_design(path: str, kit: Any = "executive", sheet: str | None = None, table: str | None = None,
+                         banding: bool = True, dry_run: bool = False) -> dict[str, Any]:
+    """Style a whole table from a design kit: header band (fill, bold, contrast-checked text), body font and colour (Arabic cells get the Arabic font), alternate-row banding, number columns right-aligned. Values never change; every other table is verified untouched. No app needed. dry_run=true previews the change on a copy without touching the file."""
+    from iwork_studio import design
+
+    return _write(dry_run, design.apply_to_numbers, _path(path, ".numbers"), kit, sheet=sheet, table=table,
+                  banding=banding)
+
+
 @mcp.tool(annotations=APP_READ)
 def iwork_list_templates(app: str) -> dict[str, Any]:
     """Built-in templates for Numbers or Pages, or themes for Keynote (app: numbers | pages | keynote). Needs macOS + the app."""
@@ -818,11 +838,20 @@ if keynote_slides.slide_ops_enabled():
         slides: list[dict[str, Any]],
         theme: str | None = None,
         transition: str | None = None,
+        kit: Any = None,
     ) -> dict[str, Any]:
-        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. Needs macOS + Keynote."""
+        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Needs macOS + Keynote."""
         from iwork_studio import keynote_deck
 
-        return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition)
+        return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition, kit=kit)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_apply_design(path: str, kit: Any = "executive", set_theme: bool = True,
+                             dry_run: bool = False) -> dict[str, Any]:
+        """Make a deck look designed: the kit's theme (optional), then every slide's title and body fonts (Arabic-aware), sizes from a type scale, and colours from a contrast-checked palette. kit = a name from iwork_list_design_kits or your own {"fonts": {...}, "colors": {...}}. Text is verified unchanged. dry_run=true previews the change on a copy without touching the file."""
+        from iwork_studio import design
+
+        return _write(dry_run, design.apply_to_keynote, _path(path, ".key"), kit, set_theme=set_theme)
 
     @mcp.tool(annotations=WRITE)
     def keynote_set_slide_text(path: str, slide: int, title: str | None = None, body: Any = None,
