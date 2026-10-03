@@ -69,6 +69,9 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
 - After a write the user cares about, call iwork_verify_render with a word that
   must appear. For Arabic, assert ONE word: PDF text layers reorder multi-word
   RTL text and produce false failures.
+- Every write tool takes dry_run=true: it runs the change on a temporary copy,
+  with all checks, and returns what would change. Use it to show the user a
+  preview before a broad or destructive change.
 - Never convert to docx/pptx/xlsx and back; it is lossy.
 """
 
@@ -156,6 +159,15 @@ def _call(fn, *args, **kwargs) -> dict[str, Any]:
         hint = _HINTS.get(name)
         raise ToolError(f"{name}: {exc}" + (f" (hint: {hint})" if hint else "")) from exc
     return result if isinstance(result, dict) else {"result": result}
+
+
+def _write(dry_run: bool, fn, path, *args, **kwargs) -> dict[str, Any]:
+    """Every write tool goes through here; dry_run runs it on a throwaway copy."""
+    if dry_run:
+        from iwork_studio import preview
+
+        return _call(preview.dry_run, fn, path, *args, **kwargs)
+    return _call(fn, path, *args, **kwargs)
 
 
 def _aqua_status() -> dict:
@@ -292,12 +304,13 @@ def numbers_edit_cell(
     value: str | int | float | bool,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Set one cell (e.g. ref "B2") in a .numbers file. Backed up, verified, atomic; every other cell is checked unchanged."""
+    """Set one cell (e.g. ref "B2") in a .numbers file. Backed up, verified, atomic; every other cell is checked unchanged. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_io
 
     p = _path(path, ".numbers")
-    return _call(numbers_io.edit_cell, p, ref, value, sheet=sheet, table=table)
+    return _write(dry_run, numbers_io.edit_cell, p, ref, value, sheet=sheet, table=table)
 
 
 # ── Numbers formatting (file-level, no app needed) ───────────────────────────
@@ -318,11 +331,12 @@ def numbers_set_dimensions(
     rows: dict[str, float] | None = None,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Set column widths and/or row heights in points, e.g. columns={"A": 160, "C": 90}, rows={"1": 32} (rows are 1-based). Nothing else changes."""
+    """Set column widths and/or row heights in points, e.g. columns={"A": 160, "C": 90}, rows={"1": 32} (rows are 1-based). Nothing else changes. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.set_dimensions, _path(path, ".numbers"), columns=columns, rows=rows, sheet=sheet, table=table)
+    return _write(dry_run, nf.set_dimensions, _path(path, ".numbers"), columns=columns, rows=rows, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
@@ -338,11 +352,12 @@ def numbers_set_number_format(
     date_format: str | None = None,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """How numbers display in a range ("B2:B9"): format = number | currency | percentage | scientific | fraction | datetime | text. Options: decimal_places, thousands_separator, negative_style (minus|red|parentheses|red_parentheses), currency_code (ISO, e.g. SAR, USD), accounting, date_format (e.g. "d MMM yyyy"). Values are not changed; the result shows how each cell now displays."""
+    """How numbers display in a range ("B2:B9"): format = number | currency | percentage | scientific | fraction | datetime | text. Options: decimal_places, thousands_separator, negative_style (minus|red|parentheses|red_parentheses), currency_code (ISO, e.g. SAR, USD), accounting, date_format (e.g. "d MMM yyyy"). Values are not changed; the result shows how each cell now displays. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.set_number_format, _path(path, ".numbers"), cells, format, decimal_places=decimal_places,
+    return _write(dry_run, nf.set_number_format, _path(path, ".numbers"), cells, format, decimal_places=decimal_places,
                  thousands_separator=thousands_separator, negative_style=negative_style,
                  currency_code=currency_code, accounting=accounting, date_format=date_format,
                  sheet=sheet, table=table)
@@ -365,11 +380,12 @@ def numbers_set_cell_style(
     wrap: bool | None = None,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Style a range ("A1:D1"): font_name, font_size, bold, italic, underline, strikethrough, font_color / fill_color as "#RRGGBB", align (left|center|right|justify|auto), valign (top|middle|bottom), wrap. Only the attributes you pass change; every other cell is verified untouched."""
+    """Style a range ("A1:D1"): font_name, font_size, bold, italic, underline, strikethrough, font_color / fill_color as "#RRGGBB", align (left|center|right|justify|auto), valign (top|middle|bottom), wrap. Only the attributes you pass change; every other cell is verified untouched. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.set_cell_style, _path(path, ".numbers"), cells, font_name=font_name, font_size=font_size,
+    return _write(dry_run, nf.set_cell_style, _path(path, ".numbers"), cells, font_name=font_name, font_size=font_size,
                  bold=bold, italic=italic, underline=underline, strikethrough=strikethrough,
                  font_color=font_color, fill_color=fill_color, align=align, valign=valign, wrap=wrap,
                  sheet=sheet, table=table)
@@ -385,11 +401,12 @@ def numbers_set_borders(
     style: str = "solid",
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Cell borders on a range: sides = all | outline | inner | top | right | bottom | left; width in points; color "#RRGGBB"; style = solid | dashes | dots | none."""
+    """Cell borders on a range: sides = all | outline | inner | top | right | bottom | left; width in points; color "#RRGGBB"; style = solid | dashes | dots | none. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.set_borders, _path(path, ".numbers"), cells, sides=sides, width=width, color=color,
+    return _write(dry_run, nf.set_borders, _path(path, ".numbers"), cells, sides=sides, width=width, color=color,
                  style=style, sheet=sheet, table=table)
 
 
@@ -400,47 +417,48 @@ def numbers_set_headers(
     header_columns: int | None = None,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Set how many header rows / header columns a table has (0–5)."""
+    """Set how many header rows / header columns a table has (0–5). dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.set_headers, _path(path, ".numbers"), header_rows=header_rows,
+    return _write(dry_run, nf.set_headers, _path(path, ".numbers"), header_rows=header_rows,
                  header_columns=header_columns, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
-def numbers_merge_cells(path: str, cells: str, sheet: str | None = None, table: str | None = None) -> dict[str, Any]:
-    """Merge a rectangular range ("A1:C1"). Refused if any cell other than the top-left holds data (it would be hidden) or the range crosses the header edge."""
+def numbers_merge_cells(path: str, cells: str, sheet: str | None = None, table: str | None = None, dry_run: bool = False) -> dict[str, Any]:
+    """Merge a rectangular range ("A1:C1"). Refused if any cell other than the top-left holds data (it would be hidden) or the range crosses the header edge. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_format as nf
 
-    return _call(nf.merge_cells, _path(path, ".numbers"), cells, sheet=sheet, table=table)
+    return _write(dry_run, nf.merge_cells, _path(path, ".numbers"), cells, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
-def keynote_replace_text(path: str, find: str, replace: str, regex: bool = False) -> dict[str, Any]:
-    """Find/replace text across every slide of a .key deck (literal unless regex=true). Formatting and structure are verified unchanged."""
+def keynote_replace_text(path: str, find: str, replace: str, regex: bool = False, dry_run: bool = False) -> dict[str, Any]:
+    """Find/replace text across every slide of a .key deck (literal unless regex=true). Formatting and structure are verified unchanged. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import keynote_io
 
     p = _path(path, ".key")
-    return _call(keynote_io.edit_text, p, find, replace, regex=regex)
+    return _write(dry_run, keynote_io.edit_text, p, find, replace, regex=regex)
 
 
 @mcp.tool(annotations=WRITE)
-def pages_replace_all(path: str, find: str, replace: str) -> dict[str, Any]:
-    """Replace every occurrence of `find` in a .pages body (needs Pages + GUI session). Rolled back if the readback disagrees."""
+def pages_replace_all(path: str, find: str, replace: str, dry_run: bool = False) -> dict[str, Any]:
+    """Replace every occurrence of `find` in a .pages body (needs Pages + GUI session). Rolled back if the readback disagrees. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import pages_io
 
     p = _path(path, ".pages")
-    return _call(pages_io.edit_pages_body, p, find, replace, mode="replace_all")
+    return _write(dry_run, pages_io.edit_pages_body, p, find, replace, mode="replace_all")
 
 
 @mcp.tool(annotations=WRITE)
-def pages_set_body(path: str, body: str) -> dict[str, Any]:
-    """Replace the entire body text of a .pages document (needs Pages + GUI session). Body formatting is reset."""
+def pages_set_body(path: str, body: str, dry_run: bool = False) -> dict[str, Any]:
+    """Replace the entire body text of a .pages document (needs Pages + GUI session). Body formatting is reset. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import pages_io
 
     p = _path(path, ".pages")
-    return _call(pages_io.edit_pages_body, p, mode="set_body", new_body=body)
+    return _write(dry_run, pages_io.edit_pages_body, p, mode="set_body", new_body=body)
 
 
 @mcp.tool(annotations=WRITE)
@@ -460,49 +478,49 @@ def _slide_tool(op: str) -> bool:
 if _slide_tool("add"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_add_slide(path: str, after: int | None = None) -> dict[str, Any]:
-        """Insert a slide after slide number `after` (0 = first, omit = end). Every other slide is verified unchanged."""
-        return _call(keynote_slides.add_slide, _path(path, ".key"), after=after)
+    def keynote_add_slide(path: str, after: int | None = None, dry_run: bool = False) -> dict[str, Any]:
+        """Insert a slide after slide number `after` (0 = first, omit = end). Every other slide is verified unchanged. dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.add_slide, _path(path, ".key"), after=after)
 
 
 if _slide_tool("duplicate"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_duplicate_slide(path: str, slide: int) -> dict[str, Any]:
-        """Duplicate slide number `slide` (1-based); the copy lands right after it."""
-        return _call(keynote_slides.duplicate_slide, _path(path, ".key"), slide)
+    def keynote_duplicate_slide(path: str, slide: int, dry_run: bool = False) -> dict[str, Any]:
+        """Duplicate slide number `slide` (1-based); the copy lands right after it. dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.duplicate_slide, _path(path, ".key"), slide)
 
 
 if _slide_tool("delete"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_delete_slide(path: str, slide: int) -> dict[str, Any]:
-        """Delete slide number `slide` (1-based). Recoverable with iwork_restore_backup."""
-        return _call(keynote_slides.delete_slide, _path(path, ".key"), slide)
+    def keynote_delete_slide(path: str, slide: int, dry_run: bool = False) -> dict[str, Any]:
+        """Delete slide number `slide` (1-based). Recoverable with iwork_restore_backup. dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.delete_slide, _path(path, ".key"), slide)
 
 
 if _slide_tool("move"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_move_slide(path: str, slide: int, to: int) -> dict[str, Any]:
-        """Move slide number `slide` so it ends up at position `to` (both 1-based)."""
-        return _call(keynote_slides.move_slide, _path(path, ".key"), slide, to)
+    def keynote_move_slide(path: str, slide: int, to: int, dry_run: bool = False) -> dict[str, Any]:
+        """Move slide number `slide` so it ends up at position `to` (both 1-based). dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.move_slide, _path(path, ".key"), slide, to)
 
 
 if _slide_tool("skip"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_skip_slide(path: str, slide: int, skipped: bool = True) -> dict[str, Any]:
-        """Hide (skipped=true) or show a slide in the slideshow."""
-        return _call(keynote_slides.set_skipped, _path(path, ".key"), slide, skipped)
+    def keynote_skip_slide(path: str, slide: int, skipped: bool = True, dry_run: bool = False) -> dict[str, Any]:
+        """Hide (skipped=true) or show a slide in the slideshow. dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.set_skipped, _path(path, ".key"), slide, skipped)
 
 
 if _slide_tool("notes"):
 
     @mcp.tool(annotations=WRITE)
-    def keynote_set_presenter_notes(path: str, slide: int, notes: str) -> dict[str, Any]:
-        """Set the presenter notes of slide number `slide` (1-based). Arabic-safe."""
-        return _call(keynote_slides.set_presenter_notes, _path(path, ".key"), slide, notes)
+    def keynote_set_presenter_notes(path: str, slide: int, notes: str, dry_run: bool = False) -> dict[str, Any]:
+        """Set the presenter notes of slide number `slide` (1-based). Arabic-safe. dry_run=true previews the change on a copy without touching the file."""
+        return _write(dry_run, keynote_slides.set_presenter_notes, _path(path, ".key"), slide, notes)
 
 
 # ── export (via the app; output verified by a second tool) ───────────────────
@@ -599,20 +617,21 @@ def numbers_insert(
     values: list[list[Any]] | None = None,
     sheet: str | None = None,
     table: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Insert rows or columns (what = rows | columns) before 1-based position `at`; omit `at` to append. Optional `values`: one list per new row (or column). Every existing cell is verified at its new position. In tables with formulas, only appending is allowed (shifting would break references)."""
+    """Insert rows or columns (what = rows | columns) before 1-based position `at`; omit `at` to append. Optional `values`: one list per new row (or column). Every existing cell is verified at its new position. In tables with formulas, only appending is allowed (shifting would break references). dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_structure as ns
 
-    return _call(ns.insert, _path(path, ".numbers"), what, count, at, values, sheet=sheet, table=table)
+    return _write(dry_run, ns.insert, _path(path, ".numbers"), what, count, at, values, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
 def numbers_delete(path: str, what: str, at: int, count: int = 1, sheet: str | None = None,
-                   table: str | None = None) -> dict[str, Any]:
-    """Delete `count` rows or columns (what = rows | columns) starting at 1-based position `at`. Remaining cells are verified. Refused in tables with formulas or merged cells. Undo with iwork_restore_backup."""
+                   table: str | None = None, dry_run: bool = False) -> dict[str, Any]:
+    """Delete `count` rows or columns (what = rows | columns) starting at 1-based position `at`. Remaining cells are verified. Refused in tables with formulas or merged cells. Undo with iwork_restore_backup. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_structure as ns
 
-    return _call(ns.delete, _path(path, ".numbers"), what, at, count, sheet=sheet, table=table)
+    return _write(dry_run, ns.delete, _path(path, ".numbers"), what, at, count, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
@@ -624,11 +643,12 @@ def numbers_add_table(
     new_sheet: str | None = None,
     header_rows: int = 1,
     header_columns: int = 0,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Add a table with data to an existing sheet (`sheet`, default the first) or to a new sheet (`new_sheet`). Every existing table is verified unchanged."""
+    """Add a table with data to an existing sheet (`sheet`, default the first) or to a new sheet (`new_sheet`). Every existing table is verified unchanged. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import numbers_structure as ns
 
-    return _call(ns.add_table, _path(path, ".numbers"), table_name, rows, sheet=sheet, new_sheet=new_sheet,
+    return _write(dry_run, ns.add_table, _path(path, ".numbers"), table_name, rows, sheet=sheet, new_sheet=new_sheet,
                  header_rows=header_rows, header_columns=header_columns)
 
 
@@ -653,28 +673,28 @@ def iwork_create(path: str, template: str | None = None) -> dict[str, Any]:
 
 @mcp.tool(annotations=WRITE)
 def numbers_set_formula(path: str, ref: str, formula: str, sheet: str | None = None,
-                        table: str | None = None) -> dict[str, Any]:
-    """Put a formula in one cell, e.g. ref "D10", formula "=SUM(D2:D9)"; Numbers computes it and the result is returned. Every other cell's input is verified unchanged. Needs macOS + Numbers, file closed."""
+                        table: str | None = None, dry_run: bool = False) -> dict[str, Any]:
+    """Put a formula in one cell, e.g. ref "D10", formula "=SUM(D2:D9)"; Numbers computes it and the result is returned. Every other cell's input is verified unchanged. Needs macOS + Numbers, file closed. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
-    return _call(app_ops.set_formula, _path(path, ".numbers"), ref, formula, sheet=sheet, table=table)
+    return _write(dry_run, app_ops.set_formula, _path(path, ".numbers"), ref, formula, sheet=sheet, table=table)
 
 
 @mcp.tool(annotations=WRITE)
-def numbers_recalculate(path: str) -> dict[str, Any]:
-    """Make Numbers recompute every formula from the current values. Numbers keeps showing a formula's old result after edits made without it (numbers_edit_cell, numbers_insert…), so run this after those when the file has formulas — their result says so (formulas_need_recalc). Formulas and inputs are verified unchanged. Needs macOS + Numbers, file closed."""
+def numbers_recalculate(path: str, dry_run: bool = False) -> dict[str, Any]:
+    """Make Numbers recompute every formula from the current values. Numbers keeps showing a formula's old result after edits made without it (numbers_edit_cell, numbers_insert…), so run this after those when the file has formulas — their result says so (formulas_need_recalc). Formulas and inputs are verified unchanged. Needs macOS + Numbers, file closed. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
-    return _call(app_ops.recalculate, _path(path, ".numbers"))
+    return _write(dry_run, app_ops.recalculate, _path(path, ".numbers"))
 
 
 @mcp.tool(annotations=WRITE)
 def numbers_sort(path: str, column: str, descending: bool = False, sheet: str | None = None,
-                 table: str | None = None) -> dict[str, Any]:
-    """Sort a table's body rows by a column letter (header rows stay on top). Verified as a pure reorder. Needs macOS + Numbers, file closed."""
+                 table: str | None = None, dry_run: bool = False) -> dict[str, Any]:
+    """Sort a table's body rows by a column letter (header rows stay on top). Verified as a pure reorder. Needs macOS + Numbers, file closed. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
-    return _call(app_ops.sort_table, _path(path, ".numbers"), column, descending=descending, sheet=sheet,
+    return _write(dry_run, app_ops.sort_table, _path(path, ".numbers"), column, descending=descending, sheet=sheet,
                  table=table)
 
 
@@ -687,11 +707,11 @@ def pages_list_placeholders(path: str) -> dict[str, Any]:
 
 
 @mcp.tool(annotations=WRITE)
-def pages_fill_placeholders(path: str, values: dict[str, str]) -> dict[str, Any]:
-    """Fill template placeholders by tag, e.g. {"Name": "Sara", "Date": "3 October"}. Formatting is kept; the body is verified to change only there. Needs macOS + Pages."""
+def pages_fill_placeholders(path: str, values: dict[str, str], dry_run: bool = False) -> dict[str, Any]:
+    """Fill template placeholders by tag, e.g. {"Name": "Sara", "Date": "3 October"}. Formatting is kept; the body is verified to change only there. Needs macOS + Pages. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
-    return _call(app_ops.fill_placeholders, _path(path, ".pages"), values)
+    return _write(dry_run, app_ops.fill_placeholders, _path(path, ".pages"), values)
 
 
 @mcp.tool(annotations=APP_READ)
@@ -703,11 +723,11 @@ def pages_read_tables(path: str) -> dict[str, Any]:
 
 
 @mcp.tool(annotations=WRITE)
-def pages_set_table_cells(path: str, table: str, cells: dict[str, Any]) -> dict[str, Any]:
-    """Write cells of an existing table in a .pages document. table = its name or number (from pages_read_tables); cells = {"B2": 1200, "C3": "تم", "D9": "=SUM(D2:D8)"} — numbers stay numbers, "=…" makes a formula, null clears. Every other cell and the body text are verified unchanged. New tables can't be created (Pages 15 doesn't script it). Needs macOS + Pages, document closed."""
+def pages_set_table_cells(path: str, table: str, cells: dict[str, Any], dry_run: bool = False) -> dict[str, Any]:
+    """Write cells of an existing table in a .pages document. table = its name or number (from pages_read_tables); cells = {"B2": 1200, "C3": "تم", "D9": "=SUM(D2:D8)"} — numbers stay numbers, "=…" makes a formula, null clears. Every other cell and the body text are verified unchanged. New tables can't be created (Pages 15 doesn't script it). Needs macOS + Pages, document closed. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
-    return _call(app_ops.set_table_cells, _path(path, ".pages"), table, cells)
+    return _write(dry_run, app_ops.set_table_cells, _path(path, ".pages"), table, cells)
 
 
 @mcp.tool(annotations=APP_READ)
@@ -745,18 +765,18 @@ if keynote_slides.slide_ops_enabled():
         return _call(kt.read_style, _path(path, ".key"))
 
     @mcp.tool(annotations=WRITE)
-    def keynote_set_theme(path: str, theme: str) -> dict[str, Any]:
-        """Apply a different Keynote theme to the whole deck. Rolled back if any slide loses text."""
+    def keynote_set_theme(path: str, theme: str, dry_run: bool = False) -> dict[str, Any]:
+        """Apply a different Keynote theme to the whole deck. Rolled back if any slide loses text. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import keynote_theme as kt
 
-        return _call(kt.set_theme, _path(path, ".key"), theme)
+        return _write(dry_run, kt.set_theme, _path(path, ".key"), theme)
 
     @mcp.tool(annotations=WRITE)
-    def keynote_set_slide_layout(path: str, slide: int, layout: str) -> dict[str, Any]:
-        """Change one slide's layout (master), e.g. "Title & Bullets". Other slides are verified untouched."""
+    def keynote_set_slide_layout(path: str, slide: int, layout: str, dry_run: bool = False) -> dict[str, Any]:
+        """Change one slide's layout (master), e.g. "Title & Bullets". Other slides are verified untouched. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import keynote_theme as kt
 
-        return _call(kt.set_slide_layout, _path(path, ".key"), slide, layout)
+        return _write(dry_run, kt.set_slide_layout, _path(path, ".key"), slide, layout)
 
     @mcp.tool(annotations=WRITE)
     def keynote_format_text(
@@ -767,11 +787,12 @@ if keynote_slides.slide_ops_enabled():
         font: str | None = None,
         size: float | None = None,
         color: str | None = None,
+        dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Font (PostScript name, e.g. "HelveticaNeue-Bold"), size (pt) and/or colour ("#RRGGBB") of one text item on a slide — pick it by item index (from keynote_inspect_style) or by a unique piece of its text (match). Alignment and shape fill are not scriptable."""
+        """Font (PostScript name, e.g. "HelveticaNeue-Bold"), size (pt) and/or colour ("#RRGGBB") of one text item on a slide — pick it by item index (from keynote_inspect_style) or by a unique piece of its text (match). Alignment and shape fill are not scriptable. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import keynote_theme as kt
 
-        return _call(kt.format_text, _path(path, ".key"), slide, item=item, match=match, font=font,
+        return _write(dry_run, kt.format_text, _path(path, ".key"), slide, item=item, match=match, font=font,
                      size=size, color=color)
 
 
@@ -783,11 +804,12 @@ if keynote_slides.slide_ops_enabled():
         duration: float | None = None,
         delay: float | None = None,
         automatic: bool | None = None,
+        dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Transition into a slide: effect such as dissolve, push, wipe, magic move, cube, flip, move in, reveal, "none"; duration/delay in seconds; automatic=true advances on its own. Other slides verified untouched."""
+        """Transition into a slide: effect such as dissolve, push, wipe, magic move, cube, flip, move in, reveal, "none"; duration/delay in seconds; automatic=true advances on its own. Other slides verified untouched. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import app_ops
 
-        return _call(app_ops.set_transition, _path(path, ".key"), slide, effect, duration=duration, delay=delay,
+        return _write(dry_run, app_ops.set_transition, _path(path, ".key"), slide, effect, duration=duration, delay=delay,
                      automatic=automatic)
 
     @mcp.tool(annotations=WRITE)
@@ -799,19 +821,20 @@ if keynote_slides.slide_ops_enabled():
         data: list[list[float]],
         type: str = "bar",
         group_by: str = "row",
+        dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Add a chart to a slide from data. rows = series names, columns = category names, data = one list of numbers per row (rows × columns). type: bar | stacked_bar | horizontal_bar | stacked_horizontal_bar | line | area | stacked_area | pie | scatter (or *_3d). group_by: row | column. Text and other charts are verified untouched."""
+        """Add a chart to a slide from data. rows = series names, columns = category names, data = one list of numbers per row (rows × columns). type: bar | stacked_bar | horizontal_bar | stacked_horizontal_bar | line | area | stacked_area | pie | scatter (or *_3d). group_by: row | column. Text and other charts are verified untouched. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import app_ops
 
-        return _call(app_ops.add_chart, _path(path, ".key"), slide, rows, columns, data, type=type, group_by=group_by)
+        return _write(dry_run, app_ops.add_chart, _path(path, ".key"), slide, rows, columns, data, type=type, group_by=group_by)
 
     @mcp.tool(annotations=WRITE)
     def keynote_add_image(path: str, slide: int, image: str, x: float | None = None, y: float | None = None,
-                          width: float | None = None) -> dict[str, Any]:
-        """Place an image file (png, jpg, heic, pdf…) on a slide; optional x/y position and width in points. All text verified untouched."""
+                          width: float | None = None, dry_run: bool = False) -> dict[str, Any]:
+        """Place an image file (png, jpg, heic, pdf…) on a slide; optional x/y position and width in points. All text verified untouched. dry_run=true previews the change on a copy without touching the file."""
         from iwork_studio import app_ops
 
-        return _call(app_ops.add_image, _path(path, ".key"), slide, _path(image), x=x, y=y, width=width)
+        return _write(dry_run, app_ops.add_image, _path(path, ".key"), slide, _path(image), x=x, y=y, width=width)
 
 
 def main() -> None:
