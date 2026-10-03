@@ -5,10 +5,10 @@
 <img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
 [![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Arkanji/iwork-studio/blob/main/.github/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.2.0-1a7f79)](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.3.0-1a7f79)](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-53%20tools-8A2BE2)](#all-53-tools)
+[![MCP server](https://img.shields.io/badge/MCP-58%20tools-8A2BE2)](#all-58-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
@@ -17,7 +17,7 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 53 tools](#all-53-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 58 tools](#all-58-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 
 <br>
 
@@ -35,9 +35,10 @@ Every write is backed up, checked and swapped in atomically, and any change can 
 
 | Your app | Do this |
 |---|---|
-| **Claude desktop app** (Mac) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then quit Claude (Cmd-Q) and reopen |
+| **Claude desktop app, one click** (Mac) | Download `iwork-studio-<version>.mcpb` from the [latest release](https://github.com/Arkanji/iwork-studio/releases/latest), double-click it, pick the folders it may use |
+| **Claude desktop app** (Mac, from Terminal) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then quit Claude (Cmd-Q) and reopen |
 | **Claude Code** | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
-| **Cursor, VS Code, Codex, any MCP client** | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings |
+| **Cursor, VS Code, Codex, any MCP client** | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings. Also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Arkanji/iwork-studio` |
 
 That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, and uv brings its own Python.
 
@@ -50,6 +51,10 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 
 ## Just ask, in English or Arabic
 
+> *"Build a 6-slide pitch deck on programmable gift cards in the midnight kit, with speaker notes, and export it to PowerPoint."*
+>
+> *"Make budget.numbers look professional with the banking kit — and show me a preview first."*
+>
 > *"Turn sales.csv into a Numbers file, make the header bold on a teal fill, show column B as SAR with two decimals, and add a total row."*
 >
 > *"In pitch.key, switch to the Gradient theme, make the title on slide 1 white at 60 pt, add a dissolve between every slide, and put logo.png on the last slide."*
@@ -71,15 +76,15 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 | | **Numbers** | **Keynote** | **Pages** |
 |---|---|---|---|
 | **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text, placeholders and tables |
-| **Create** | From data or CSV ⚡ · from a built-in template · from your own file | From a built-in theme · from your own deck | From a built-in template · from your own file |
-| **Edit content** | Cells ⚡ · formulas · recalculate · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
-| **Format** | Fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Theme · slide layout · text font, size and colour · transitions | — |
+| **Create** | From data or CSV ⚡ · from a built-in template · from your own file | **A designed deck from an outline** · from a built-in theme · from your own deck | From a built-in template · from your own file |
+| **Edit content** | Cells ⚡ · formulas · recalculate · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · slide titles and bullets · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
+| **Design** | Design kits ⚡ · fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Design kits · theme · slide layout · text font, size and colour · transitions | — |
 | **Export** | PDF · Excel · CSV | PDF · PowerPoint · images · movie | PDF · Word · EPUB · text · RTF |
 | **Present** | | Start, stop, next, previous | |
 
 ⚡ = works anywhere, no app needed (pure Python). Everything else drives the real app on a Mac with a logged-in session, classic iWork or the Creator Studio apps.
 
-**Every file type:** look up metadata, pull the preview thumbnail, find files with Spotlight, check that a word is visibly rendered, check the rendered font/size/colour, list backups and undo.
+**Every file type:** preview any change before it's made (`dry_run`), look up metadata, pull the preview thumbnail, find files with Spotlight, check that a word is visibly rendered, check the rendered font/size/colour, list backups and undo.
 
 ### What it won't do
 
@@ -90,6 +95,21 @@ On purpose, so it never breaks a file:
 - **Pages** is limited to text and existing tables: replace, set body, placeholders and table cells. New tables can't be created (Pages 15 doesn't script it), and page-layout documents, like most letter templates, have no body text. There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, editing a theme's master slides. Page margins and page setup are planned.
+
+## Designed, not just edited
+
+Six **design kits** turn a plain deck or table into something you'd present: a font pair (Latin + Arabic, all bundled with macOS — nothing to install), a restrained palette checked for WCAG contrast, and a type scale.
+
+| Kit | Feel |
+|---|---|
+| `executive` | Calm and corporate: slate neutrals, one blue accent |
+| `banking` | Trust and weight: deep navy, restrained gold |
+| `classic` | Formal reports and boards: serif headings, navy and amber |
+| `teal` | Fresh and confident: deep teal |
+| `analytics` | Data-forward: strong blue, amber highlights |
+| `midnight` | Dark stage: near-black slides, white titles, mint accent |
+
+Build with one (`keynote_build_deck(..., kit="midnight")`), restyle anything (`keynote_apply_design`, `numbers_apply_design`), or bring your brand as colours and fonts — contrast is checked. Agents also get a [design guide](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/design-guide.md): one idea per slide, titles that state the takeaway, right-aligned numbers, restrained colour.
 
 ## The safety model
 
@@ -105,6 +125,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **The app's "ok" is never trusted.** App-driven writes are re-read from disk, and a write that "succeeded" but didn't land is rolled back.
 - **Undo is one call**: `iwork_list_backups` → `iwork_restore_backup`. The restore backs up the current version first, so undo can be undone too.
+- **Preview first**: every write takes `dry_run=true`. It runs the real change on a throwaway copy, with every check, and shows exactly what would change. Your file isn't touched.
 - **New files never overwrite** an existing one.
 - **Refuse, don't mangle.** The worst case is a clear "no", never a broken file.
 
@@ -115,12 +136,12 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 53 tools
+## All 58 tools
 
-Writes are marked destructive and reads read-only, so clients can ask before writing.
+Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview.
 
 <details open>
-<summary><b>Any file</b> (13)</summary>
+<summary><b>Any file</b> (14)</summary>
 
 | Tool | What it does |
 |---|---|
@@ -130,6 +151,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `iwork_metadata` · `iwork_thumbnail` | Template, app builds, format version, slide count · the stored preview image |
 | `iwork_create` · `iwork_create_from_template` | New file from Apple's built-in templates · copy of your own file |
 | `iwork_list_templates` | Built-in templates (Numbers, Pages) and themes (Keynote) |
+| `iwork_list_design_kits` | Design kits: fonts, palettes, type scale |
 | `iwork_export` | PDF, Excel, CSV, Word, EPUB, text, RTF, PowerPoint, slide images, movie; optional password |
 | `iwork_verify_render` · `iwork_verify_format` | Rendered PDF shows this text · with this font, size, colour, page size |
 | `iwork_list_backups` · `iwork_restore_backup` | Undo |
@@ -137,7 +159,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Numbers</b> (16)</summary>
+<summary><b>Numbers</b> (17)</summary>
 
 | Tool | What it does |
 |---|---|
@@ -157,10 +179,13 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Keynote</b> (17)</summary>
+<summary><b>Keynote</b> (20)</summary>
 
 | Tool | What it does |
 |---|---|
+| `keynote_build_deck` | A new deck from an outline: titles, bullets, notes, images, transition, design kit |
+| `keynote_set_slide_text` | Fill a slide's title and body |
+| `keynote_apply_design` | Restyle every slide from a design kit |
 | `keynote_replace_text` | Find/replace on every slide, formatting untouched |
 | `keynote_list_slides` | Every slide's text, notes, hidden state and chart count |
 | `keynote_add_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_skip_slide` | Slide operations |
@@ -200,13 +225,18 @@ Keynote slide, theme, transition and image tools refuse a deck that's open in Ke
 ## Python
 
 ```bash
-pip install git+https://github.com/Arkanji/iwork-studio      # Python 3.12
+pip install iwork-studio      # Python 3.12
 ```
 
 ```python
 from iwork_studio import numbers_structure, numbers_format, numbers_io, keynote_io, keynote_slides, exporter, backups
 
+from iwork_studio import keynote_deck, design
+
+keynote_deck.build_deck("pitch.key", [{"title": "رسال", "body": "Programmable value"},
+                                      {"title": "Why now", "body": ["Trust", "Access"]}], kit="midnight")  # macOS + Keynote
 numbers_structure.import_csv("sales.csv", "sales.numbers")
+design.apply_to_numbers("sales.numbers", "banking")
 numbers_format.set_cell_style("sales.numbers", "A1:D1", bold=True, fill_color="#1A7F79", font_color="#FFFFFF")
 numbers_format.set_number_format("sales.numbers", "B2:B99", "currency", currency_code="SAR", decimal_places=2)
 numbers_io.edit_cell("sales.numbers", "B2", 2500)
@@ -255,7 +285,9 @@ MCP server · CLI scripts · skill                     →  thin wrappers over t
 
 ```
 src/iwork_studio/   numbers_io · numbers_format · numbers_structure · keynote_io · keynote_slides · keynote_theme
-                    pages_io · app_ops · exporter · helpers · format_check · render_verify · backups · apps · mcp_server
+                    keynote_deck · design · preview · pages_io · app_ops · exporter · helpers · format_check
+                    render_verify · backups · apps · mcp_server
+mcpb/               Claude Desktop extension manifest (scripts/build_mcpb.sh builds the .mcpb)
 skill-pack/         SKILL.md · CLI scripts · references (capabilities, traps, pins)
 tests/              headless suite (CI) · `pytest -m aqua` = live suite for a Mac with iWork
 install.sh          one-line setup for the Claude desktop app
@@ -269,6 +301,7 @@ install.sh          one-line setup for the Claude desktop app
 git clone https://github.com/Arkanji/iwork-studio.git && cd iwork-studio
 uv run --extra test pytest -m "not aqua"      # headless suite, what CI runs
 uv run --extra test pytest -m aqua            # live suite: a Mac with Numbers, Keynote and Pages
+scripts/live.sh                               # the same, unattended: logs to ~/.iwork-studio/probes, quits the apps it opened
 ```
 
 iWork changes between releases. If something breaks, check the [capabilities](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/capability-matrix.md) and [traps](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/jxa-traps.md), run the live suite, and pin what changed. New write routes must follow the safety model and come with tests that prove the rollback. Clone outside iCloud-synced folders.

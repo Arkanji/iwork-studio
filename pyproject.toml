@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iwork-studio"
-version = "2.2.0"
+version = "2.3.0"
 description = "Create, edit, design and export Apple Numbers, Keynote and Pages files from any AI agent: verified, reversible, Arabic-safe. MCP server + Python library + agent skill."
 readme = "README.md"
 license = "MIT"

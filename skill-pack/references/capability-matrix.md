@@ -24,6 +24,7 @@ iWork and the Creator Studio apps. Arabic/RTL content is supported throughout.
 | Merge a range (refused if it would hide data or cross the header edge) | Supported |
 | Formula in a cell (Numbers computes it; every other input checked unchanged) | Supported — needs Numbers + GUI session |
 | Sort body rows by a column (checked to be a pure reorder) | Supported — needs Numbers + GUI session |
+| Apply a design kit to a table (header band, fonts incl. Arabic, banding, right-aligned numbers) | Supported — no app needed |
 | Recalculate every formula (Numbers doesn't on open after no-app edits; formulas and inputs checked unchanged) | Supported — needs Numbers + GUI session |
 | Table styles (named table themes) | Not exposed — neither AppleScript nor the parser |
 | Render-verify (export PDF via Numbers → text-layer check) | Supported — needs Numbers + GUI session |
@@ -75,6 +76,9 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | Text alignment, shape fill/border, editing a theme's masters | Not exposed by Apple's scripting |
 | Deck open in Keynote | REFUSED (`DocumentOpenError`) — never closes a user's window |
 | App reports "ok" but nothing (or the wrong thing) changed | Rolled back (`SlideOpVerificationError`) |
+| Build a new deck from an outline (layouts, titles, bullets, notes, images, transition, design kit); every slide read back | Supported |
+| Fill a slide's title / body box (picked by position; Keynote's title/body properties throw -1700) | Supported |
+| Apply a design kit (theme, fonts incl. Arabic, sizes, colours); text checked unchanged | Supported |
 | Add a chart from data (bar, line, area, pie, scatter, stacked, 3D) | Supported — chart count +1 on that slide only, all text checked |
 | Decks containing charts | Allowed — every slide's chart count checked unchanged |
 
@@ -121,7 +125,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 53 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 58 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

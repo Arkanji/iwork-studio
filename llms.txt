@@ -1,6 +1,6 @@
 # iWork Studio
 
-> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (53 tools) + Python library + drop-in agent skill. Version 2.2.0.
+> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (58 tools) + Python library + drop-in agent skill. Version 2.3.0. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
 
 ## Core routes (classic iWork and Creator Studio apps)
 
@@ -8,6 +8,7 @@
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Parser writes refuse decks with charts. AppleScript fallback inside live app.
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, placeholders. Read tables too. Write: `replace_all`, `set_body`, `fill_placeholders`, `set_table_cells` (existing tables) ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
 - **Keynote via the app** — slide ops (add/duplicate/delete/move/skip/notes), theming (theme, layout, text font/size/colour), transitions, images, charts (add from data), slideshow control — chart decks allowed with per-slide chart counts checked; each write re-read and rolled back on any mismatch.
+- **Decks and design** — build a designed Keynote deck from an outline (keynote_build_deck), six WCAG-checked design kits with macOS Arabic+Latin fonts (keynote_apply_design, numbers_apply_design), design guide at skill-pack/references/design-guide.md. Every write takes dry_run=true for a preview.
 - **Every format via the app** — export (PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie; optional password), checked by a second tool; new documents from built-in templates.
 
 ## Safety contracts agents can rely on
