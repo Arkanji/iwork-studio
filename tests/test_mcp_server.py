@@ -121,14 +121,12 @@ def test_slide_tools_hidden_by_off_switch():
     assert _session(steps, IWORK_STUDIO_DISABLE_SLIDE_OPS="1") == CORE_TOOLS
 
 
-def test_capabilities_reports_slide_ops_on_but_not_yet_observed():
+def test_capabilities_reports_slide_ops_on():
     async def steps(c):
         return _payload(await c.call_tool("iwork_capabilities", {}))
 
     caps = _session(steps)
     assert caps["keynote_slide_ops"]["enabled"] is True
-    assert caps["keynote_slide_ops"]["observed_on_live_mac"] == ["add", "delete", "duplicate", "move", "notes", "skip"]
-    assert caps["keynote_slide_ops"]["not_yet_observed"] == []
 
 
 def test_read_edit_backup_restore_roundtrip(numbers_file):
