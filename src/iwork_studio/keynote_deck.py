@@ -6,9 +6,10 @@
 
 Keynote's slide `title` / `body` properties throw -1700 (trap K1), so the boxes
 are found from the text items themselves: the title is the top-most box, the body
-the largest of the rest. The write picks boxes by position in its own session and
-the check re-picks them by position — never by index, because Keynote doesn't keep
-text-box order stable between sessions (trap L4).
+the largest of the rest. Writes and checks go through Keynote's own default
+title / body boxes; the text-item list can't be trusted for this — it repeats
+placeholder boxes and its order changes between sessions (trap L4). A size-based
+fallback (duplicates ignored) is used only if Keynote doesn't expose those boxes.
 
 Safety: set_slide_text rides the theming protocol (backup → app edit → re-read →
 rollback). build_deck makes a new file that never overwrites; if any slide reads
@@ -46,68 +47,94 @@ def _body_text(body) -> str | None:
 
 
 def pick_roles(items: list[dict]) -> dict:
-    """{"title": index|None, "body": index|None} from text-item positions."""
-    placed = [i for i in items if i.get("y") is not None]
-    if not placed:
-        return {"title": items[0]["index"] if items else None,
-                "body": items[1]["index"] if len(items) > 1 else None}
-    title = min(placed, key=lambda i: i["y"])
-    rest = [i for i in placed if i["index"] != title["index"]]
-    body = max(rest, key=lambda i: i.get("area") or 0) if rest else None
+    """Fallback when Keynote doesn't expose its default title/body boxes: {"title": index,
+    "body": index} by type size. Keynote lists placeholder boxes twice, so boxes with the
+    same geometry are one box. Title = largest type (ties: higher on the slide); body =
+    the largest type among the other boxes (ties: larger area)."""
+    seen, boxes = set(), []
+    for it in items:
+        geo = (it.get("x"), it.get("y"), it.get("area"))
+        if it.get("y") is not None and geo in seen:
+            continue
+        seen.add(geo)
+        boxes.append(it)
+    if not boxes:
+        return {"title": None, "body": None}
+    title = max(boxes, key=lambda i: (i.get("size") or 0, -(i.get("y") or 0)))
+    rest = [i for i in boxes if i["index"] != title["index"]]
+    body = max(rest, key=lambda i: (i.get("size") or 0, i.get("area") or 0)) if rest else None
     return {"title": title["index"], "body": body["index"] if body else None}
 
 
-def _check_fits(items: list[dict], title: str | None, body: str | None, where: str) -> None:
-    roles = pick_roles(items)
-    if title is not None and body is not None and roles["body"] is None:
+def _role_text(slide: dict, role: str) -> str | None:
+    """Text in the slide's title or body box: Keynote's own box first, else the fallback."""
+    box = slide.get(f"{role}_box")
+    if box is not None:
+        return box.get("text")
+    roles = pick_roles(slide["items"])
+    idx = roles[role] if role == "title" or roles["body"] is not None else roles["title"]
+    return next((it["text"] for it in slide["items"] if it["index"] == idx), None)
+
+
+def _check_fits(slide: dict, title: str | None, body: str | None, where: str) -> None:
+    roles = pick_roles(slide["items"])
+    has_title = slide.get("title_box") is not None or roles["title"] is not None
+    has_body = slide.get("body_box") is not None or roles["body"] is not None
+    if title is not None and body is not None and not has_body:
         raise DeckError(f"{where}: this layout has one text box; give only a title or only a body, "
                         "or choose a layout like 'Title & Bullets'")
-    if roles["title"] is None and (title is not None or body is not None):
+    if (title is not None or body is not None) and not (has_title or has_body):
         raise DeckError(f"{where}: this layout has no text box")
 
 
-def _check_roles(items: list[dict], title: str | None, body: str | None, where: str) -> None:
-    """Read-back by role (Keynote doesn't keep text-box order stable — trap L4)."""
-    roles = pick_roles(items)
-    text = {it["index"]: it["text"] for it in items}
-    if title is not None and _norm(text.get(roles["title"])) != _norm(title):
-        raise ks.SlideOpVerificationError(f"{where}: title box reads {text.get(roles['title'])!r}, wanted {title!r}")
-    if body is not None:
-        idx = roles["body"] if roles["body"] is not None else roles["title"]
-        if _norm(text.get(idx)) != _norm(body):
-            raise ks.SlideOpVerificationError(f"{where}: body box reads {text.get(idx)!r}, wanted {body!r}")
+def _check_roles(slide: dict, title: str | None, body: str | None, where: str) -> None:
+    if title is not None and _norm(_role_text(slide, "title")) != _norm(title):
+        raise ks.SlideOpVerificationError(f"{where}: title box reads {_role_text(slide, 'title')!r}, wanted {title!r}")
+    if body is not None and _norm(_role_text(slide, "body")) != _norm(body):
+        raise ks.SlideOpVerificationError(f"{where}: body box reads {_role_text(slide, 'body')!r}, wanted {body!r}")
 
 
-def _other_texts(items: list[dict]):
+def _other_texts(slide: dict):
     from collections import Counter
 
-    roles = pick_roles(items)
-    return Counter(it["text"] for it in items if it["index"] not in (roles["title"], roles["body"]) and it["text"].strip())
+    skip = {_role_text(slide, "title"), _role_text(slide, "body")}
+    return Counter(it["text"] for it in slide["items"] if it["text"].strip() and it["text"] not in skip)
 
 
-# Boxes are chosen by position in the same session that writes them: Keynote's
-# text-item order isn't stable between sessions, so an index from an earlier read
-# can point at a different box. Same rule as pick_roles: top-most = title,
-# largest of the rest = body.
-_FILL_JS = """    const roles = (s) => {
+# Writes go through Keynote's own default title / body boxes (reliable; the text-item
+# list repeats placeholder boxes). Fallback, only if Keynote doesn't expose them: the
+# same size rule as pick_roles, chosen in this session.
+_FILL_JS = """    const fallback = (s) => {
       const items = s.textItems();
-      const info = items.map((it, i) => {
-        let y = null, area = 0;
-        try { y = it.position().y; area = it.width() * it.height(); } catch (e) {}
-        return {i: i, y: y, area: area};
+      const seen = {}, boxes = [];
+      items.forEach((it, i) => {
+        let y = null, x = null, area = 0, size = 0;
+        try { const p = it.position(); x = p.x; y = p.y; area = it.width() * it.height(); } catch (e) {}
+        try { size = it.objectText.size(); } catch (e) {}
+        const key = x + "," + y + "," + area;
+        if (y !== null && seen[key]) return;
+        seen[key] = true;
+        boxes.push({i: i, y: y || 0, area: area, size: size});
       });
-      const placed = info.filter(o => o.y !== null);
-      if (!placed.length) return {items: items, title: items.length ? 0 : null, body: items.length > 1 ? 1 : null};
-      const title = placed.reduce((a, b) => (b.y < a.y ? b : a)).i;
-      const rest = placed.filter(o => o.i !== title);
-      const body = rest.length ? rest.reduce((a, b) => (b.area > a.area ? b : a)).i : null;
-      return {items: items, title: title, body: body};
+      if (!boxes.length) return {items: items, title: null, body: null};
+      const title = boxes.reduce((p, q) => (q.size > p.size || (q.size === p.size && q.y < p.y) ? q : p));
+      const rest = boxes.filter(o => o.i !== title.i);
+      const body = rest.length ? rest.reduce((p, q) => (q.size > p.size || (q.size === p.size && q.area > p.area) ? q : p)) : null;
+      return {items: items, title: title.i, body: body ? body.i : null};
+    };
+    const put = (s, role, text) => {
+      try {
+        (role === "title" ? s.defaultTitleItem : s.defaultBodyItem).objectText = text;
+        return;
+      } catch (e) {}
+      const r = fallback(s);
+      const idx = role === "title" ? r.title : (r.body !== null ? r.body : r.title);
+      r.items[idx].objectText = text;
     };
     for (const sp of params.specs) {
       const s = doc.slides[sp.n - 1];
-      const r = roles(s);
-      if (sp.title !== null) r.items[r.title].objectText = sp.title;
-      if (sp.body !== null) r.items[r.body !== null ? r.body : r.title].objectText = sp.body;
+      if (sp.title !== null) put(s, "title", sp.title);
+      if (sp.body !== null) put(s, "body", sp.body);
       if (sp.notes !== null) s.presenterNotes = sp.notes;
     }
 """
@@ -123,7 +150,7 @@ def set_slide_text(path, slide: int, *, title: str | None = None, body=None, **k
         n = len(before["slides"])
         if not isinstance(slide, int) or not 1 <= slide <= n:
             raise kt.ThemeError(f"slide {slide!r} out of range (deck has {n})")
-        _check_fits(before["slides"][slide - 1]["items"], title, body, f"slide {slide}")
+        _check_fits(before["slides"][slide - 1], title, body, f"slide {slide}")
 
         def expect(b, a):
             kt._same_slide_count(b, a)
@@ -133,8 +160,8 @@ def set_slide_text(path, slide: int, *, title: str | None = None, body=None, **k
             sa, sb = a["slides"][slide - 1], b["slides"][slide - 1]
             if sa.get("layout") != sb.get("layout"):
                 raise ks.SlideOpVerificationError(f"slide {slide} layout changed")
-            _check_roles(sa["items"], title, body, f"slide {slide}")
-            if _other_texts(sa["items"]) != _other_texts(sb["items"]):
+            _check_roles(sa, title, body, f"slide {slide}")
+            if _other_texts(sa) != _other_texts(sb):
                 raise ks.SlideOpVerificationError(f"slide {slide}: another text box changed")
 
         return _FILL_JS, {"specs": [{"n": slide, "title": title, "body": body, "notes": None}]}, \
@@ -200,7 +227,7 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
             raise ks.SlideOpVerificationError(f"deck has {len(shaped['slides'])} slides, expected {len(slides)}")
         specs = []
         for i, (sp, sl) in enumerate(zip(slides, shaped["slides"]), start=1):
-            _check_fits(sl["items"], sp.get("title"), _body_text(sp.get("body")), f"slide {i} ({layouts[i - 1]})")
+            _check_fits(sl, sp.get("title"), _body_text(sp.get("body")), f"slide {i} ({layouts[i - 1]})")
             specs.append({"n": i, "title": sp.get("title"), "body": _body_text(sp.get("body")), "notes": sp.get("notes")})
         ks._jxa("  const doc = app.open(Path(params.path));\n  try {\n" + _FILL_JS
                 + "    app.save(doc);\n  } finally {\n    app.close(doc, {saving: 'no'});\n  }\n"
@@ -211,7 +238,7 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
         for i, (sp, spec, sl) in enumerate(zip(slides, specs, after["slides"]), start=1):
             if sl.get("layout") != layouts[i - 1]:
                 raise ks.SlideOpVerificationError(f"slide {i} layout reads {sl.get('layout')!r}, wanted {layouts[i - 1]!r}")
-            _check_roles(sl["items"], spec["title"], spec["body"], f"slide {i}")
+            _check_roles(sl, spec["title"], spec["body"], f"slide {i}")
             if sp.get("notes") is not None and _norm(notes[i - 1].get("notes")) != _norm(sp["notes"]):
                 raise ks.SlideOpVerificationError(f"slide {i} presenter notes didn't land")
         for i, sp in enumerate(slides, start=1):

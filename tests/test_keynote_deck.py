@@ -19,8 +19,14 @@ def _sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
-def _item(i, text, y, area):
-    return {"index": i, "text": text, "font": "Helvetica", "size": 30.0, "color": "#000000", "y": y, "area": area}
+def _item(i, text, y, area, size=30.0, x=55):
+    return {"index": i, "text": text, "font": "Helvetica", "size": size, "color": "#000000", "x": x, "y": y, "area": area}
+
+
+# What Keynote reported on the Mac for a new deck's title slide: a 24 pt footer box,
+# and the title (82 pt) and subtitle (38 pt) placeholders each listed twice.
+PROBE_TITLE_SLIDE = [_item(0, "", 682, 914 * 36, 24), _item(1, "", 146, 914 * 260, 82), _item(2, "", 402, 914 * 115, 38),
+                     _item(3, "", 146, 914 * 260, 82), _item(4, "", 402, 914 * 115, 38)]
 
 
 STYLE = {"theme": "Basic White", "layouts": ["Title", "Title & Bullets", "Blank"], "slides": [
@@ -35,22 +41,41 @@ def test_pick_roles_by_position():
     assert kd.pick_roles([]) == {"title": None, "body": None}
 
 
+def test_fallback_ignores_duplicate_boxes_and_prefers_type_size():
+    assert kd.pick_roles(PROBE_TITLE_SLIDE) == {"title": 1, "body": 2}
+
+
 def test_one_box_layout_refuses_title_and_body():
     with pytest.raises(kd.DeckError, match="one text box"):
-        kd._check_fits([_item(0, "", 100, 10)], "T", "B", "slide 1")
-    kd._check_fits([_item(0, "", 100, 10)], None, "B", "slide 1")
+        kd._check_fits({"items": [_item(0, "", 100, 10)]}, "T", "B", "slide 1")
+    kd._check_fits({"items": [_item(0, "", 100, 10)]}, None, "B", "slide 1")
     with pytest.raises(kd.DeckError, match="no text box"):
-        kd._check_fits([], "T", None, "slide 1")
+        kd._check_fits({"items": []}, "T", None, "slide 1")
+    # Keynote's own boxes count even when the item list is odd
+    kd._check_fits({"items": [], "title_box": {"text": ""}, "body_box": {"text": ""}}, "T", "B", "slide 1")
 
 
 def test_roles_checked_by_position_not_index():
     """Keynote reorders text boxes between sessions (trap L4); the check must not care."""
     items = [_item(0, "body text", 600, 90000), _item(1, "Title", 40, 8000)]
     shuffled = [_item(0, "Title", 40, 8000), _item(1, "body text", 600, 90000)]
-    kd._check_roles(items, "Title", "body text", "slide 1")
-    kd._check_roles(shuffled, "Title", "body text", "slide 1")
+    kd._check_roles({"items": items}, "Title", "body text", "slide 1")
+    kd._check_roles({"items": shuffled}, "Title", "body text", "slide 1")
     with pytest.raises(ks.SlideOpVerificationError, match="title box"):
-        kd._check_roles([_item(0, "Title", 600, 90000), _item(1, "body text", 40, 8000)], "Title", "body text", "s")
+        kd._check_roles({"items": [_item(0, "Title", 600, 90000), _item(1, "body text", 40, 8000)]},
+                        "Title", "body text", "s")
+
+
+def test_keynote_default_boxes_win():
+    """With Keynote's own title/body boxes reported, the check uses them, not positions."""
+    slide = {"items": PROBE_TITLE_SLIDE, "title_box": {"text": "رسال"}, "body_box": {"text": "البنية"}}
+    kd._check_roles(slide, "رسال", "البنية", "slide 1")
+    with pytest.raises(ks.SlideOpVerificationError, match="title box"):
+        kd._check_roles({**slide, "title_box": {"text": "البنية"}}, "رسال", None, "slide 1")
+
+
+def test_fill_script_writes_through_default_boxes():
+    assert "s.defaultTitleItem : s.defaultBodyItem" in kd._FILL_JS
 
 
 @pytest.fixture()
@@ -85,7 +110,7 @@ def test_set_slide_text_ok(deck):
     out = kd.set_slide_text(d, 2, title="الإيرادات", body=["نمو", "ربح"])
     assert out["ok"]
     assert state["jxa"][0]["specs"] == [{"n": 2, "title": "الإيرادات", "body": "نمو\nربح", "notes": None}]
-    assert "position().y" in state["jxa_body"][0]  # boxes picked by position in the writing session
+    assert "defaultTitleItem" in state["jxa_body"][0]  # written through Keynote's own title box
 
 
 def test_set_slide_text_wrong_box_rolls_back(deck):
