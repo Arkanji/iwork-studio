@@ -172,28 +172,27 @@ def apply_to_keynote(path, kit="executive", *, set_theme: bool = True, **kw) -> 
         if current != k["theme"] and k["theme"] in kt.list_themes():
             steps.append(kt.set_theme(path, k["theme"], **kw))
 
+    def fmt(role: str, scale: dict, arabic: bool) -> dict:
+        kind = "heading" if role == "title" else "body"
+        return {"font": k["fonts"][f"{kind}_ar" if arabic else kind],
+                "size": scale.get(role), "rgb": kt._rgb16(k["colors"]["title" if role == "title" else "body"])}
+
     def plan(before):
-        specs, want = [], {}
+        specs = []
         for s in before["slides"]:
-            roles = pick_roles(s["items"])
             scale = _SCALE["title_slide" if (s["slide"] == 1 or s.get("layout") in _TITLE_LAYOUTS) else "content"]
-            for it in s["items"]:
-                role = "title" if it["index"] == roles["title"] else "body"
-                size = scale[role] if it["index"] in (roles["title"], roles["body"]) else None
-                spec = {"n": s["slide"], "i": it["index"], "font": _font(k, "heading" if role == "title" else "body", it["text"]),
-                        "size": size, "rgb": kt._rgb16(k["colors"][role])}
-                specs.append(spec)
-                want[(s["slide"], it["index"])] = spec
+            specs.append({"n": s["slide"], **{f"{role}_{lang}": fmt(role, scale, lang == "ar")
+                                              for role in ("title", "body", "other") for lang in ("lat", "ar")}})
 
         def expect(b, a):
             kt._same_slide_count(b, a)
-            for x, y in zip(b["slides"], a["slides"]):
+            for x, y, sp in zip(b["slides"], a["slides"], specs):
                 if kt._texts(x) != kt._texts(y) or x.get("layout") != y.get("layout"):
                     raise ks.SlideOpVerificationError(f"slide {x['slide']}: text or layout changed")
+                roles = pick_roles(y["items"])  # by position: text-box order isn't stable (trap L4)
                 for it in y["items"]:
-                    w = want.get((y["slide"], it["index"]))
-                    if not w:
-                        continue
+                    role = "title" if it["index"] == roles["title"] else "body" if it["index"] == roles["body"] else "other"
+                    w = sp[f"{role}_{'ar' if _ARABIC.search(it['text'] or '') else 'lat'}"]
                     if not kt._font_eq(it.get("font"), w["font"]):
                         raise ks.SlideOpVerificationError(
                             f"slide {y['slide']}: font reads {it.get('font')!r}, wanted {w['font']!r} "
@@ -204,14 +203,34 @@ def apply_to_keynote(path, kit="executive", *, set_theme: bool = True, **kw) -> 
                     if not kt._close(it.get("color"), want_hex):
                         raise ks.SlideOpVerificationError(f"slide {y['slide']}: colour reads {it.get('color')!r}")
 
-        script = """    for (const sp of params.specs) {
-      const ot = doc.slides[sp.n - 1].textItems[sp.i].objectText;
-      ot.font = sp.font;
-      if (sp.size !== null) ot.size = sp.size;
-      ot.color = sp.rgb;
+        # Roles by position, chosen in this same session (same rule as keynote_deck.pick_roles).
+        script = """    const AR = /[\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF]/;
+    for (const sp of params.specs) {
+      const items = doc.slides[sp.n - 1].textItems();
+      const info = items.map((it, i) => {
+        let y = null, area = 0;
+        try { y = it.position().y; area = it.width() * it.height(); } catch (e) {}
+        return {i: i, y: y, area: area};
+      });
+      const placed = info.filter(o => o.y !== null);
+      let title = null, body = null;
+      if (placed.length) {
+        title = placed.reduce((p, q) => (q.y < p.y ? q : p)).i;
+        const rest = placed.filter(o => o.i !== title);
+        body = rest.length ? rest.reduce((p, q) => (q.area > p.area ? q : p)).i : null;
+      } else if (items.length) { title = 0; body = items.length > 1 ? 1 : null; }
+      items.forEach((it, i) => {
+        const role = i === title ? "title" : (i === body ? "body" : "other");
+        const ot = it.objectText;
+        const w = sp[role + "_" + (AR.test(ot().toString()) ? "ar" : "lat")];
+        ot.font = w.font;
+        if (w.size !== null) ot.size = w.size;
+        ot.color = w.rgb;
+      });
     }
 """
-        return script, {"specs": specs}, expect, {"kit": k["name"], "text_boxes": len(specs)}
+        boxes = sum(len(s["items"]) for s in before["slides"])
+        return script, {"specs": specs}, expect, {"kit": k["name"], "text_boxes": boxes}
 
     out = kt._run(path, "apply_design", plan, **kw)
     if steps:
