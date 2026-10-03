@@ -4,8 +4,10 @@ Every tool is a thin wrapper over the library: the write protocol
 (versioned backup → tmp write → re-parse gate → semantic diff → atomic swap)
 lives in the library, so an agent cannot reach a write without it.
 
-Install (Claude Code):
-    claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
+Install:
+    Claude desktop app:  curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh
+    Claude Code:         claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp
+    Anything else:       iwork-studio-mcp config   (prints the JSON entry)
 
 Environment:
     IWORK_STUDIO_ROOTS              os.pathsep-separated folders the server may
@@ -63,7 +65,7 @@ mcp = MCPServer(
     title="iWork Studio",
     version=__version__,
     instructions=INSTRUCTIONS,
-    website_url="https://github.com/arkanji/iwork-studio",
+    website_url="https://github.com/Arkanji/iwork-studio",
 )
 
 READ = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
@@ -330,6 +332,11 @@ if _slide_tool("notes"):
 
 
 def main() -> None:
+    # `iwork-studio-mcp install|uninstall|config` = set-up helpers; no args = serve.
+    if len(sys.argv) > 1:
+        from iwork_studio.installer import main as installer_main
+
+        raise SystemExit(installer_main(sys.argv[1:]))
     mcp.run("stdio")
 
 

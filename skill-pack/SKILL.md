@@ -1,153 +1,115 @@
 ---
 name: iwork-studio
-description: Read and edit Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file, a spreadsheet cell, slide text, slides (add, duplicate, delete, move, hide), presenter notes, or Pages body text, including Arabic/RTL content. Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
+description: Read and edit Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file, a spreadsheet cell, slide text, slides (add, duplicate, delete, move, hide), presenter notes, or Pages body text, including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 1.1.0
+  version: 1.2.0
   author: iWork Studio
-  homepage: https://github.com/arkanji/iwork-studio
+  homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
 ---
 
-# iWork Studio — verified .numbers / .key / .pages read-write
+# iWork Studio
 
-One skill pack, three verified routes, zero repair prompts. Everything below was
-built and live-verified against iWork 15.4 (build 7051.0.79) on macOS 27.2,
-including Arabic round-trips at file level AND render level.
+Safe reads and edits of Numbers, Keynote and Pages files. Every write is backed
+up first, applied to a scratch copy, re-read and checked, then swapped in
+atomically. If anything doesn't match, the user's file is left untouched and
+you get a typed error. Arabic/RTL text round-trips exactly.
 
-## Route matrix (follow exactly; never freelance)
+## How to work (every request)
 
-| Format | Read | Write | Engine |
-|--------|------|-------|--------|
-| `.numbers` | full semantic model | create + per-cell edit | `numbers-parser` 4.19.0, pure Python, no GUI |
-| `.key` | full text model (YAML tree) | find/replace text | `keynote-parser` 1.14.5.0; AppleScript fallback ONLY for file locked in Keynote |
-| `.key` slides | per-slide inventory | add / duplicate / delete / move / skip / presenter notes | AppleScript via Keynote (`iwork_studio.keynote_slides`), per-slide expectation gate + rollback |
-| `.pages` | body text (AppleScript + docx export) | the TWO verified body ops ONLY | AppleScript `bodyText`; richer edits = out of scope by design |
+1. **Read before you write.** `iwork_read` the file and use what's actually there
+   (real slide numbers, cell refs, exact text to replace).
+2. **Confirm destructive or broad changes** in one line before doing them:
+   deleting slides, `pages_set_body` (it resets the body's formatting), or a
+   find/replace that hits many places.
+3. **Write with one tool call per change.** Don't retry a failed write with a
+   different trick; report the error (see the table below).
+4. **Tell the user what changed** and that a backup exists. After an important
+   change, offer `iwork_verify_render` (macOS) to confirm it's visibly there.
+5. **Mistake? Undo** with `iwork_list_backups` → `iwork_restore_backup`.
 
-## Pick your interface (in this order)
+## What you can do
 
-1. **iwork-studio MCP tools are available** (tool names start with `iwork_`,
-   `numbers_`, `keynote_`, `pages_`) → use them. Call `iwork_capabilities`
-   first if unsure what this machine can do.
-2. **No MCP, but you can run shell commands** → the scripts in the
-   Commands section below (JSON on stdout).
-3. **Writing Python** → `pip install -e <repo>` and import `iwork_studio`
-   (`numbers_io`, `keynote_io`, `keynote_slides`, `pages_io`, `backups`).
+| Task | MCP tool | Needs |
+|---|---|---|
+| Read any iWork file to JSON | `iwork_read` | anywhere (.pages needs the Mac app) |
+| What this machine can do | `iwork_capabilities` | anywhere — call it first when unsure |
+| Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere, no app needed |
+| Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere, no app needed |
+| Presenter notes · hide/show · duplicate · delete · move · add slide | `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
+| Pages: replace text everywhere / replace the whole body | `pages_replace_all` · `pages_set_body` | Mac + Pages; run `pages_preflight` first |
+| Check the rendered PDF shows a word | `iwork_verify_render` | Mac + the app |
+| Undo | `iwork_list_backups` · `iwork_restore_backup` | anywhere |
 
-What needs what: `.numbers` and `.key` text reads/edits are pure Python and
-work anywhere. Pages, render-verify and Keynote slide ops drive the real app:
-macOS + iWork + a logged-in GUI session. Elsewhere they fail fast with
-`AquaSessionError` — tell the user, don't retry.
+Slide numbers are 1-based. `keynote_move_slide(slide, to)` puts the slide *at*
+position `to`. `keynote_add_slide(after=0)` adds at the front, no `after` adds at
+the end. The last slide can't be deleted.
 
-## MCP server
+## When a tool says no
 
+| Error | What it means | Tell the user |
+|---|---|---|
+| `DocumentOpenError` | The deck is open in Keynote | "Please save and close it in Keynote, then I'll retry." |
+| `ChartRefusalError` | The file contains charts; writes are refused by design | Say so plainly; don't look for a workaround |
+| `PagesOutOfScopeError` | Pages only supports the two text operations | Offer `pages_replace_all` / `pages_set_body` if they fit |
+| `PagesUnavailableError` / -1712 | A dialog in Pages is blocking | "Please click away the dialog in Pages once." Don't loop |
+| `AquaSessionError` | No Mac GUI here | The app-driven part can't run on this machine |
+| `FileLockedError` | File locked or open | Ask the user to close it |
+| `SlideOpVerificationError` / `SchemaDriftError` | The app did something other than asked; rolled back | Nothing changed; report it |
+| `CreatorStudioUnverifiedError` | An unknown Creator Studio app version | Report it; don't set the override yourself |
+| "outside IWORK_STUDIO_ROOTS" | The file is outside the folders the user allowed | Ask them to move it or widen the fence |
+
+## Arabic / RTL
+
+- Write Arabic exactly as given; it round-trips byte-exact.
+- For `iwork_verify_render`, assert **one Arabic word**, not a phrase: PDF text
+  layers reorder multi-word RTL text and the check would fail falsely.
+- Numbers keeps values as typed: Arabic-Indic digits (`١٢٣`) and strings like
+  `"$1,234.56"` stay text. Pass a real number (e.g. `2500`) when the user wants a number.
+
+## Never
+
+- Convert to docx/pptx/xlsx and back (lossy).
+- Use AppleScript `save in <path>` on the user's files (the iWork sandbox denies it).
+- Edit the files directly or with other tools while bypassing these routes.
+
+## Install (if the tools aren't available yet)
+
+- Claude desktop app (Mac): `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh`, then quit Claude (Cmd-Q) and reopen.
+- Claude Code: `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`
+- Other MCP clients: `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` prints the JSON entry.
+
+No Python install needed; uv brings its own.
+
+## No MCP? Use the scripts
+
+Run from this skill's folder. Prefixing with `uvx --from git+https://github.com/Arkanji/iwork-studio`
+needs no prior install (or use a Python 3.12 with the package installed). Output is JSON.
 
 ```bash
-claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
+U="uvx --from git+https://github.com/Arkanji/iwork-studio"
+$U python scripts/read.py <file.numbers|.key|.pages>
+$U python scripts/edit_numbers.py edit-cell <file> --ref B3 --value "قيمة" [--sheet NAME] [--table NAME]
+$U python scripts/edit_key.py replace <file.key> "old text" "new text" [--regex]
+$U python scripts/edit_pages.py preflight
+$U python scripts/edit_pages.py replace-all <file.pages> "old" "new"
+$U python scripts/edit_pages.py set-body <file.pages> "new body"      # or '-' for stdin
+$U python scripts/verify_render.py <file> --assert-text "word"
 ```
 
-Tools: `iwork_capabilities`, `iwork_read`, `numbers_edit_cell`,
-`keynote_replace_text`, `pages_preflight`, `pages_replace_all`,
-`pages_set_body`, `iwork_verify_render`, `iwork_list_backups`,
-`iwork_restore_backup`, plus the Keynote slide ops `keynote_add_slide`,
-`keynote_duplicate_slide`, `keynote_delete_slide`, `keynote_move_slide`,
-`keynote_skip_slide`, `keynote_set_presenter_notes`. Same library, same gates
-as the scripts below. Slide ops are ON (off switch:
-IWORK_STUDIO_DISABLE_SLIDE_OPS=1); they refuse a deck open in Keynote, never
-delete the last slide, and roll back if Keynote does anything unexpected.
-
-## Commands (run from this skill's directory)
-
-Run with a Python 3.12 that has the package installed (`pip install -e <repo>`).
-If a pinned venv exists at `~/.hermes/iwork-venv/.venv`, the scripts re-exec
-into it automatically. Scripts print JSON results.
-
-```bash
-# READ any iWork file (dispatches on extension)
-python scripts/read.py <file.numbers|.key|.pages>
-
-# NUMBERS: read / edit a cell / create demo file (self-test)
-python scripts/edit_numbers.py read <file>
-python scripts/edit_numbers.py edit-cell <file> --ref B3 --value "قيمة" [--sheet NAME] [--table NAME]
-python scripts/edit_numbers.py demo --out /tmp/demo.numbers
-
-# KEYNOTE: read / find-replace across the deck
-python scripts/edit_key.py read <file.key>
-python scripts/edit_key.py replace <file.key> "old text" "new text" [--regex]
-
-# PAGES: TCC preflight / read / the two verified body ops
-python scripts/edit_pages.py preflight
-python scripts/edit_pages.py read <file.pages>
-python scripts/edit_pages.py replace-all <file.pages> "old" "new"
-python scripts/edit_pages.py set-body <file.pages> "full new body text"   # or '-' to read stdin
-
-# RENDER VERIFY any format (needs Aqua): export PDF -> PyMuPDF text-layer match
-python scripts/verify_render.py <file> --assert-text "expected visible text" [--pages N]
-```
-
-Keynote slide ops and undo (Python; the MCP tools wrap exactly these):
+Slide ops and undo from Python (the MCP tools wrap exactly these):
 
 ```python
 from iwork_studio import keynote_slides as ks, backups
-ks.set_presenter_notes("deck.key", 1, "ملاحظات")   # 1-based slide numbers
+ks.set_presenter_notes("deck.key", 1, "ملاحظات")
 ks.duplicate_slide("deck.key", 2); ks.move_slide("deck.key", 3, 1)
 ks.add_slide("deck.key", after=0); ks.set_skipped("deck.key", 4, True); ks.delete_slide("deck.key", 5)
-backups.restore_backup("deck.key", backups.list_backups("deck.key")[0]["name"])   # undo last write
+backups.restore_backup("deck.key", backups.list_backups("deck.key")[0]["name"])
 ```
-
-## Hard rules (every job)
-
-1. **GATE-SAVE**: NEVER AppleScript `save in <arbitrary path>` — iWork sandbox denies
-   it (verified denial). In-place `save` of an on-disk file is verified working for
-   Numbers, Keynote, Pages. For artifacts, always `export ... as ...`, never save.
-   Helpers: `scripts/save_paths.sh` (source it).
-2. **Keynote -1700 defect**: slide `title`/`body` properties throw -1700 on
-   Keynote 15.4. Use `object text of Nth text item` (see
-   references/keynote-1700-defect.md). The library already handles this.
-3. **Preflight before ANY Pages op** (`edit_pages.py preflight`): first-launch TCC
-   consent and the Pages template-chooser/Open dialog block ALL AppleEvents with
-   -1712. That means "a human must look at the screen ONCE" — never retry, never
-   loop. See references/tcc-preflight.md.
-4. **GATE-CHART**: the writers REFUSE chart-container files (.numbers/.key) until a
-   probe proves them. Accepted scope cut — do not bypass.
-5. **Headless = hard fail**: all AppleScript routes require an interactive Aqua
-   session. Without one they raise `AquaSessionError` with guidance — by design (SC4).
-6. **Every write** already does: versioned backup → tmp write → re-parse verify →
-   atomic swap (os.replace) → optional render-verify. On any gate failure the
-   target rolls back untouched. "File saved" is never proof — re-read to confirm.
-7. **Arabic**: round-trips are verified byte-exact at file level and ligature-aware
-   at render level ('الاسم' extracts from PDF text layers as 'ااسمل' — lam-alef
-   split + bidi, an extraction artifact the matcher tolerates, not a defect).
-   For render-verify assertions use SINGLE Arabic words — bidi reorders words in
-   extracted text layers, so multi-word Arabic fragments fail spuriously.
-8. **Creator Studio**: Numbers, Pages and Keynote Creator Studio are all
-   supported. An unknown Creator Studio app raises
-   `CreatorStudioUnverifiedError`; never set IWORK_STUDIO_ALLOW_CREATOR_STUDIO=1
-   except to probe.
-9. **Strict zip byte-equality is unachievable** (IWA protobuf re-encode, +1,632 B
-   on unmodified .numbers save). GATE-1 is SEMANTIC equality — pinned,
-   do not re-litigate. See references/pins.txt.
-
-## Scope walls (by design)
-
-- Pages: ONLY `replace_all` and `set_body` body-text ops. Anything richer
-  (styles, tables, sections, per-paragraph surgery) raises PagesOutOfScopeError.
-- No pptx/docx/xlsx → iWork conversion (lossy, rejected).
-- No iCloud concurrent-edit handling (local files only).
 
 ## References
 
-- `references/capability-matrix.md` — per-route verified ops
-- `references/pins.txt` — dependency pins, single source of truth
-- `references/sandbox-trap.md` — GATE-SAVE: the `save in` denial playbook
-- `references/keynote-1700-defect.md` — the Keynote 15.4 text-property defect
-- `references/tcc-preflight.md` — TCC / template-chooser / -1712 playbook
-- `references/jxa-traps.md` — ~25 upstream scripting traps (reichenbach/iwork_mcp), each marked UPSTREAM / AGREES / N/A
-- Undo: `iwork_studio.backups.list_backups(path)` / `restore_backup(path, name)`
-
-## Source of truth
-
-Project repo: https://github.com/arkanji/iwork-studio (library source, pytest
-suite, fixtures). This installed skill = pack sources + vendored copy
-of `src/iwork_studio` at install time (`skill-pack/install.sh`). Re-run install
-after library changes.
+- `references/capability-matrix.md` — what each route supports and refuses
+- `references/jxa-traps.md` — scripting traps, if you are extending this
+- `references/sandbox-trap.md`, `references/keynote-1700-defect.md`, `references/tcc-preflight.md` — background on specific macOS/iWork behaviour

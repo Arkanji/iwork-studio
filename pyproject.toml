@@ -27,7 +27,7 @@ test = ["pytest>=8"]
 iwork-studio-mcp = "iwork_studio.mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/arkanji/iwork-studio"
+Homepage = "https://github.com/Arkanji/iwork-studio"
 
 [tool.setuptools.packages.find]
 where = ["src"]

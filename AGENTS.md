@@ -3,6 +3,21 @@
 Instructions for any AI agent (Claude Code, Codex, Cursor, Copilot, Gemini, …)
 working **with** or **on** this repo.
 
+## Setting this up for a user? (do this first)
+
+| User's app | Command |
+|---|---|
+| Claude desktop app (Mac) | `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then the user quits Claude (Cmd-Q) and reopens |
+| Claude Code | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
+| Any other MCP client | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` → paste the printed JSON into the client's MCP config |
+
+- The installer installs `uv` if missing; uv brings its own Python. **Don't tell the user to install Python.**
+- Recommend a folder fence: `… | sh -s -- --roots ~/Documents ~/Desktop` (or env `IWORK_STUDIO_ROOTS`, `:`-separated).
+- The desktop app needs the **absolute** uvx path in its config; the installer and `config` handle that. Never hand-write a bare `"command": "uvx"` for the desktop app.
+- `.mcp.json` in this repo is for contributors working inside a clone; don't copy it elsewhere.
+- First run: macOS asks once to let Claude control Keynote/Pages/Numbers → user clicks OK (fix later in System Settings → Privacy & Security → Automation). Logs: `~/Library/Logs/Claude/mcp-server-iwork-studio.log`.
+- Verify: call `iwork_capabilities`.
+
 ## Using it: edit iWork files for a user
 
 iWork Studio reads and edits Apple **Numbers (`.numbers`)**, **Keynote (`.key`)**
@@ -10,10 +25,8 @@ and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
 
 **Pick your interface, in this order:**
 
-1. **MCP tools** (names start with `iwork_`, `numbers_`, `keynote_`, `pages_`).
-   This repo ships [`.mcp.json`](.mcp.json); elsewhere install with
-   `claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp`
-   (any MCP client: command `uvx`, args `--from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp`).
+1. **MCP tools** (names start with `iwork_`, `numbers_`, `keynote_`, `pages_`) — install
+   as in the table above.
 2. **Skill** — [`skill-pack/SKILL.md`](skill-pack/SKILL.md) (also at
    `.claude/skills/iwork-studio/`): CLI scripts with JSON output.
 3. **Python** — `pip install -e .`, then `iwork_studio.numbers_io`, `keynote_io`,
