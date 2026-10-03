@@ -59,8 +59,8 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
 - New files: numbers_create / numbers_import_csv (no app), iwork_create (from
   Apple's built-in templates, needs the app), iwork_create_from_template (copy
   the user's own document). They never overwrite an existing file.
-- Pages writes: pages_replace_all, pages_set_body (resets body formatting) and
-  pages_fill_placeholders. Anything richer is out of scope by design. Run
+- Pages writes: pages_replace_all, pages_set_body (resets body formatting),
+  pages_fill_placeholders and pages_set_table_cells (existing tables only). Anything richer is out of scope by design. Run
   pages_preflight first; a -1712 / PagesUnavailableError means a human must
   dismiss a dialog once. Never retry.
 - After a write the user cares about, call iwork_verify_render with a word that
@@ -125,7 +125,7 @@ _HINTS = {
     "AquaSessionError": "needs a logged-in macOS GUI session; .numbers/.key reads and edits work without one",
     "PagesUnavailableError": "a dialog is blocking Pages: ask the user to dismiss it once, then retry once",
     "ChartRefusalError": "files with charts are refused by the no-app tools (they could break chart links); app-driven tools work on them — tell the user",
-    "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body and pages_fill_placeholders only",
+    "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body, pages_fill_placeholders and pages_set_table_cells only",
     "StructureError": "fix the request (positions are 1-based; new files must not exist yet)",
     "AppOpError": "fix the request; the message lists the valid choices",
     "WriteVerificationError": "the result didn't match the request, so nothing was changed",
@@ -686,6 +686,22 @@ def pages_fill_placeholders(path: str, values: dict[str, str]) -> dict[str, Any]
     from iwork_studio import app_ops
 
     return _call(app_ops.fill_placeholders, _path(path, ".pages"), values)
+
+
+@mcp.tool(annotations=APP_READ)
+def pages_read_tables(path: str) -> dict[str, Any]:
+    """Every table in a .pages document: name, size, and each cell's value, shown text and formula. Needs macOS + Pages."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.read_tables, _path(path, ".pages"))
+
+
+@mcp.tool(annotations=WRITE)
+def pages_set_table_cells(path: str, table: str, cells: dict[str, Any]) -> dict[str, Any]:
+    """Write cells of an existing table in a .pages document. table = its name or number (from pages_read_tables); cells = {"B2": 1200, "C3": "تم", "D9": "=SUM(D2:D8)"} — numbers stay numbers, "=…" makes a formula, null clears. Every other cell and the body text are verified unchanged. New tables can't be created (Pages 15 doesn't script it). Needs macOS + Pages, document closed."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.set_table_cells, _path(path, ".pages"), table, cells)
 
 
 @mcp.tool(annotations=APP_READ)

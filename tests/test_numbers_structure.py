@@ -176,3 +176,54 @@ def test_create_from_keynote_template(tmp_path):
 def test_older_parser_artifacts_read_as_written():
     # arabic.numbers holds 34 as 33.999999999999996 (an older numbers-parser write)
     assert _grid(REPO / "tests" / "fixtures" / "arabic.numbers")[1][1] == 34
+
+
+# ── formulas must survive library re-saves (upstream report: re-save → #REF!) ─
+
+def test_edit_cell_refuses_a_save_that_breaks_a_formula(book, monkeypatch):
+    import copy
+
+    from iwork_studio import numbers_io as nio
+
+    real = nio.read_numbers
+    calls = {"n": 0}
+
+    def fake(path):
+        calls["n"] += 1
+        m = copy.deepcopy(real(path))
+        cell = next(c for c in m["sheets"][0]["tables"][0]["cells"] if c["ref"] == "R4C2")
+        cell["formula"] = "SUM(B2:B3)" if calls["n"] == 1 else "#REF!"
+        return m
+
+    monkeypatch.setattr(nio, "read_numbers", fake)
+    before = _sha(book)
+    with pytest.raises(WriteVerificationError):
+        nio.edit_cell(book, "A2", "x", sheet="Sales")
+    assert _sha(book) == before
+
+
+@pytest.mark.aqua
+def test_live_formulas_survive_library_writes(book):
+    """A formula made by Numbers must come through every no-app write intact."""
+    from iwork_studio import app_ops, numbers_format
+    from iwork_studio.numbers_io import edit_cell
+
+    def formula():
+        t = Document(str(book)).sheets["Sales"].tables[0]
+        c = t.cell(4, 1)
+        return c.formula if c.is_formula else None
+
+    ns.insert(book, "rows", values=[["Total", None]], sheet="Sales")
+    app_ops.set_formula(book, "B5", "=SUM(B2:B4)", sheet="Sales")
+    f0 = formula()
+    assert f0 and "REF" not in f0
+
+    edit_cell(book, "B2", 2000, sheet="Sales")
+    numbers_format.set_cell_style(book, "A1:B1", bold=True, sheet="Sales")
+    numbers_format.set_number_format(book, "B2:B5", "currency", currency_code="SAR", sheet="Sales")
+    ns.insert(book, "columns", values=[["Note"]], sheet="Sales")
+    assert formula() == f0
+
+    # Numbers still computes it from the edited value: 2000 + 950.5 + 700
+    out = app_ops.set_formula(book, "C5", "=B5", sheet="Sales")
+    assert abs(out["result"] - 3650.5) < 1e-9

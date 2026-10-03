@@ -29,7 +29,13 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from numbers_parser import Document
+import warnings
+
+# numbers-parser warns "unsupported version '26.4.0'" for files from newer Numbers
+# releases it hasn't listed yet; they read fine and every write is verified anyway.
+warnings.filterwarnings("ignore", message="unsupported version", category=RuntimeWarning)
+
+from numbers_parser import Document  # noqa: E402
 import numbers_parser.cell as _np_cell
 from numbers_parser.constants import DECIMAL128_BIAS as _D128_BIAS
 

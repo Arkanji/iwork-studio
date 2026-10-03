@@ -51,6 +51,8 @@ CORE_TOOLS = {
     "numbers_sort",
     "pages_list_placeholders",
     "pages_fill_placeholders",
+    "pages_read_tables",
+    "pages_set_table_cells",
     "keynote_slideshow",
 }
 SLIDE_TOOLS = {

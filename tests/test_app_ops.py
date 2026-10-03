@@ -252,6 +252,170 @@ def test_page_layout_has_no_body_text(monkeypatch, tmp_path):
         pages_io.read_body_text(tmp_path / "x.pages")
 
 
+# ── Pages tables ─────────────────────────────────────────────────────────────
+
+TABLES = [
+    {"index": 1, "name": "Budget", "rows": 3, "columns": 2, "cells": {
+        "A1": {"value": "البند", "shown_as": "البند"}, "B1": {"value": "Amount", "shown_as": "Amount"},
+        "A2": {"value": "Rent", "shown_as": "Rent"}, "B2": {"value": 1200, "shown_as": "1,200"},
+        "A3": {"value": "Total", "shown_as": "Total"}, "B3": {"value": 1200, "shown_as": "1,200", "formula": "SUM(B2)"}}},
+    {"index": 2, "name": "Notes", "rows": 1, "columns": 1, "cells": {"A1": {"value": "x", "shown_as": "x"}}},
+]
+
+
+@pytest.fixture()
+def tables_doc(tmp_path, monkeypatch):
+    p = tmp_path / "t.pages"
+    p.write_bytes(b"original")
+    state = {"after": None, "reads": 0, "scripts": [], "body_after": "body", "open": False}
+
+    def read(path):
+        state["reads"] += 1
+        return {"file": str(path), "tables": copy.deepcopy(TABLES if state["reads"] == 1 else state["after"])}
+
+    def script(path, inner, args, *, write):
+        state["scripts"].append((inner, args))
+        p.write_bytes(b"changed by app")
+        return "ok"
+
+    body = {"n": 0}
+
+    def read_body(path):
+        body["n"] += 1
+        return "body" if body["n"] == 1 else state["body_after"]
+
+    monkeypatch.setattr(pages_io, "preflight", lambda: {"ok": True})
+    monkeypatch.setattr(pages_io, "read_body_text", read_body)
+    monkeypatch.setattr(app_ops, "read_tables", read)
+    monkeypatch.setattr(app_ops, "_pages_script", script)
+    monkeypatch.setattr(app_ops, "_pages_open", lambda path, open_it=True: state["open"])
+    monkeypatch.setattr(app_ops, "_pages_close", lambda path: None)
+    return p, state
+
+
+def _tables_after(**cells):
+    t = copy.deepcopy(TABLES)
+    for ref, v in cells.items():
+        t[0]["cells"][ref].update(v)
+    return t
+
+
+def test_set_table_cells_ok(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(B2={"value": 1500.5}, A2={"value": "إيجار"}, B3={"value": 1500.5})
+    out = app_ops.set_table_cells(p, "Budget", {"b2": 1500.5, "A2": "إيجار"})
+    assert out["ok"] and out["cells"]["B2"]["value"] == 1500.5
+    inner, args = state["scripts"][0]
+    assert 'set value of cell "B2" of table 1 of d to 1500.5' in inner
+    assert 'set value of cell "A2" of table 1 of d to (item 3 of argv)' in inner
+    assert args == ["إيجار"]  # text travels as argv, never inside the script
+
+
+def test_set_table_cells_formula(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(A3={"value": 1200, "formula": "MAX(B2)"})
+    assert app_ops.set_table_cells(p, 1, {"A3": "=MAX(B2)"})["ok"]
+
+
+def test_formula_cells_may_recompute(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(B2={"value": 99}, B3={"value": 99})  # B3 = SUM(B2) recalculated
+    assert app_ops.set_table_cells(p, "Budget", {"B2": 99})["ok"]
+
+
+def test_collateral_cell_change_rolls_back(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(B2={"value": 99}, A1={"value": "?"})
+    with pytest.raises(pages_io.EditVerificationError, match="A1"):
+        app_ops.set_table_cells(p, "Budget", {"B2": 99})
+    assert p.read_bytes() == b"original"
+
+
+def test_text_turned_into_number_rolls_back(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(A2={"value": 123})
+    with pytest.raises(pages_io.EditVerificationError, match="looks like a number"):
+        app_ops.set_table_cells(p, "Budget", {"A2": "123"})
+    assert p.read_bytes() == b"original"
+
+
+def test_body_change_rolls_back(tables_doc):
+    p, state = tables_doc
+    state["after"] = _tables_after(B2={"value": 5}, B3={"value": 5})
+    state["body_after"] = "body changed"
+    with pytest.raises(pages_io.EditVerificationError, match="body"):
+        app_ops.set_table_cells(p, "Budget", {"B2": 5})
+    assert p.read_bytes() == b"original"
+
+
+def test_table_resized_rolls_back(tables_doc):
+    p, state = tables_doc
+    after = _tables_after(B2={"value": 5})
+    after[1]["rows"] = 2
+    state["after"] = after
+    with pytest.raises(pages_io.EditVerificationError, match="resized"):
+        app_ops.set_table_cells(p, "Budget", {"B2": 5})
+    assert p.read_bytes() == b"original"
+
+
+@pytest.mark.parametrize("table,cells,msg", [
+    ("Nope", {"B2": 1}, "tables named"),
+    (3, {"B2": 1}, "out of range"),
+    ("Budget", {"Z9": 1}, "outside"),
+    ("Budget", {"B 2": 1}, "bad cell"),
+    ("Budget", {"B2": True}, "values must be"),
+    ("Budget", {"B2": float("inf")}, "finite"),
+    ("Budget", {}, "1–500"),
+])
+def test_set_table_cells_bad_requests(tables_doc, table, cells, msg):
+    p, state = tables_doc
+    with pytest.raises(app_ops.AppOpError, match=msg):
+        app_ops.set_table_cells(p, table, cells)
+    assert p.read_bytes() == b"original" and state["scripts"] == []
+
+
+def test_table_named_like_a_number(tables_doc, monkeypatch):
+    p, state = tables_doc
+    named = copy.deepcopy(TABLES)
+    named[1]["name"] = "1"
+    state["reads"] = 0
+
+    def read(path):
+        state["reads"] += 1
+        return {"file": str(path), "tables": copy.deepcopy(named)}
+
+    monkeypatch.setattr(app_ops, "read_tables", read)
+    app_ops.set_table_cells(p, "1", {"A1": "x"})  # the table *named* "1" is table 2
+    assert "of table 2 of d" in state["scripts"][0][0]
+
+
+def test_set_table_cells_refuses_open_document(tables_doc):
+    p, state = tables_doc
+    state["open"] = True
+    with pytest.raises(ks.DocumentOpenError):
+        app_ops.set_table_cells(p, "Budget", {"B2": 1})
+
+
+def test_set_table_cells_page_layout(tables_doc, monkeypatch):
+    p, state = tables_doc
+
+    def no_body(path):
+        raise pages_io.OutOfScopeError("page layout")
+
+    monkeypatch.setattr(pages_io, "read_body_text", no_body)
+    state["after"] = _tables_after(B2={"value": 7}, B3={"value": 7})
+    assert app_ops.set_table_cells(p, "Budget", {"B2": 7})["ok"]
+
+
+def test_parse_tables():
+    us, rs = "\x1f", "\x1e"
+    raw = (f"T{us}Budget{us}2{us}1{rs}C{us}A1{us}n{us}3,5{us}3.50{us}{rs}C{us}A2{us}d{us}2026-10-03T00:00:00{us}3 Oct{us}{rs}"
+           f"T{us}Big{us}200{us}100{rs}")
+    t = app_ops._parse_tables(raw)
+    assert t[0]["cells"]["A1"]["value"] == 3.5 and t[0]["cells"]["A2"]["type"] == "date"
+    assert "truncated" in t[1]
+
+
 # ── Keynote: transitions / images ────────────────────────────────────────────
 
 STYLE = {"theme": "Basic White", "layouts": ["Title"], "slides": [
@@ -578,6 +742,43 @@ def test_live_keynote_add_chart_then_edit(tmp_path):
     # the deck now has a chart; app-driven edits still work and keep it
     assert app_ops.set_transition(deck, 1, "dissolve")["ok"]
     assert ks.duplicate_slide(deck, 1)["ok"]
+
+
+@pytest.mark.aqua
+def test_live_pages_arabic_direction(tmp_path):
+    """Writing Arabic into Pages: text must be exact, and we learn how Pages sets direction."""
+    doc = tmp_path / "ar.pages"
+    app_ops.create_document(doc)  # Blank: word processing
+    out = pages_io.edit_pages_body(doc, mode="set_body", new_body="مرحبا بكم\rهذا اختبار")
+    assert out["after"] == "مرحبا بكم\rهذا اختبار"
+    rep = out["direction"]
+    assert rep["checked"], "the Word export used for the direction check failed"
+    out2 = pages_io.edit_pages_body(doc, "اختبار", "تجربة")  # rolls back if an RTL paragraph flips
+    assert out2["direction"]["checked"]
+    if rep.get("arabic_paragraphs_left_to_right"):
+        pytest.xfail(f"Pages stores new Arabic paragraphs left-to-right: {rep}")
+
+
+@pytest.mark.aqua
+def test_live_pages_tables(tmp_path):
+    """Find a built-in Pages template with a table, read it, write text/number/formula cells."""
+    from iwork_studio import helpers
+
+    names = helpers.list_templates("pages")["templates"]
+    picks = [n for n in names if any(w in n.lower() for w in ("invoice", "report", "budget", "table"))][:4]
+    for i, name in enumerate(picks):
+        doc = tmp_path / f"t{i}.pages"
+        app_ops.create_document(doc, name)
+        tables = app_ops.read_tables(doc)["tables"]
+        usable = [t for t in tables if not t.get("truncated") and t["rows"] >= 2 and t["columns"] >= 2]
+        if not usable:
+            continue
+        t = usable[0]
+        free = [r for r, c in t["cells"].items() if not c.get("formula")]
+        out = app_ops.set_table_cells(doc, t["index"], {free[0]: "تجربة", free[1]: 1234.5})
+        assert out["cells"][free[0]]["value"] == "تجربة" and out["cells"][free[1]]["value"] == 1234.5
+        return
+    pytest.skip(f"no template with a table among {picks}")
 
 
 @pytest.mark.aqua

@@ -377,3 +377,47 @@ class TestD4ArabicRenderBaseline:
         )
         result = pages_io.verify_render(pages_file, "baseline paragraph")
         assert result["ok"] is True
+
+# ── paragraph direction (Arabic) — headless parts ────────────────────────────
+
+def _docx_with(tmp_path, paras):
+    import docx
+    from docx.oxml import OxmlElement
+
+    d = docx.Document()
+    for text, rtl in paras:
+        p = d.add_paragraph(text)
+        if rtl:
+            p._p.get_or_add_pPr().append(OxmlElement("w:bidi"))
+    out = tmp_path / "d.docx"
+    d.save(str(out))
+    return out
+
+
+def test_docx_paragraph_directions(tmp_path):
+    from iwork_studio import pages_io
+
+    got = pages_io.docx_paragraph_directions(_docx_with(tmp_path, [("مرحبا", True), ("Hello", False)]))
+    assert got == [{"text": "مرحبا", "rtl": True}, {"text": "Hello", "rtl": False}]
+
+
+def test_replace_all_that_flips_rtl_is_damage():
+    from iwork_studio import pages_io
+
+    before = [{"text": "مرحبا", "rtl": True}, {"text": "x", "rtl": False}]
+    after = [{"text": "أهلا", "rtl": False}, {"text": "x", "rtl": False}]
+    with pytest.raises(pages_io.EditVerificationError, match="right-to-left"):
+        pages_io._direction_report(before, after, "replace_all")
+
+
+def test_set_body_reports_arabic_left_to_right():
+    from iwork_studio import pages_io
+
+    rep = pages_io._direction_report([], [{"text": "مرحبا", "rtl": False}, {"text": "Hi", "rtl": False}], "set_body")
+    assert rep["arabic_paragraphs_left_to_right"] == [1] and "warning" in rep
+
+
+def test_direction_check_is_skipped_when_unreadable():
+    from iwork_studio import pages_io
+
+    assert pages_io._direction_report(None, None, "replace_all") == {"checked": False}

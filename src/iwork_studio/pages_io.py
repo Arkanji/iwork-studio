@@ -56,6 +56,8 @@ __all__ = [
     "read_pages",
     "read_body_text",
     "document_info",
+    "paragraph_directions",
+    "docx_paragraph_directions",
     "export_docx",
     "extract_docx_text",
     "edit_pages_body",
@@ -265,6 +267,56 @@ def extract_docx_text(docx_path: str | os.PathLike) -> list[str]:
     return [p.text for p in d.paragraphs]
 
 
+_W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def docx_paragraph_directions(docx_path: str | os.PathLike) -> list[dict]:
+    """[{text, rtl}] per paragraph of a .docx (rtl = the paragraph's w:bidi flag)."""
+    import docx  # python-docx
+
+    out = []
+    for p in docx.Document(str(docx_path)).paragraphs:
+        ppr = p._p.pPr
+        bidi = ppr.find(f"{_W}bidi") if ppr is not None else None
+        rtl = bidi is not None and bidi.get(f"{_W}val", "1") not in ("0", "false", "off")
+        out.append({"text": p.text, "rtl": rtl})
+    return out
+
+
+def paragraph_directions(path: str | os.PathLike) -> list[dict]:
+    """Paragraph directions of a .pages body, via a Word export (needs Pages)."""
+    work = Path(tempfile.mkdtemp(prefix="iwork-dir-"))
+    try:
+        return docx_paragraph_directions(export_docx(path, work / "body.docx"))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _directions_or_none(path) -> list[dict] | None:
+    try:
+        return paragraph_directions(path)
+    except Exception:  # noqa: BLE001 — the direction check is extra; the text check still runs
+        return None
+
+
+def _direction_report(before: list[dict] | None, after: list[dict] | None, mode: str) -> dict:
+    """replace_all: an RTL paragraph that became LTR is damage (raises).
+    set_body: new paragraphs, so only report Arabic paragraphs that came out LTR."""
+    if before is None or after is None:
+        return {"checked": False}
+    rep = {"checked": True, "rtl_before": sum(p["rtl"] for p in before), "rtl_after": sum(p["rtl"] for p in after)}
+    if mode == "replace_all" and len(before) == len(after):
+        flipped = [i + 1 for i, (b, a) in enumerate(zip(before, after)) if b["rtl"] and not a["rtl"]]
+        if flipped:
+            raise EditVerificationError(f"paragraphs {flipped[:5]} lost right-to-left direction; backup restored")
+    arabic_ltr = [i + 1 for i, p in enumerate(after) if not p["rtl"] and any("\u0600" <= ch <= "\u06ff" for ch in p["text"])]
+    if arabic_ltr:
+        rep["arabic_paragraphs_left_to_right"] = arabic_ltr[:20]
+        rep["warning"] = ("some Arabic paragraphs are set left-to-right; the text is intact but may display "
+                          "right-aligned wrongly. Fix direction in Pages (Format › Text › paragraph direction).")
+    return rep
+
+
 def read_pages(path: str | os.PathLike) -> dict:
     """D1: full read — body text via AppleScript readback + docx export
     paragraph model. Returns a JSON-serialisable evidence dict."""
@@ -374,6 +426,8 @@ def edit_pages_body(
         if find not in before:
             raise ValueError(f"find {find!r} not present in body text of {target}")
 
+    dirs_before = _directions_or_none(target)
+
     if backup_dir is None:
         backup_dir = target.parent / f"{target.name}.backups"
     backup_dir = Path(backup_dir)
@@ -414,6 +468,12 @@ def edit_pages_body(
             "post-save readback disagrees with the requested edit; "
             f"backup restored. expected={new_text!r} readback={after!r}"
         )
+    try:
+        direction = _direction_report(dirs_before, _directions_or_none(target) if dirs_before is not None else None,
+                                      mode)
+    except EditVerificationError:
+        _restore(target, backup_path)
+        raise
 
     return {
         "ok": True,
@@ -423,6 +483,7 @@ def edit_pages_body(
         "after": after,
         "changed": before != after,
         "backup": str(backup_path),
+        "direction": direction,
     }
 
 

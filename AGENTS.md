@@ -46,7 +46,7 @@ Use it whenever a request touches one of those.
 | Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_set_transition` | macOS + Keynote + GUI session |
 | Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
 | Present | `keynote_slideshow` | macOS + Keynote + GUI session |
-| Pages text | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders` | macOS + Pages + GUI session |
+| Pages text and tables | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders`, `pages_read_tables`, `pages_set_table_cells` | macOS + Pages + GUI session |
 | New file from Apple's templates · from the user's own file | `iwork_list_templates`, `iwork_create` · `iwork_create_from_template` | the app · Python only |
 | Export (PDF, xlsx, csv, docx, epub, pptx, images, movie…) | `iwork_export` | macOS + the app |
 | Check the rendered result | `iwork_verify_render`, `iwork_verify_format` | macOS + the app + GUI session |
@@ -62,8 +62,9 @@ Use it whenever a request touches one of those.
   app-driven routes work on them and check every chart is kept. Add Keynote
   charts with `keynote_add_chart`; Numbers/Pages charts can't be created. Never
   bypass a refusal.
-- **Pages has three writes**: `pages_replace_all`, `pages_set_body`
-  (resets body formatting — warn the user) and `pages_fill_placeholders`.
+- **Pages has four writes**: `pages_replace_all`, `pages_set_body`
+  (resets body formatting — warn the user), `pages_fill_placeholders` and
+  `pages_set_table_cells` (existing tables only; new tables can't be created).
   Anything richer is out of scope (`PagesOutOfScopeError`). Run
   `pages_preflight` first; a `PagesUnavailableError` / -1712 means a human must
   dismiss a dialog once. Page-layout documents (most letter/flyer templates)

@@ -3,10 +3,10 @@
 <img src="assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
 [![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.1.0-1a7f79)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.2.0-1a7f79)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-50%20tools-8A2BE2)](#all-50-tools)
+[![MCP server](https://img.shields.io/badge/MCP-52%20tools-8A2BE2)](#all-52-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
@@ -15,7 +15,7 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 50 tools](#all-50-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 52 tools](#all-52-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
 
 <br>
 
@@ -58,6 +58,8 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 >
 > *"Fill the Name and Date fields in offer-letter.pages, then export it as a password-protected PDF."*
 >
+> *"In the invoice.pages table, set the quantity in B3 to 12 and make D9 the total of D2:D8."*
+>
 > *"Find my Keynote decks from this week and export each one to PowerPoint."*
 >
 > *"Undo the last change to budget.numbers."*
@@ -66,9 +68,9 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 
 | | **Numbers** | **Keynote** | **Pages** |
 |---|---|---|---|
-| **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text and placeholders |
+| **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text, placeholders and tables |
 | **Create** | From data or CSV ⚡ · from a built-in template · from your own file | From a built-in theme · from your own deck | From a built-in template · from your own file |
-| **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders |
+| **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
 | **Format** | Fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Theme · slide layout · text font, size and colour · transitions | — |
 | **Export** | PDF · Excel · CSV | PDF · PowerPoint · images · movie | PDF · Word · EPUB · text · RTF |
 | **Present** | | Start, stop, next, previous | |
@@ -83,7 +85,7 @@ On purpose, so it never breaks a file:
 
 - **Files with charts** are refused by the tools that work without the app: their rewrite can silently break a chart's link to its data. The app-driven tools (Keynote slides, theming, transitions, images; Numbers formulas and sort) work on them and check every chart is still there.
 - **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added.
-- **Pages** is limited to text: replace, set body and placeholders (page-layout documents, like most letter templates, only take placeholders). There is no Pages file format parser anywhere, so it doesn't fake one.
+- **Pages** is limited to text and existing tables: replace, set body, placeholders and table cells. New tables can't be created (Pages 15 doesn't script it), and page-layout documents, like most letter templates, have no body text. There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, editing a theme's master slides. Page margins and page setup are planned.
 
@@ -106,11 +108,12 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 
 ## Arabic & RTL
 
-- Arabic text round-trips exactly in all three apps, including presenter notes and Pages placeholders.
+- Arabic text round-trips exactly in all three apps, including presenter notes, Pages placeholders and Pages table cells.
+- **Paragraph direction is checked in Pages.** A replace that flips a right-to-left paragraph to left-to-right is rolled back, and new Arabic paragraphs that come out left-to-right are flagged.
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 50 tools
+## All 52 tools
 
 Writes are marked destructive and reads read-only, so clients can ask before writing.
 
@@ -169,13 +172,14 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Pages</b> (5)</summary>
+<summary><b>Pages</b> (7)</summary>
 
 | Tool | What it does |
 |---|---|
 | `pages_preflight` | Checks Pages can answer (run once first) |
 | `pages_replace_all` · `pages_set_body` | Replace text everywhere · replace the whole body (resets its formatting) |
 | `pages_list_placeholders` · `pages_fill_placeholders` | Template fields like Name and Date |
+| `pages_read_tables` · `pages_set_table_cells` | Read every table · write text, numbers and formulas into an existing table |
 
 </details>
 
@@ -226,7 +230,10 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 12. **numbers-parser doesn't update formula references when rows move**, so mid-table inserts in formula tables are refused.
 13. **Keynote colours are 0–65535 per channel**, not 0–255 or 0–1.
 14. **Pages page-layout documents have no body text** (`bodyText()` is null), and most letter and flyer templates are page layout. Placeholders are filled and checked across every text box instead.
-15. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
+15. **Pages tables are invisible to JavaScript** scripting but readable and writable from AppleScript; creating tables is broken in Pages 15, so only existing tables are offered.
+16. **The Pages sandbox refuses AppleScript `open`** for files outside it; JavaScript `open` is allowed, so documents are opened that way and then found by their exact path.
+17. **numbers-parser can break formulas on re-save** (an upstream report). Every no-app write compares every formula, so a broken one is caught and nothing changes.
+18. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
 
 More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 
@@ -237,7 +244,7 @@ More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md)
 
 ```
 pure Python file parsers (headless, deterministic)  →  .numbers everything, .key text
-the real app via AppleScript / JXA                   →  .key slides & theming, .pages, formulas, sort, export, render checks
+the real app via AppleScript / JXA                   →  .key slides & theming, .pages text & tables, formulas, sort, export, render checks
 MCP server · CLI scripts · skill                     →  thin wrappers over the same library and the same safety model
 ```
 

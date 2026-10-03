@@ -60,7 +60,7 @@ New routes still need a probe and evidence first.
 | P2 | Per-paragraph access works via `doc.bodyText.paragraphs[i]`; properties are `font` / `size` / `color` only (no `bold`/`italic`; use a PostScript bold font) | UPSTREAM | Input for the Pages Big Bet |
 | P3 | Setting `doc.bodyText = "…"` destroys ALL formatting; `bodyText.paragraphs[i] = "…"` preserves the other paragraphs' formatting | AGREES (partly) | Explains why our `set_body` resets formatting. The per-paragraph form is the Big Bet candidate |
 | P4 | A paragraph containing `\n` becomes several real paragraphs; index bookkeeping must count them | UPSTREAM | |
-| P5 | Tables are invisible to JXA (-2763 `TMAScriptTableInfoProxy`) but fully exposed to AppleScript: read, write cells (`=` → formula), resize | UPSTREAM | Input for the Pages Big Bet |
+| P5 | Tables are invisible to JXA (-2763 `TMAScriptTableInfoProxy`) but fully exposed to AppleScript: read, write cells (`=` → formula), resize | HANDLED | `pages_read_tables` / `pages_set_table_cells` use AppleScript on a JXA-opened document, bulk-reading `value/formatted value/formula of every cell` |
 | P6 | 15.x: table *creation* broken in both JXA and AppleScript (-2763); upstream falls back to menu clicks via System Events (needs Accessibility) | UPSTREAM | UI scripting is out of our safety model; do not adopt |
 | P7 | Paragraph styles (Title, Heading 1, …), alignment, indent, line spacing are not in the scripting dictionary | UPSTREAM | A hard wall: no route can offer these |
 | P8 | Synthetic keystrokes are silently blocked while any app has secure keyboard entry (e.g. a focused password field) | UPSTREAM | Another reason to never rely on UI scripting |
