@@ -192,21 +192,16 @@ def iwork_capabilities() -> dict[str, Any]:
         "gui_session": _aqua_status(),
         "apps": _app_status(),
         "routes": {
-            ".numbers": "read full model + edit one cell, pure Python (no app needed)",
-            ".key": "read text model + deck-wide find/replace, pure Python (no app needed)",
-            ".pages": "read body + replace_all + set_body, via the Pages app (GUI session)",
-            "render_verify": "export PDF via the app and assert visible text (GUI session)",
-            "keynote_slide_ops": "add/duplicate/delete/move/skip/notes via the Keynote app (GUI session)",
+            "no_app_needed": "read any .numbers/.key; create Numbers files (data, CSV); edit, format and restructure "
+                             "Numbers tables; Keynote find/replace; metadata, thumbnails, find files; undo",
+            "needs_the_app": "Pages text, placeholders and tables; Numbers formulas, recalculate, sort; Keynote slides, "
+                             "theming, transitions, images, charts, slideshow; new files from Apple templates; "
+                             "export; render and format checks",
         },
-        "keynote_slide_ops": {
-            "enabled": keynote_slides.slide_ops_enabled(),
-            "observed_on_live_mac": sorted(keynote_slides.VERIFIED_OPS),
-            "not_yet_observed": sorted(set(keynote_slides.SLIDE_OPS) - keynote_slides.VERIFIED_OPS),
-            "safety_net": "backup + per-slide readback + rollback on any mismatch",
-        },
+        "keynote_slide_ops": {"enabled": keynote_slides.slide_ops_enabled()},
         "refused_by_design": [
-            "writes to files containing charts",
-            "Pages edits beyond replace_all / set_body",
+            "no-app writes to files containing charts (app-driven tools work on them)",
+            "Pages edits beyond replace / set body / placeholders / table cells; creating Pages tables",
             "docx/pptx/xlsx round-trip conversion",
         ],
     }
