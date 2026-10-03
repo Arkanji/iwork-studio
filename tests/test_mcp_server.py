@@ -35,6 +35,11 @@ CORE_TOOLS = {
     "numbers_set_headers",
     "numbers_merge_cells",
     "iwork_verify_format",
+    "iwork_export",
+    "iwork_metadata",
+    "iwork_thumbnail",
+    "iwork_find",
+    "iwork_list_templates",
 }
 SLIDE_TOOLS = {
     "keynote_add_slide",
@@ -43,6 +48,7 @@ SLIDE_TOOLS = {
     "keynote_move_slide",
     "keynote_skip_slide",
     "keynote_set_presenter_notes",
+    "keynote_list_slides",
     "keynote_list_themes",
     "keynote_inspect_style",
     "keynote_set_theme",
@@ -186,3 +192,21 @@ def test_format_tools_end_to_end(numbers_file):
     a1 = next(c for c in lay["cells"] if c["ref"] == "A1")
     assert a1["style"]["bold"] and a1["style"]["bg_color"] == "#1a7f79"
     assert bad.is_error and "CellRefError" in bad.content[0].text
+
+
+def test_readonly_helpers_over_mcp(tmp_path):
+    deck = tmp_path / "d.key"
+    shutil.copy2(REPO / "tests" / "fixtures" / "arabic.key", deck)
+
+    async def steps(c):
+        meta = _payload(await c.call_tool("iwork_metadata", {"path": str(deck)}))
+        thumb = _payload(await c.call_tool("iwork_thumbnail", {"path": str(deck)}))
+        found = _payload(await c.call_tool("iwork_find", {"folder": str(tmp_path), "kind": "keynote"}))
+        fenced = await c.call_tool("iwork_export", {"path": str(deck), "format": "pdf", "out": "/etc/x.pdf"})
+        return meta, thumb, found, fenced
+
+    meta, thumb, found, fenced = _session(steps, IWORK_STUDIO_ROOTS=str(tmp_path))
+    assert meta["kind"] == "Keynote" and meta["slides"] == 1
+    assert Path(thumb["thumbnail"]).exists() and thumb["width"] > 0
+    assert found["files"] == [str(deck.resolve())]
+    assert fenced.is_error and "outside IWORK_STUDIO_ROOTS" in fenced.content[0].text

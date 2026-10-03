@@ -94,3 +94,6 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | L5 | A repo inside an iCloud-synced folder (Desktop/Documents) gets "name 2" conflict copies inside `.git` → `fatal: bad object refs/heads/main 2` | CONFIRMED | keep clones in a non-synced folder, e.g. `~/Developer` |
 | L6 | Numbers Creator Studio: AppleScript `open` + `delay` + `front document` + `export … as PDF` timed out (90 s) | CONFIRMED | replaced by JXA `export(doc_from_open, {as:'PDF'})` |
 | L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | |
+| L8 | Keynote text colour (`objectText.color`) takes 0–65535 per channel; 0–1 floats (as some tools write) give near-black | CONFIRMED | `keynote_format_text` writes 0–65535 and reads the colour back |
+| L9 | numbers-parser: assigning attributes on `cell.style` in place is accepted but silently not saved | CONFIRMED | styles are applied by deriving a registered style; readback catches any silent drop |
+
