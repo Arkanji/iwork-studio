@@ -5,7 +5,7 @@ Protocol:
   2. hash the source
   3. app opens the file, exports into a fresh temp folder, closes without saving
   4. the export is read back with a SECOND, independent tool and compared with
-     the source (PyMuPDF, openpyxl, python-pptx, python-docx, zip/text checks)
+     the source (pdfminer.six, openpyxl, python-pptx, python-docx, zip/text checks)
   5. the source must be byte-identical afterwards
   6. only then is the result moved to its destination (an existing destination
      is refused unless overwrite=True, in which case it is backed up first)
@@ -143,17 +143,17 @@ def _norm(s: str) -> str:
 
 def _verify(out: Path, fmt: str, kind: str, src: Path, password: str | None) -> dict:
     if fmt == "pdf":
-        import pymupdf as fitz
+        from iwork_studio import pdf as _pdf
 
-        doc = fitz.open(str(out))
         if password:
-            if not doc.needs_pass:
+            if not _pdf.needs_password(out):
                 raise ExportError("PDF is not password-protected although a password was requested")
-            if not doc.authenticate(password):
+            if not _pdf.opens_with(out, password):
                 raise ExportError("PDF does not open with the given password")
-        if doc.page_count < 1:
+        pages = _pdf.page_count(out, password or "")
+        if pages < 1:
             raise ExportError("PDF has no pages")
-        return {"pages": doc.page_count, "encrypted": bool(password)}
+        return {"pages": pages, "encrypted": bool(password)}
     if fmt == "xlsx":
         if password:
             if not out.read_bytes()[:8] == bytes.fromhex("D0CF11E0A1B11AE1"):

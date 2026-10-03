@@ -526,7 +526,7 @@ def _prune_backups(backup_dir: Path, max_backups: int) -> None:
         pass
 
 
-# ── D4: render-verify (Pages export → PyMuPDF) ────────────────────────────────
+# ── D4: render-verify (Pages export → pdfminer.six) ────────────────────────────────
 
 
 def render_pdf(
@@ -568,25 +568,22 @@ def verify_render(
     expected_pages: int | None = None,
     keep_pdf: str | os.PathLike | None = None,
 ) -> dict:
-    """D4 full loop: Pages → export PDF → PyMuPDF text-layer match
+    """D4 full loop: Pages → export PDF → pdfminer.six text-layer match
     (ligature-aware Arabic matcher shared with Phases B/C —
     render_verify.assert_text_layer)."""
-    import pymupdf as fitz
-
+    from iwork_studio import pdf as _pdf
     from iwork_studio.render_verify import assert_page_count, assert_text_layer
 
     pdf = render_pdf(pages_path, out_dir=Path(tempfile.mkdtemp(prefix="iwork-prender-")))
     try:
-        with fitz.open(pdf) as doc:
-            pages = doc.page_count
+        pages = _pdf.page_count(pdf)
         if expected_pages is not None:
             assert_page_count(pdf, expected_pages)
         assert_text_layer(pdf, expected_fragment)
     finally:
         if keep_pdf:
             shutil.copy2(pdf, keep_pdf)
-    with fitz.open(pdf) as doc:
-        text_sample = doc[0].get_text()[:400]
+    text_sample = (_pdf.page_texts(pdf) or [""])[0][:400]
     return {
         "ok": True,
         "pdf": str(pdf),

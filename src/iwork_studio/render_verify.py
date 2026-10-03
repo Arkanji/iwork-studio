@@ -1,7 +1,7 @@
-"""iWork Studio — render verification loop (B6): Numbers → PDF → PyMuPDF.
+"""iWork Studio — render verification loop (B6): Numbers → PDF → pdfminer.six.
 
 Protocol (VerificationLoop):
-  render_pdf(path) → PyMuPDF doc
+  render_pdf(path) → pdfminer.six doc
   assert_page_count(expected)
   assert_text_layer(expected_fragment, page=None)
 
@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF (`import fitz` prints a deprecation warning to stdout)
+from iwork_studio import pdf as _pdf
 
 from iwork_studio.apps import app_name
 
@@ -118,8 +118,7 @@ function run(argv) {{
 
 
 def assert_page_count(pdf_path: str | os.PathLike, expected: int) -> None:
-    with fitz.open(pdf_path) as doc:
-        actual = doc.page_count
+    actual = _pdf.page_count(pdf_path)
     if actual != expected:
         raise AssertionError(f"page count: expected {expected}, got {actual}")
 
@@ -142,11 +141,14 @@ def assert_text_layer(
          order/ligature decomposition). Arabic-only, never applied to
          Latin fragments, so it cannot mask a wrong-language render.
     """
-    with fitz.open(pdf_path) as doc:
-        if page is None:
-            text = "\n".join(p.get_text() for p in doc)
-        else:
-            text = doc[page].get_text()
+    import unicodedata
+
+    texts = _pdf.page_texts(pdf_path)
+    text = "\n".join(texts) if page is None else texts[page]
+    # Shaped Arabic can come out as presentation forms (U+FBxx/U+FExx); NFKC maps
+    # them, and the lam-alef ligature, back to plain letters.
+    text = unicodedata.normalize("NFKC", text)
+    expected_fragment = unicodedata.normalize("NFKC", expected_fragment)
     candidates = [expected_fragment]
     is_arabic = any("\u0600" <= ch <= "\u06FF" for ch in expected_fragment)
     if is_arabic:
@@ -187,8 +189,7 @@ def verify_render(
     finally:
         if keep_pdf:
             shutil.copy2(pdf, keep_pdf)
-    with fitz.open(pdf) as doc:
-        text_sample = doc[0].get_text()[:400]
+    text_sample = (_pdf.page_texts(pdf) or [""])[0][:400]
     return {
         "ok": True,
         "pdf": str(pdf),

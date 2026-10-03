@@ -33,12 +33,13 @@ def _key_texts(src):
 def make(fmt, src, out, password=None, drop=False):
     """What a well-behaved (or broken, drop=True) app would write."""
     if fmt == "pdf":
-        import pymupdf as fitz
+        from reportlab.lib import pdfencrypt
+        from reportlab.pdfgen import canvas
 
-        d = fitz.open()
-        d.new_page().insert_text((72, 72), "x")
-        kw = {"encryption": fitz.PDF_ENCRYPT_AES_256, "user_pw": password, "owner_pw": password} if password else {}
-        d.save(out, **kw)
+        enc = pdfencrypt.StandardEncryption(password, ownerPassword=password, strength=128) if password else None
+        c = canvas.Canvas(str(out), encrypt=enc)
+        c.drawString(72, 72, "x")
+        c.save()
     elif fmt == "xlsx":
         import openpyxl
 

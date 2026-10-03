@@ -60,3 +60,39 @@ def test_export_failure_is_loud(numbers_file, tmp_path, monkeypatch, captured):
     monkeypatch.setattr(render_verify.subprocess, "run", lambda cmd, **kw: Bad())
     with pytest.raises(RuntimeError, match=r"\(6\)"):
         render_verify.render_pdf(numbers_file, out_dir=tmp_path / "out")
+
+
+# ── text-layer matching on pdfminer.six output ───────────────────────────────
+
+def _pdf_with(tmp_path, *lines):
+    from reportlab.pdfgen import canvas
+
+    p = tmp_path / "t.pdf"
+    c = canvas.Canvas(str(p))
+    for i, line in enumerate(lines):
+        c.drawString(72, 720 - 20 * i, line)
+    c.save()
+    return p
+
+
+def test_text_layer_found_in_real_pdf(tmp_path):
+    from iwork_studio import render_verify as rv
+
+    pdf = _pdf_with(tmp_path, "Revenue 2026", "Notes")
+    rv.assert_text_layer(pdf, "Revenue")
+    rv.assert_page_count(pdf, 1)
+    with pytest.raises(AssertionError):
+        rv.assert_text_layer(pdf, "Profit")
+
+
+@pytest.mark.parametrize("layer", [
+    "ﺍﻟﺎﺳﻤ",   # الاسم as shaped presentation forms (visual order)
+    "مسالا",                              # reversed logical letters
+    "ﻻﺳﻤ x",              # lam-alef ligature form
+])
+def test_arabic_matches_shaped_text_layers(monkeypatch, layer):
+    from iwork_studio import pdf as _pdf
+    from iwork_studio import render_verify as rv
+
+    monkeypatch.setattr(_pdf, "page_texts", lambda p, password="": [layer])
+    rv.assert_text_layer("x.pdf", "الاسم" if "x" not in layer else "لاسم")

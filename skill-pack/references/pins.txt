@@ -17,9 +17,9 @@ numbers-parser==4.19.0
 keynote-parser==1.14.5.0
 
 # ── supporting libraries ───────────────────────────────────────────────────
-# PyMuPDF used for PDF render verification (PDF export from Numbers/Keynote/
-# Pages -> PyMuPDF text-layer extract; assert visible text matches write intent).
-PyMuPDF==1.28.2
+# pdfminer.six (MIT) reads PDFs for verification: render checks (exported PDF
+# text layer), format checks (font/size/colour per span), export checks.
+pdfminer.six==20260107
 
 # python-docx used to read .docx intermediates produced by the .pages route
 # (AppleScript export -> docx -> python-docx text extract).

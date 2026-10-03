@@ -10,7 +10,7 @@ keynote-parser route raises FileLockedError):
     close → parser re-read shows the edit, Arabic intact. This closes the
     "Keynote/Pages unverified" gap in the spec's GATE-SAVE table.
 
-C7 render-verify: Keynote `export ... as PDF` → PyMuPDF text layer,
+C7 render-verify: Keynote `export ... as PDF` → pdfminer.six text layer,
 reusing render_verify.assert_text_layer (ligature-aware Arabic matching).
 """
 
@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF (`import fitz` prints a deprecation warning to stdout)
+from iwork_studio import pdf as _pdf
 
 from iwork_studio.apps import app_name
 
@@ -162,7 +162,7 @@ def applescript_edit_text(
     return {"ok": True, "file": str(Path(path).resolve()), "changes": changes}
 
 
-# ── C7: render-verify (Keynote export → PyMuPDF) ──────────────────────────────
+# ── C7: render-verify (Keynote export → pdfminer.six) ──────────────────────────────
 
 
 def render_pdf(key_path: str | os.PathLike, out_dir: str | os.PathLike | None = None) -> Path:
@@ -201,7 +201,7 @@ def verify_render(
     expected_slides: int | None = None,
     keep_pdf: str | os.PathLike | None = None,
 ) -> dict:
-    """C7 full loop: Keynote → export PDF → PyMuPDF text-layer match
+    """C7 full loop: Keynote → export PDF → pdfminer.six text-layer match
     (reuses render_verify.assert_text_layer — ligature-aware for Arabic)."""
     import shutil
 
@@ -209,16 +209,14 @@ def verify_render(
 
     pdf = render_pdf(key_path, out_dir=Path(tempfile.mkdtemp(prefix="iwork-krender-")))
     try:
-        with fitz.open(pdf) as doc:
-            pages = doc.page_count
+        pages = _pdf.page_count(pdf)
         if expected_slides is not None:
             assert_page_count(pdf, expected_slides)
         assert_text_layer(pdf, expected_fragment)
     finally:
         if keep_pdf:
             shutil.copy2(pdf, keep_pdf)
-    with fitz.open(pdf) as doc:
-        text_sample = doc[0].get_text()[:400]
+    text_sample = (_pdf.page_texts(pdf) or [""])[0][:400]
     return {
         "ok": True,
         "pdf": str(pdf),
