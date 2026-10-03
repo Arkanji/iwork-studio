@@ -4,6 +4,17 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.3.0
+
+Reach + decks: designed documents, previews, one-click install.
+
+- **Build a deck from an outline:** `keynote_build_deck` makes a new deck from a theme and a list of slides (title, bullets, notes, image, layout), with an optional transition and design kit. Every slide is read back; a mismatch removes the new file. `keynote_set_slide_text` fills an existing slide's title and body.
+- **Design kits:** six kits (executive, banking, classic, teal, analytics, midnight) — a Latin + Arabic font pair bundled with macOS, a WCAG-checked palette and a type scale. `keynote_apply_design` and `numbers_apply_design` restyle a deck or a table; custom brand kits are contrast-checked. A design guide tells agents how to write slides and tables that look designed.
+- **Dry run everywhere:** every write that changes an existing file takes `dry_run=true` — the real change on a throwaway copy, with every check, returning exactly what would change.
+- **Install anywhere:** packaged for PyPI (`pip install iwork-studio`), listed for the MCP Registry, and shipped as a one-click Claude Desktop extension (`.mcpb`, with a folder picker). Releases publish automatically from a tag.
+- **Unattended live runs:** `scripts/live.sh` runs the Mac test suite, logs it, and quits the iWork apps the run opened (never an app with your documents).
+- `iwork_capabilities` describes the current routes.
+
 ## 2.2.0
 
 Pages tables, Arabic direction, formula safety.

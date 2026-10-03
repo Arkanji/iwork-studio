@@ -31,8 +31,8 @@ Use it whenever a request touches one of those.
 2. **Skill** — [`skill-pack/SKILL.md`](skill-pack/SKILL.md) (also at
    `.claude/skills/iwork-studio/`): CLI scripts with JSON output.
 3. **Python** — `pip install -e .`, then `iwork_studio.numbers_io`, `numbers_format`,
-   `numbers_structure`, `keynote_io`, `keynote_slides`, `keynote_theme`, `pages_io`,
-   `app_ops`, `exporter`, `helpers`, `backups`.
+   `numbers_structure`, `keynote_io`, `keynote_slides`, `keynote_theme`, `keynote_deck`,
+   `design`, `preview`, `pages_io`, `app_ops`, `exporter`, `helpers`, `backups`.
 
 **What each route needs**
 
@@ -44,7 +44,9 @@ Use it whenever a request touches one of those.
 | Formulas · recalculate · sort | `numbers_set_formula`, `numbers_recalculate`, `numbers_sort` | macOS + Numbers + GUI session |
 | Find/replace `.key` text | `keynote_replace_text` | Python only |
 | Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_set_transition` | macOS + Keynote + GUI session |
+| Build a deck from an outline · slide titles/bullets | `keynote_build_deck`, `keynote_set_slide_text` | macOS + Keynote + GUI session |
 | Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
+| Design kits: designed decks and tables | `iwork_list_design_kits`, `keynote_apply_design`, `numbers_apply_design` | Keynote: macOS + Keynote · Numbers: Python only |
 | Present | `keynote_slideshow` | macOS + Keynote + GUI session |
 | Pages text and tables | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders`, `pages_read_tables`, `pages_set_table_cells` | macOS + Pages + GUI session |
 | New file from Apple's templates · from the user's own file | `iwork_list_templates`, `iwork_create` · `iwork_create_from_template` | the app · Python only |
@@ -69,6 +71,12 @@ Use it whenever a request touches one of those.
   `pages_preflight` first; a `PagesUnavailableError` / -1712 means a human must
   dismiss a dialog once. Page-layout documents (most letter/flyer templates)
   have no body text: only `pages_fill_placeholders` applies to them.
+- **Preview broad changes**: every write on an existing file takes `dry_run=true`
+  (real change on a throwaway copy, returns what would change). Use it before
+  restyling, deleting or replacing widely, and show the user.
+- **Make it look designed**: use a design kit and follow
+  [`skill-pack/references/design-guide.md`](skill-pack/references/design-guide.md)
+  (one idea per slide, titles state the takeaway, right-aligned numbers).
 - **New files never overwrite.** Pick a new name if the tool says it exists.
 - **Stale totals**: Numbers doesn't recalculate on open. When a no-app edit
   returns `formulas_need_recalc`, run `numbers_recalculate` (Mac) or tell the user.
@@ -87,7 +95,8 @@ Use it whenever a request touches one of those.
 ## Working on it: change this codebase
 
 - Python 3.12. `uv run --extra test pytest -m "not aqua"` = the headless suite
-  (what CI runs). `pytest -m aqua` + `scripts/probe_keynote_slides.py` = the live lane;
+  (what CI runs). `pytest -m aqua` (or `scripts/live.sh`, unattended: logs and quits
+  the apps it opened) + `scripts/probe_keynote_slides.py` = the live lane;
   needs a Mac with iWork (classic or Creator Studio). Clone
   outside iCloud-synced folders.
 - Dependency pins: `pyproject.toml` must equal `skill-pack/references/pins.txt`
