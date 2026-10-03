@@ -186,3 +186,27 @@ def test_live_designed_deck(tmp_path):
 @pytest.mark.aqua
 def test_live_designed_table(table):
     assert design.apply_to_numbers(table, "teal")["ok"]
+
+
+def _with_boxes(a, title_font="HelveticaNeue-Bold"):
+    """Keynote reports its own title/body boxes (the normal case on a Mac)."""
+    k = design.get_kit("executive")
+    a["slides"][1]["title_box"] = {"text": "Plan", "font": title_font, "size": 52.0, "color": k["colors"]["title"].lower()}
+    a["slides"][1]["body_box"] = {"text": "Growth\rScale", "font": "HelveticaNeue", "size": 28.0,
+                                  "color": k["colors"]["body"].lower()}
+    return a
+
+
+def test_keynote_design_checks_keynotes_own_boxes(deck):
+    d, state = deck
+    state["after"] = _with_boxes(_designed())
+    assert design.apply_to_keynote(d, "executive", set_theme=False)["ok"]
+
+
+def test_keynote_design_title_box_wrong_rolls_back(deck):
+    d, state = deck
+    before = _sha(d)
+    state["after"] = _with_boxes(_designed(), title_font="Helvetica")
+    with pytest.raises(ks.SlideOpVerificationError, match="title"):
+        design.apply_to_keynote(d, "executive", set_theme=False)
+    assert _sha(d) == before

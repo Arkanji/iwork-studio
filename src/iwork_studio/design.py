@@ -184,49 +184,77 @@ def apply_to_keynote(path, kit="executive", *, set_theme: bool = True, **kw) -> 
             specs.append({"n": s["slide"], **{f"{role}_{lang}": fmt(role, scale, lang == "ar")
                                               for role in ("title", "body", "other") for lang in ("lat", "ar")}})
 
+        def check(where, got, w):
+            if not got:
+                return
+            if not kt._font_eq(got.get("font"), w["font"]):
+                raise ks.SlideOpVerificationError(
+                    f"{where}: font reads {got.get('font')!r}, wanted {w['font']!r} (is that font installed on this Mac?)")
+            if w["size"] is not None and abs(float(got.get("size") or 0) - w["size"]) > 0.1:
+                raise ks.SlideOpVerificationError(f"{where}: size reads {got.get('size')!r}, wanted {w['size']}")
+            want_hex = "#" + "".join(f"{v // 257:02x}" for v in w["rgb"])
+            if not kt._close(got.get("color"), want_hex):
+                raise ks.SlideOpVerificationError(f"{where}: colour reads {got.get('color')!r}, wanted {want_hex}")
+
+        def lang(text):
+            return "ar" if _ARABIC.search(text or "") else "lat"
+
         def expect(b, a):
             kt._same_slide_count(b, a)
             for x, y, sp in zip(b["slides"], a["slides"], specs):
                 if kt._texts(x) != kt._texts(y) or x.get("layout") != y.get("layout"):
                     raise ks.SlideOpVerificationError(f"slide {x['slide']}: text or layout changed")
-                roles = pick_roles(y["items"])  # by position: text-box order isn't stable (trap L4)
+                tb, bb = y.get("title_box"), y.get("body_box")
+                if tb is None and bb is None:  # Keynote didn't expose them: fallback by type size
+                    roles = pick_roles(y["items"])
+                    for it in y["items"]:
+                        role = "title" if it["index"] == roles["title"] else "body" if it["index"] == roles["body"] else "other"
+                        check(f"slide {y['slide']}", it, sp[f"{role}_{lang(it['text'])}"])
+                    continue
+                check(f"slide {y['slide']} title", tb, sp[f"title_{lang((tb or {}).get('text'))}"])
+                check(f"slide {y['slide']} body", bb, sp[f"body_{lang((bb or {}).get('text'))}"])
+                skip = {(tb or {}).get("text"), (bb or {}).get("text")}
                 for it in y["items"]:
-                    role = "title" if it["index"] == roles["title"] else "body" if it["index"] == roles["body"] else "other"
-                    w = sp[f"{role}_{'ar' if _ARABIC.search(it['text'] or '') else 'lat'}"]
-                    if not kt._font_eq(it.get("font"), w["font"]):
-                        raise ks.SlideOpVerificationError(
-                            f"slide {y['slide']}: font reads {it.get('font')!r}, wanted {w['font']!r} "
-                            "(is that font installed on this Mac?)")
-                    if w["size"] is not None and abs(float(it.get("size") or 0) - w["size"]) > 0.1:
-                        raise ks.SlideOpVerificationError(f"slide {y['slide']}: size reads {it.get('size')!r}")
-                    want_hex = "#" + "".join(f"{v // 257:02x}" for v in w["rgb"])
-                    if not kt._close(it.get("color"), want_hex):
-                        raise ks.SlideOpVerificationError(f"slide {y['slide']}: colour reads {it.get('color')!r}")
+                    if it["text"].strip() and it["text"] not in skip:
+                        check(f"slide {y['slide']}", it, sp[f"other_{lang(it['text'])}"])
 
-        # Roles by position, chosen in this same session (same rule as keynote_deck.pick_roles).
+        # Every box gets the body/other style first; then Keynote's own title and body
+        # boxes get theirs (the text-item list repeats placeholder boxes, so it can't
+        # tell which box is the title).
         script = """    const AR = /[\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF]/;
+    const style = (ot, w) => { ot.font = w.font; if (w.size !== null) ot.size = w.size; ot.color = w.rgb; };
+    const lang = (ot) => (AR.test(ot().toString()) ? "ar" : "lat");
     for (const sp of params.specs) {
-      const items = doc.slides[sp.n - 1].textItems();
-      const info = items.map((it, i) => {
-        let y = null, area = 0;
-        try { y = it.position().y; area = it.width() * it.height(); } catch (e) {}
-        return {i: i, y: y, area: area};
-      });
-      const placed = info.filter(o => o.y !== null);
-      let title = null, body = null;
-      if (placed.length) {
-        title = placed.reduce((p, q) => (q.y < p.y ? q : p)).i;
-        const rest = placed.filter(o => o.i !== title);
-        body = rest.length ? rest.reduce((p, q) => (q.area > p.area ? q : p)).i : null;
-      } else if (items.length) { title = 0; body = items.length > 1 ? 1 : null; }
-      items.forEach((it, i) => {
-        const role = i === title ? "title" : (i === body ? "body" : "other");
-        const ot = it.objectText;
-        const w = sp[role + "_" + (AR.test(ot().toString()) ? "ar" : "lat")];
-        ot.font = w.font;
-        if (w.size !== null) ot.size = w.size;
-        ot.color = w.rgb;
-      });
+      const s = doc.slides[sp.n - 1];
+      s.textItems().forEach(it => { const ot = it.objectText; style(ot, sp["other_" + lang(ot)]); });
+      let viaDefault = true;
+      for (const role of ["title", "body"]) {
+        try {
+          const ot = (role === "title" ? s.defaultTitleItem : s.defaultBodyItem).objectText;
+          ot();  // throws if the layout has no such box
+          style(ot, sp[role + "_" + lang(ot)]);
+        } catch (e) { if (role === "title") viaDefault = false; }
+      }
+      if (!viaDefault) {  // fallback: by type size, duplicates ignored (same rule as pick_roles)
+        const items = s.textItems(), seen = {}, boxes = [];
+        items.forEach((it, i) => {
+          let x = null, y = null, area = 0, size = 0;
+          try { const p = it.position(); x = p.x; y = p.y; area = it.width() * it.height(); } catch (e) {}
+          try { size = it.objectText.size(); } catch (e) {}
+          const key = x + "," + y + "," + area;
+          if (y !== null && seen[key]) return;
+          seen[key] = true;
+          boxes.push({i: i, y: y || 0, area: area, size: size});
+        });
+        if (boxes.length) {
+          const t = boxes.reduce((p, q) => (q.size > p.size || (q.size === p.size && q.y < p.y) ? q : p));
+          const rest = boxes.filter(o => o.i !== t.i);
+          const bd = rest.length ? rest.reduce((p, q) => (q.size > p.size || (q.size === p.size && q.area > p.area) ? q : p)) : null;
+          const tot = items[t.i].objectText;
+          style(tot, sp["title_" + lang(tot)]);
+          if (bd) { const bot = items[bd.i].objectText; style(bot, sp["body_" + lang(bot)]); }
+        }
+      }
     }
 """
         boxes = sum(len(s["items"]) for s in before["slides"])

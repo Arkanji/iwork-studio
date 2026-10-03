@@ -60,9 +60,9 @@ _STYLE_INVENTORY = """
       try { font = ot.font(); } catch (e) {}
       try { size = ot.size(); } catch (e) {}
       try { color = ot.color(); } catch (e) {}
-      let y = null, area = null;
-      try { y = tis[i].position().y; area = tis[i].width() * tis[i].height(); } catch (e) {}
-      items.push({index: i, text: ot().toString(), font: font, size: size, color: color, y: y, area: area});
+      let x = null, y = null, area = null;
+      try { const p = tis[i].position(); x = p.x; y = p.y; area = tis[i].width() * tis[i].height(); } catch (e) {}
+      items.push({index: i, text: ot().toString(), font: font, size: size, color: color, x: x, y: y, area: area});
     }
     let transition = null, images = null;
     try {
@@ -73,7 +73,19 @@ _STYLE_INVENTORY = """
     try { images = slides[s].images().length; } catch (e) {}
     let charts = null;
     try { charts = slides[s].charts().length; } catch (e) {}
-    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images, charts: charts});
+    // Keynote's own title/body placeholders (text items list them twice, so these are
+    // the reliable way to find the title and body boxes).
+    const box = (get) => {
+      try {
+        const ot = get().objectText;
+        let c = null;
+        try { c = ot.color(); } catch (e) {}
+        return {text: ot().toString(), font: ot.font(), size: ot.size(), color: c};
+      } catch (e) { return null; }
+    };
+    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images, charts: charts,
+                     title_box: box(() => slides[s].defaultTitleItem()),
+                     body_box: box(() => slides[s].defaultBodyItem())});
   }
 """
 
@@ -132,6 +144,9 @@ def read_style(path) -> dict:
         s["layout"] = layout
         for it in s["items"]:
             it["color"] = _color_hex(it.get("color"))
+        for k in ("title_box", "body_box"):
+            if s.get(k):
+                s[k]["color"] = _color_hex(s[k].get("color"))
     out["layouts"] = lay["layouts"]
     out["file"] = target
     return out
