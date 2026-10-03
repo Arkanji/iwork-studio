@@ -80,7 +80,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 On purpose, so it never breaks a file:
 
 - **Files with charts** are refused for writes. A text change can silently corrupt chart data.
-- **Pages** is limited to text: replace, set body and placeholders. There is no Pages file format parser anywhere, so it doesn't fake one.
+- **Pages** is limited to text: replace, set body and placeholders (page-layout documents, like most letter templates, only take placeholders). There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, editing a theme's master slides. Page margins and page setup are planned.
 
@@ -221,7 +221,8 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 11. **numbers-parser stored 12 as 12.000000000000002.** Decimals are now encoded exactly.
 12. **numbers-parser doesn't update formula references when rows move**, so mid-table inserts in formula tables are refused.
 13. **Keynote colours are 0–65535 per channel**, not 0–255 or 0–1.
-14. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
+14. **Pages page-layout documents have no body text** (`bodyText()` is null), and most letter and flyer templates are page layout. Placeholders are filled and checked across every text box instead.
+15. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
 
 More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 

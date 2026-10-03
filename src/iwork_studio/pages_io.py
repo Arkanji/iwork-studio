@@ -55,6 +55,7 @@ from iwork_studio.apps import app_name
 __all__ = [
     "read_pages",
     "read_body_text",
+    "document_info",
     "export_docx",
     "extract_docx_text",
     "edit_pages_body",
@@ -191,12 +192,37 @@ def read_body_text(path: str | os.PathLike) -> str:
 (() => {{
   const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(path)}));
-  const txt = doc.bodyText().toString();
+  let txt = null;
+  try {{ const b = doc.bodyText(); txt = (b === null || b === undefined) ? null : b.toString(); }} catch (e) {{}}
   app.close(doc, {{saving: 'no'}});
   return JSON.stringify(txt);
 }})()
 """
-    return json.loads(_jxa(script))
+    txt = json.loads(_jxa(script))
+    if txt is None:
+        raise OutOfScopeError(
+            f"{Path(path).name} is a page-layout document: it has no body text, so "
+            "replace_all / set_body don't apply. Its placeholders can still be filled."
+        )
+    return txt
+
+
+def document_info(path: str | os.PathLike) -> dict:
+    """Open → is it word-processing (has body text) or page layout, how many pages → close."""
+    script = f"""
+(() => {{
+  const app = Application({app_name(_APP)!r});
+  const doc = app.open(Path({_js_path(path)}));
+  let body = null, pages = null;
+  try {{ const b = doc.bodyText(); body = (b === null || b === undefined) ? null : b.toString().length; }} catch (e) {{}}
+  try {{ pages = doc.pages().length; }} catch (e) {{}}
+  app.close(doc, {{saving: 'no'}});
+  return JSON.stringify({{body_characters: body, pages: pages}});
+}})()
+"""
+    info = json.loads(_jxa(script))
+    info["kind"] = "word processing" if info.get("body_characters") is not None else "page layout"
+    return info
 
 
 def export_docx(
