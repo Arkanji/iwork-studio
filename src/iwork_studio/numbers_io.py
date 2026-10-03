@@ -30,6 +30,49 @@ from pathlib import Path
 from typing import Any
 
 from numbers_parser import Document
+import numbers_parser.cell as _np_cell
+from numbers_parser.constants import DECIMAL128_BIAS as _D128_BIAS
+
+
+def _exact_pack_decimal128(value) -> bytearray:
+    """numbers-parser's encoder goes through float division, so 12 is stored as
+    12.000000000000002. Encode the shortest exact decimal instead (12 → 12)."""
+    from decimal import Decimal
+
+    d = Decimal(repr(float(value))) if isinstance(value, float) else Decimal(value)
+    sign, digits, exp = d.as_tuple()
+    mantissa = int("".join(map(str, digits))) if digits else 0
+    e = exp + _D128_BIAS
+    buffer = bytearray(16)
+    buffer[15] |= e >> 7
+    buffer[14] |= (e & 0x7F) << 1
+    i = 0
+    while mantissa:
+        buffer[i] = mantissa & 0xFF
+        mantissa >>= 8
+        i += 1
+    if sign:
+        buffer[15] |= 0x80
+    return buffer
+
+
+def _exact_unpack_decimal128(buffer) -> float:
+    """Same bit layout as numbers-parser's decoder, read at spreadsheet precision
+    (15 significant digits, as Numbers and Excel show it): 3e-4 → 0.0003, and
+    33.999999999999996 (left by older numbers-parser writes of 34) → 34."""
+    from decimal import Decimal
+
+    exp = (((buffer[15] & 0x7F) << 7) | (buffer[14] >> 1)) - _D128_BIAS
+    mantissa = buffer[14] & 1
+    for i in range(13, -1, -1):
+        mantissa = mantissa * 256 + buffer[i]
+    if buffer[15] & 0x80:
+        mantissa = -mantissa
+    return float(format(Decimal(mantissa).scaleb(exp), ".15g"))
+
+
+_np_cell._pack_decimal128 = _exact_pack_decimal128
+_np_cell._unpack_decimal128 = _exact_unpack_decimal128
 
 __all__ = [
     "read_numbers",

@@ -59,7 +59,14 @@ _STYLE_INVENTORY = """
       try { color = ot.color(); } catch (e) {}
       items.push({index: i, text: ot().toString(), font: font, size: size, color: color});
     }
-    inv.slides.push({slide: s + 1, items: items});
+    let transition = null, images = null;
+    try {
+      const tp = slides[s].transitionProperties();
+      transition = {effect: tp.transitionEffect, duration: tp.transitionDuration,
+                    delay: tp.transitionDelay, automatic: tp.automaticTransition};
+    } catch (e) {}
+    try { images = slides[s].images().length; } catch (e) {}
+    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images});
   }
 """
 

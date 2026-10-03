@@ -52,9 +52,13 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   and close it. Slide numbers are 1-based.
 - Files containing charts are REFUSED for writes (ChartRefusalError). Do not try
   to work around it; tell the user.
-- Pages supports exactly two writes: pages_replace_all and pages_set_body.
-  Anything richer is out of scope by design. Run pages_preflight first; a -1712 /
-  PagesUnavailableError means a human must dismiss a dialog once. Never retry.
+- New files: numbers_create / numbers_import_csv (no app), iwork_create (from
+  Apple's built-in templates, needs the app), iwork_create_from_template (copy
+  the user's own document). They never overwrite an existing file.
+- Pages writes: pages_replace_all, pages_set_body (resets body formatting) and
+  pages_fill_placeholders. Anything richer is out of scope by design. Run
+  pages_preflight first; a -1712 / PagesUnavailableError means a human must
+  dismiss a dialog once. Never retry.
 - After a write the user cares about, call iwork_verify_render with a word that
   must appear. For Arabic, assert ONE word: PDF text layers reorder multi-word
   RTL text and produce false failures.
@@ -117,7 +121,12 @@ _HINTS = {
     "AquaSessionError": "needs a logged-in macOS GUI session; .numbers/.key reads and edits work without one",
     "PagesUnavailableError": "a dialog is blocking Pages: ask the user to dismiss it once, then retry once",
     "ChartRefusalError": "chart files are refused for writes by design; tell the user",
-    "OutOfScopeError": "Pages supports only pages_replace_all and pages_set_body",
+    "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body and pages_fill_placeholders only",
+    "StructureError": "fix the request (positions are 1-based; new files must not exist yet)",
+    "AppOpError": "fix the request; the message lists the valid choices",
+    "WriteVerificationError": "the result didn't match the request, so nothing was changed",
+    "EditVerificationError": "the result didn't match the request; the backup was restored",
+    "SlideOpVerificationError": "Keynote did something other than asked; the backup was restored",
     "FileLockedError": "the file is locked or open in Keynote; ask the user to close it",
     "DocumentOpenError": "ask the user to save and close the deck in Keynote first",
     "CreatorStudioUnverifiedError": "only the Creator Studio app is installed and it is not verified yet",
@@ -551,6 +560,138 @@ def iwork_list_templates(app: str) -> dict[str, Any]:
     return _call(helpers.list_templates, app)
 
 
+# ── create & structure (Numbers: no app needed) ──────────────────────────────
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_create(path: str, sheets: list[dict[str, Any]]) -> dict[str, Any]:
+    """Create a new .numbers file from data. sheets = [{"name": "Sales", "tables": [{"name": "Q1", "rows": [["Region", "Revenue"], ["Riyadh", 1200]], "header_rows": 1}]}]. Numbers stay numbers, text stays text exactly (Arabic included). Refuses to overwrite. No app needed."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.create, _out_path(path), sheets)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_import_csv(
+    csv_path: str,
+    path: str,
+    delimiter: str | None = None,
+    header_rows: int = 1,
+    sheet: str = "Sheet 1",
+    table: str = "Table 1",
+    numbers: bool = True,
+) -> dict[str, Any]:
+    """Turn a CSV/TSV into a new .numbers file (UTF-8, delimiter auto-detected). Plain numbers become numbers (numbers=false keeps everything as text); dates, "$1,234" and Arabic-Indic digits stay text exactly as written. Refuses to overwrite."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.import_csv, _path(csv_path, ".csv", ".tsv", ".txt"), _out_path(path), delimiter=delimiter,
+                 header_rows=header_rows, sheet=sheet, table=table, numbers=numbers)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_insert(
+    path: str,
+    what: str,
+    count: int = 1,
+    at: int | None = None,
+    values: list[list[Any]] | None = None,
+    sheet: str | None = None,
+    table: str | None = None,
+) -> dict[str, Any]:
+    """Insert rows or columns (what = rows | columns) before 1-based position `at`; omit `at` to append. Optional `values`: one list per new row (or column). Every existing cell is verified at its new position. In tables with formulas, only appending is allowed (shifting would break references)."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.insert, _path(path, ".numbers"), what, count, at, values, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_delete(path: str, what: str, at: int, count: int = 1, sheet: str | None = None,
+                   table: str | None = None) -> dict[str, Any]:
+    """Delete `count` rows or columns (what = rows | columns) starting at 1-based position `at`. Remaining cells are verified. Refused in tables with formulas or merged cells. Undo with iwork_restore_backup."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.delete, _path(path, ".numbers"), what, at, count, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_add_table(
+    path: str,
+    table_name: str,
+    rows: list[list[Any]],
+    sheet: str | None = None,
+    new_sheet: str | None = None,
+    header_rows: int = 1,
+    header_columns: int = 0,
+) -> dict[str, Any]:
+    """Add a table with data to an existing sheet (`sheet`, default the first) or to a new sheet (`new_sheet`). Every existing table is verified unchanged."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.add_table, _path(path, ".numbers"), table_name, rows, sheet=sheet, new_sheet=new_sheet,
+                 header_rows=header_rows, header_columns=header_columns)
+
+
+@mcp.tool(annotations=WRITE)
+def iwork_create_from_template(template: str, path: str) -> dict[str, Any]:
+    """Start a new document from one of the user's own files (any .numbers / .key / .pages): copies it to `path` and checks it opens. Refuses to overwrite."""
+    from iwork_studio import numbers_structure as ns
+
+    return _call(ns.create_from_template, _path(template, ".numbers", ".key", ".pages"), _out_path(path))
+
+
+# ── app-driven (macOS + the app) ──────────────────────────────────────────────
+
+
+@mcp.tool(annotations=WRITE)
+def iwork_create(path: str, template: str | None = None) -> dict[str, Any]:
+    """New .numbers / .key / .pages from Apple's built-in templates (Keynote: themes); names from iwork_list_templates. Omit template for Blank / Basic White. Refuses to overwrite. Needs macOS + the app."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.create_document, _out_path(path), template)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_set_formula(path: str, ref: str, formula: str, sheet: str | None = None,
+                        table: str | None = None) -> dict[str, Any]:
+    """Put a formula in one cell, e.g. ref "D10", formula "=SUM(D2:D9)"; Numbers computes it and the result is returned. Every other cell's input is verified unchanged. Needs macOS + Numbers, file closed."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.set_formula, _path(path, ".numbers"), ref, formula, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_sort(path: str, column: str, descending: bool = False, sheet: str | None = None,
+                 table: str | None = None) -> dict[str, Any]:
+    """Sort a table's body rows by a column letter (header rows stay on top). Verified as a pure reorder. Needs macOS + Numbers, file closed."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.sort_table, _path(path, ".numbers"), column, descending=descending, sheet=sheet,
+                 table=table)
+
+
+@mcp.tool(annotations=APP_READ)
+def pages_list_placeholders(path: str) -> dict[str, Any]:
+    """Template placeholders in a .pages document (tag + current text), e.g. a letter's "Name" or "Date" fields. Needs macOS + Pages."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.list_placeholders, _path(path, ".pages"))
+
+
+@mcp.tool(annotations=WRITE)
+def pages_fill_placeholders(path: str, values: dict[str, str]) -> dict[str, Any]:
+    """Fill template placeholders by tag, e.g. {"Name": "Sara", "Date": "3 October"}. Formatting is kept; the body is verified to change only there. Needs macOS + Pages."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.fill_placeholders, _path(path, ".pages"), values)
+
+
+@mcp.tool(annotations=APP_READ)
+def keynote_slideshow(action: str, path: str | None = None, from_slide: int = 1) -> dict[str, Any]:
+    """Present: action = start (needs path; from_slide 1-based) | stop | next | previous. Doesn't change the file. Needs macOS + Keynote."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.slideshow, action, _path(path, ".key") if path else None, from_slide=from_slide)
+
+
 # ── Keynote theming (via the app) ────────────────────────────────────────────
 
 if keynote_slides.slide_ops_enabled():
@@ -606,6 +747,30 @@ if keynote_slides.slide_ops_enabled():
 
         return _call(kt.format_text, _path(path, ".key"), slide, item=item, match=match, font=font,
                      size=size, color=color)
+
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_set_transition(
+        path: str,
+        slide: int,
+        effect: str,
+        duration: float | None = None,
+        delay: float | None = None,
+        automatic: bool | None = None,
+    ) -> dict[str, Any]:
+        """Transition into a slide: effect such as dissolve, push, wipe, magic move, cube, flip, move in, reveal, "none"; duration/delay in seconds; automatic=true advances on its own. Other slides verified untouched."""
+        from iwork_studio import app_ops
+
+        return _call(app_ops.set_transition, _path(path, ".key"), slide, effect, duration=duration, delay=delay,
+                     automatic=automatic)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_add_image(path: str, slide: int, image: str, x: float | None = None, y: float | None = None,
+                          width: float | None = None) -> dict[str, Any]:
+        """Place an image file (png, jpg, heic, pdf…) on a slide; optional x/y position and width in points. All text verified untouched."""
+        from iwork_studio import app_ops
+
+        return _call(app_ops.add_image, _path(path, ".key"), slide, _path(image), x=x, y=y, width=width)
 
 
 def main() -> None:

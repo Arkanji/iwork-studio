@@ -239,10 +239,13 @@ def _protected_write(
     *,
     backup_dir: str | os.PathLike | None = None,
     max_backups: int = 10,
+    structural: bool = False,
 ) -> dict:
     """`plan(doc, table)` mutates and returns:
        {"cells": {aspect: set((r,c))}, "layout": set(keys), "check": fn(table_after) -> None, "summary": dict}
-    aspects: style / format / border / value(never) ; layout keys: widths/heights/headers/merges."""
+    aspects: style / format / border / value(never) ; layout keys: widths/heights/headers/merges.
+    structural=True (row/column insert/delete): the target table's cells move, so
+    its per-cell comparison is left to `check`; every other table is still compared."""
     target = Path(path).resolve()
     if not target.exists():
         raise FileNotFoundError(target)
@@ -272,6 +275,12 @@ def _protected_write(
             if k != key and after[k] != before[k]:
                 raise WriteVerificationError(f"table {k[1]!r} on sheet {k[0]!r} changed collaterally — refusing swap")
         b, a = before[key], after[key]
+        if structural:
+            _, tb_after = _resolve_cell(after_doc, sh.name, tb.name)
+            spec["check"](tb_after)
+            os.replace(tmp, target)
+            return {"ok": True, "file": str(target), "op": op, "sheet": sh.name, "table": tb.name,
+                    "backup": str(backup), **spec.get("summary", {})}
         if a["shape"] != b["shape"]:
             raise WriteVerificationError("table size changed — refusing swap")
         allowed = spec.get("cells", {})

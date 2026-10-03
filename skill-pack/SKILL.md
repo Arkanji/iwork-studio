@@ -1,9 +1,9 @@
 ---
 name: iwork-studio
-description: Read and edit Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file, a spreadsheet cell, slide text, slides (add, duplicate, delete, move, hide), presenter notes, or Pages body text, including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
+description: Create, read, edit, format, theme and export Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text or template placeholders; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 1.2.0
+  version: 2.0.0
   author: iWork Studio
   homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
@@ -33,23 +33,33 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 
 | Task | MCP tool | Needs |
 |---|---|---|
-| Read any iWork file to JSON | `iwork_read` | anywhere (.pages needs the Mac app) |
 | What this machine can do | `iwork_capabilities` | anywhere — call it first when unsure |
-| Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere, no app needed |
-| See a Numbers table's formatting | `numbers_inspect_format` | anywhere |
-| Format Numbers: style · number format · borders · widths/heights · headers · merge | `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere, no app needed |
-| Check rendered font/size/colour/page size | `iwork_verify_format` | Mac + the app |
-| Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere, no app needed |
-| Presenter notes · hide/show · duplicate · delete · move · add slide | `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
-| Keynote theming: list themes · inspect styling · change theme · slide layout · text font/size/colour | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` | Mac + Keynote, deck closed |
-| Pages: replace text everywhere / replace the whole body | `pages_replace_all` · `pages_set_body` | Mac + Pages; run `pages_preflight` first |
-| Check the rendered PDF shows a word | `iwork_verify_render` | Mac + the app |
+| Read any iWork file to JSON · find files · metadata · thumbnail | `iwork_read` · `iwork_find` · `iwork_metadata` · `iwork_thumbnail` | anywhere (.pages read needs the Mac app) |
+| New Numbers file from data / from a CSV | `numbers_create` · `numbers_import_csv` | anywhere |
+| New file from Apple's templates / from the user's own file | `iwork_list_templates` + `iwork_create` · `iwork_create_from_template` | Mac + the app · anywhere |
+| Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere |
+| Insert/delete rows or columns · add a table or sheet | `numbers_insert` · `numbers_delete` · `numbers_add_table` | anywhere |
+| Formula in a cell · sort a table | `numbers_set_formula` · `numbers_sort` | Mac + Numbers, file closed |
+| See / set Numbers formatting: style · number format · borders · widths/heights · headers · merge | `numbers_inspect_format` · `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere |
+| Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere |
+| List slides · notes · hide/show · duplicate · delete · move · add | `keynote_list_slides` · `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
+| Theme · layout · text font/size/colour · transition · image | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` · `keynote_set_transition` · `keynote_add_image` | Mac + Keynote, deck closed |
+| Present (start/stop/next/previous) | `keynote_slideshow` | Mac + Keynote |
+| Pages: replace text · replace the whole body · fill template fields | `pages_replace_all` · `pages_set_body` · `pages_list_placeholders` + `pages_fill_placeholders` | Mac + Pages; run `pages_preflight` first |
+| Export: PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie | `iwork_export` | Mac + the app |
+| Check the rendered PDF shows a word · uses a font/size/colour | `iwork_verify_render` · `iwork_verify_format` | Mac + the app |
 | Undo | `iwork_list_backups` · `iwork_restore_backup` | anywhere |
 
 Formatting tips: inspect first; ranges are `A1` or `A1:D9`; colours are `#RRGGBB`;
 only the attributes you pass change. Merges are refused if they'd hide data. Numbers
 has no scriptable table styles; Pages margins/page setup/paragraph styles and
-Keynote shape fill/text alignment are not exposed by Apple — say so, don't improvise.
+Keynote shape fill/text alignment are not exposed — say so, don't improvise.
+
+Building a spreadsheet: `numbers_create` (or `numbers_import_csv`) → format the
+header with `numbers_set_cell_style` → `numbers_set_number_format` for money/% →
+`numbers_set_dimensions` → `numbers_set_formula` for totals (Mac). New files are
+never overwritten. In a table with formulas, rows/columns can only be appended
+headlessly.
 
 Slide numbers are 1-based. `keynote_move_slide(slide, to)` puts the slide *at*
 position `to`. `keynote_add_slide(after=0)` adds at the front, no `after` adds at
@@ -61,7 +71,9 @@ the end. The last slide can't be deleted.
 |---|---|---|
 | `DocumentOpenError` | The deck is open in Keynote | "Please save and close it in Keynote, then I'll retry." |
 | `ChartRefusalError` | The file contains charts; writes are refused by design | Say so plainly; don't look for a workaround |
-| `PagesOutOfScopeError` | Pages only supports the two text operations | Offer `pages_replace_all` / `pages_set_body` if they fit |
+| `PagesOutOfScopeError` | Pages only supports its three text operations | Offer `pages_replace_all` / `pages_set_body` / `pages_fill_placeholders` if they fit |
+| `StructureError` / `AppOpError` / `FormatError` / `ThemeError` | The request itself is invalid (exists already, out of range, unknown name) | Fix the request from the message; it lists the valid choices |
+| `WriteVerificationError` / `EditVerificationError` | The result didn't match the request; rolled back | Nothing changed; report it |
 | `PagesUnavailableError` / -1712 | A dialog in Pages is blocking | "Please click away the dialog in Pages once." Don't loop |
 | `AquaSessionError` | No Mac GUI here | The app-driven part can't run on this machine |
 | `FileLockedError` | File locked or open | Ask the user to close it |
@@ -74,7 +86,7 @@ the end. The last slide can't be deleted.
 - Write Arabic exactly as given; it round-trips byte-exact.
 - For `iwork_verify_render`, assert **one Arabic word**, not a phrase: PDF text
   layers reorder multi-word RTL text and the check would fail falsely.
-- Numbers keeps values as typed: Arabic-Indic digits (`١٢٣`) and strings like
+- Numbers keeps values as typed (CSV import too): Arabic-Indic digits (`١٢٣`) and strings like
   `"$1,234.56"` stay text. Pass a real number (e.g. `2500`) when the user wants a number.
 
 ## Never

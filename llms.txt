@@ -1,19 +1,19 @@
 # iWork Studio
 
-> Read and edit Apple iWork files (.numbers/.key/.pages) programmatically on macOS — verified round-trips, atomic writes, Arabic/RTL fidelity, hard safety gates. MCP server + Python library + drop-in agent skill. Every capability claim backed by re-runnable tests.
+> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (49 tools) + Python library + drop-in agent skill. Version 2.0.0.
 
 ## Core routes (classic iWork and Creator Studio apps)
 
-- **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Writes: cell edits, cell styles, number formats (currency/%/dates), borders, widths/heights, headers, merges — atomic, only the requested cells change. Charts refused by design. Arabic byte-exact.
+- **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Create from data or CSV; insert/delete rows and columns; add tables/sheets; cell edits, cell styles, number formats (currency/%/dates), borders, widths/heights, headers, merges — atomic, only the requested cells change. Via the Numbers app: formulas, sort. Charts refused by design. Arabic exact.
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Charts refused by design. AppleScript fallback inside live app.
-- **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, export to .docx/PDF. Write: `replace_all` and `set_body` ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
-
-- **Keynote slide ops** (add/duplicate/delete/move/skip/presenter notes) — via the live Keynote app with a per-slide expectation gate and rollback; on by default.
+- **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, placeholders. Write: `replace_all`, `set_body`, `fill_placeholders` ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
+- **Keynote via the app** — slide ops (add/duplicate/delete/move/skip/notes), theming (theme, layout, text font/size/colour), transitions, images, slideshow control; each write re-read and rolled back on any mismatch.
+- **Every format via the app** — export (PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie; optional password), checked by a second tool; new documents from built-in templates.
 
 ## Safety contracts agents can rely on
 
 - Every write: versioned backup → tmp write → re-parse gate → semantic diff → atomic swap → PDF render-verify. Failure leaves target untouched.
-- Typed fail-loud errors: ChartRefusalError, PagesOutOfScopeError, FileLockedError, DocumentOpenError, SchemaDriftError, SlideOpVerificationError, CreatorStudioUnverifiedError, AquaSessionError.
+- Typed fail-loud errors: ChartRefusalError, PagesOutOfScopeError, StructureError, FormatError, ThemeError, ExportError, FileLockedError, DocumentOpenError, SchemaDriftError, SlideOpVerificationError, CreatorStudioUnverifiedError, AquaSessionError.
 - Undo: every write leaves a versioned backup; `iwork_restore_backup` restores one atomically (re-parse gated, and the restore is itself backed up).
 - Headless context: AppleScript routes fail fast with guidance.
 - Fidelity gate is semantic equality (reopens with zero repair prompts, full model compared) — strict zip byte-equality is unachievable for IWA protobuf formats and is not claimed.
@@ -29,6 +29,7 @@
 - Numbers Creator Studio: AppleScript `front document` export hangs; JXA `export(doc, {as:'PDF'})` works.
 - Never trust a scripting bridge's "ok": every app-driven write is re-read from disk and rolled back if nothing (or the wrong thing) changed.
 - Keep clones out of iCloud-synced folders (conflict copies corrupt .git).
+- numbers-parser encodes 12 as 12.000000000000002 and doesn't rewrite formula references when rows shift; iWork Studio encodes decimals exactly and refuses mid-table shifts in formula tables.
 - ~25 more scripting traps (imported from reichenbach/iwork_mcp, each status-marked): skill-pack/references/jxa-traps.md
 
 ## Install (setting this up for a user)
@@ -47,6 +48,7 @@
 - Capability matrix: skill-pack/references/capability-matrix.md
 - MCP config for this repo: .mcp.json
 - Agent instructions (any tool): AGENTS.md
+- Changelog: CHANGELOG.md
 
 ## License
 
