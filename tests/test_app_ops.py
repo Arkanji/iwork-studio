@@ -143,6 +143,9 @@ def letter(tmp_path, monkeypatch):
     monkeypatch.setattr(app_ops, "_pages_texts", texts)
     monkeypatch.setattr(app_ops, "_pages_placeholders", phs)
     monkeypatch.setattr(app_ops.subprocess, "run", run)
+    state["open_in_pages"] = False
+    monkeypatch.setattr(app_ops, "_pages_open", lambda path, open_it=True: state["open_in_pages"])
+    monkeypatch.setattr(app_ops, "_pages_close", lambda path: None)
     return p, state
 
 
@@ -184,6 +187,34 @@ def test_fill_placeholders_other_placeholder_changed_rolls_back(letter):
     with pytest.raises(pages_io.EditVerificationError, match="other placeholders"):
         app_ops.fill_placeholders(p, {"Name": "سارة"})
     assert p.read_bytes() == b"original"
+
+
+def test_fill_placeholders_refuses_document_open_in_pages(letter):
+    p, state = letter
+    state["open_in_pages"] = True
+    with pytest.raises(ks.DocumentOpenError):
+        app_ops.fill_placeholders(p, {"Name": "x"})
+    assert p.read_bytes() == b"original" and not (p.parent / "letter.pages.backups").exists()
+
+
+def test_placeholder_reader_opens_with_jxa_and_finds_by_path(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(pages_io, "_assert_aqua", lambda: None)
+    monkeypatch.setattr(app_ops, "_pages_open", lambda path, open_it=True: calls.append("jxa-open") or False)
+
+    class R:
+        returncode, stderr, stdout = 0, "", "Name\x1f[Name]\x1e\x1f\x1e"
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        return R()
+
+    monkeypatch.setattr(app_ops.subprocess, "run", run)
+    out = app_ops._pages_placeholders(tmp_path / "l.pages")
+    assert out == [{"tag": "Name", "text": "[Name]"}, {"tag": "", "text": ""}]
+    script = calls[1][2]
+    assert calls[0] == "jxa-open" and "open (POSIX file" not in script and "front document" not in script
+    assert calls[1][-1] == "close"
 
 
 def test_fill_placeholders_unknown_tag(letter):
