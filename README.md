@@ -66,7 +66,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 
 | | **Numbers** | **Keynote** | **Pages** |
 |---|---|---|---|
-| **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme and styling | Body text and placeholders |
+| **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text and placeholders |
 | **Create** | From data or CSV ⚡ · from a built-in template · from your own file | From a built-in theme · from your own deck | From a built-in template · from your own file |
 | **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders |
 | **Format** | Fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Theme · slide layout · text font, size and colour · transitions | — |
@@ -97,7 +97,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 ```
 
 - **Backup first**, versioned, next to the file in `<file>.backups/`.
-- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder. An export is read back with a second, independent tool.
+- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder. On files with charts, every chart is counted before and after. An export is read back with a second, independent tool.
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **The app's "ok" is never trusted.** App-driven writes are re-read from disk, and a write that "succeeded" but didn't land is rolled back.
 - **Undo is one call**: `iwork_list_backups` → `iwork_restore_backup`. The restore backs up the current version first, so undo can be undone too.
@@ -156,7 +156,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | Tool | What it does |
 |---|---|
 | `keynote_replace_text` | Find/replace on every slide, formatting untouched |
-| `keynote_list_slides` | Every slide's text, notes and hidden state |
+| `keynote_list_slides` | Every slide's text, notes, hidden state and chart count |
 | `keynote_add_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_skip_slide` | Slide operations |
 | `keynote_set_presenter_notes` | Presenter notes |
 | `keynote_list_themes` · `keynote_inspect_style` | Available themes · a deck's theme, layouts and text styling |
