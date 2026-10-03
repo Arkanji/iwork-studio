@@ -77,6 +77,18 @@ def _exact_unpack_decimal128(buffer) -> float:
     return float(format(Decimal(mantissa).scaleb(exp), ".15g"))
 
 
+def _quiet_sigfig(*args, **kwargs):
+    """numbers-parser calls sigfig.round(..., warn=False), which runs a global
+    warnings.filterwarnings("ignore") and later resetwarnings(): every warning filter
+    in the process is wiped. Call it without `warn`, inside a scoped silence instead."""
+    kwargs.pop("warn", None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return _np_sigfig(*args, **kwargs)
+
+
+_np_sigfig = _np_cell.sigfig
+_np_cell.sigfig = _quiet_sigfig
 _np_cell._pack_decimal128 = _exact_pack_decimal128
 _np_cell._unpack_decimal128 = _exact_unpack_decimal128
 
