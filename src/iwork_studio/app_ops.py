@@ -401,6 +401,8 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
         raise AppOpError(f"{target.name} is not a .pages document")
     if not values or not all(isinstance(k, str) and isinstance(v, str) for k, v in values.items()):
         raise AppOpError('values must be {"Tag": "text", …}')
+    if "" in values:
+        raise AppOpError("untagged placeholders can't be targeted; use pages_list_placeholders for the tags")
     pages_io.preflight()
     if _pages_open(target, open_it=False):
         from iwork_studio.keynote_slides import DocumentOpenError
@@ -461,9 +463,11 @@ end run"""
         left = [p for p in now if p["tag"] in values and p["text"] != values[p["tag"]]]
         if left:
             raise pages_io.EditVerificationError(f"placeholders still unfilled: {[p['tag'] for p in left]} — rolled back")
-        others = lambda xs: [(p["tag"], p["text"]) for p in xs if p["tag"] not in values]  # noqa: E731
+        others = lambda xs: Counter((p["tag"], p["text"]) for p in xs if p["tag"] not in values)  # noqa: E731
         if others(now) != others(phs):
-            raise pages_io.EditVerificationError("other placeholders changed — rolled back")
+            gone, new = others(phs) - others(now), others(now) - others(phs)
+            raise pages_io.EditVerificationError(
+                f"other placeholders changed — rolled back (before: {sorted(gone)[:5]}, after: {sorted(new)[:5]})")
     except Exception:
         _pages_close(target)  # never leave our window open over the restored file
         _restore(target, backup)

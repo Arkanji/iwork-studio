@@ -132,8 +132,8 @@ def _cellnorm(v) -> str:
     if isinstance(v, bool):
         return str(v)
     if isinstance(v, (int, float)):
-        f = float(v)
-        return str(int(f)) if f.is_integer() else repr(round(f, 9))
+        f = float(format(float(v), ".15g"))  # spreadsheet precision: 33.999999999999996 → 34
+        return str(int(f)) if f.is_integer() else repr(f)
     return _norm(str(v))
 
 
