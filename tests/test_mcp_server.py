@@ -40,6 +40,8 @@ CORE_TOOLS = {
     "iwork_thumbnail",
     "iwork_find",
     "iwork_list_templates",
+    "iwork_list_design_kits",
+    "numbers_apply_design",
     "numbers_create",
     "numbers_import_csv",
     "numbers_insert",
@@ -74,6 +76,7 @@ SLIDE_TOOLS = {
     "keynote_add_chart",
     "keynote_build_deck",
     "keynote_set_slide_text",
+    "keynote_apply_design",
 }
 
 

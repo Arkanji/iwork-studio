@@ -128,10 +128,12 @@ def _pick_layout(available: list[str], wanted: str | None, first: bool) -> str:
     return available[0]
 
 
-def build_deck(path, slides: list[dict], *, theme: str | None = None, transition: str | None = None) -> dict:
+def build_deck(path, slides: list[dict], *, theme: str | None = None, transition: str | None = None,
+               kit=None) -> dict:
     """slides = [{"title": "…", "body": ["point", "point"], "layout": "Title & Bullets",
     "notes": "…", "image": "/path/logo.png"}, …]. The first slide defaults to a title layout,
-    the rest to Title & Bullets. Creates a new deck (never overwrites)."""
+    the rest to Title & Bullets. `kit` (a design kit name or dict) sets the theme and styles every
+    slide. Creates a new deck (never overwrites)."""
     from iwork_studio import app_ops
 
     target = Path(path).expanduser().resolve()
@@ -150,6 +152,12 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
         if transition.strip().lower() not in app_ops.TRANSITIONS + ("none", "no transition"):
             raise DeckError(f"unknown transition {transition!r}")
 
+    design_kit = None
+    if kit is not None:
+        from iwork_studio import design
+
+        design_kit = design.get_kit(kit)
+        theme = theme or design_kit.get("theme")
     created = app_ops.create_document(target, theme)
     try:
         available = kt.read_style(target)["layouts"]
@@ -189,13 +197,17 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
                                   width=sp.get("image_width"), backup_dir=target.parent / f".{target.name}.build")
             if transition:
                 app_ops.set_transition(target, i, transition, backup_dir=target.parent / f".{target.name}.build")
+        if design_kit is not None:
+            from iwork_studio import design
+
+            design.apply_to_keynote(target, design_kit, set_theme=False, backup_dir=target.parent / f".{target.name}.build")
     except Exception:
         target.unlink(missing_ok=True)
         _cleanup(target)
         raise
     _cleanup(target)
     return {"ok": True, "file": str(target), "theme": created["template"], "slides": len(slides),
-            "layouts": layouts, "transition": transition}
+            "layouts": layouts, "transition": transition, "kit": design_kit["name"] if design_kit else None}
 
 
 def _cleanup(target: Path) -> None:
