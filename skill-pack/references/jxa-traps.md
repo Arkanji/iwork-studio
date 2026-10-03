@@ -90,7 +90,7 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | L1 | In-place open → save → close of an on-disk deck works (upstream's "save hangs" not reproduced for Keynote) | CONFIRMED | |
 | L2 | JXA `doc.slides.splice(i, 0, app.Slide({}))` fails: `-10002 Invalid key form` | CONFIRMED | add uses AppleScript `make new slide at end of slides` + `move` |
 | L3 | JXA `app.move(slide, {to: slide})` produced a result the gate rejected | CONFIRMED | move uses AppleScript `move slide n to before/after slide t` |
-| L4 | Text-item order inside a slide is not a stable identity across reorders | HANDLED | slide signature compares text items as a multiset |
+| L4 | Text-item order inside a slide is not a stable identity — it changes across slide reorders and after filling a new slide's placeholders (an index read in one session can point at another box in the next) | HANDLED | slide signatures compare text as a multiset; deck building and design kits pick title/body boxes by position inside the writing session and verify by position |
 | L5 | A repo inside an iCloud-synced folder (Desktop/Documents) gets "name 2" conflict copies inside `.git` → `fatal: bad object refs/heads/main 2` | CONFIRMED | keep clones in a non-synced folder, e.g. `~/Developer` |
 | L6 | Numbers Creator Studio: AppleScript `open` + `delay` + `front document` + `export … as PDF` timed out (90 s) | CONFIRMED | replaced by JXA `export(doc_from_open, {as:'PDF'})` |
 | L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | |

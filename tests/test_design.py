@@ -135,9 +135,21 @@ def test_keynote_design_ok(deck):
     state["after"] = _designed()
     out = design.apply_to_keynote(d, "executive", set_theme=False)
     assert out["ok"] and out["text_boxes"] == 4
-    specs = {(s["n"], s["i"]): s for s in state["params"]["specs"]}
-    assert specs[(1, 0)]["font"] == "GeezaPro-Bold" and specs[(1, 0)]["size"] == 88   # Arabic title slide
-    assert specs[(2, 1)]["font"] == "HelveticaNeue-Bold" and specs[(2, 1)]["size"] == 52  # top box = title
+    sp1, sp2 = state["params"]["specs"]
+    assert sp1["title_ar"] == {"font": "GeezaPro-Bold", "size": 88, "rgb": kt._rgb16("#0F172A")}  # title slide
+    assert sp2["title_lat"]["font"] == "HelveticaNeue-Bold" and sp2["title_lat"]["size"] == 52
+    assert sp2["body_lat"]["size"] == 28 and sp2["other_lat"]["size"] is None
+
+
+def test_keynote_design_survives_text_box_reordering(deck):
+    d, state = deck
+    a = _designed()
+    for sl in a["slides"]:  # Keynote lists the boxes in another order next session (trap L4)
+        sl["items"].reverse()
+        for n, it in enumerate(sl["items"]):
+            it["index"] = n
+    state["after"] = a
+    assert design.apply_to_keynote(d, "executive", set_theme=False)["ok"]
 
 
 def test_keynote_design_missing_font_rolls_back(deck):

@@ -37,8 +37,20 @@ def test_pick_roles_by_position():
 
 def test_one_box_layout_refuses_title_and_body():
     with pytest.raises(kd.DeckError, match="one text box"):
-        kd._assign([_item(0, "", 100, 10)], "T", "B", "slide 1")
-    assert kd._assign([_item(0, "", 100, 10)], None, "B", "slide 1") == {0: "B"}
+        kd._check_fits([_item(0, "", 100, 10)], "T", "B", "slide 1")
+    kd._check_fits([_item(0, "", 100, 10)], None, "B", "slide 1")
+    with pytest.raises(kd.DeckError, match="no text box"):
+        kd._check_fits([], "T", None, "slide 1")
+
+
+def test_roles_checked_by_position_not_index():
+    """Keynote reorders text boxes between sessions (trap L4); the check must not care."""
+    items = [_item(0, "body text", 600, 90000), _item(1, "Title", 40, 8000)]
+    shuffled = [_item(0, "Title", 40, 8000), _item(1, "body text", 600, 90000)]
+    kd._check_roles(items, "Title", "body text", "slide 1")
+    kd._check_roles(shuffled, "Title", "body text", "slide 1")
+    with pytest.raises(ks.SlideOpVerificationError, match="title box"):
+        kd._check_roles([_item(0, "Title", 600, 90000), _item(1, "body text", 40, 8000)], "Title", "body text", "s")
 
 
 @pytest.fixture()
@@ -53,6 +65,7 @@ def deck(tmp_path, monkeypatch):
 
     def jxa(body, params, timeout=None):
         state["jxa"].append(params)
+        state.setdefault("jxa_body", []).append(body)
         Path(params["path"]).write_bytes(b"app wrote this")
         return {"ok": True}
 
@@ -71,7 +84,8 @@ def test_set_slide_text_ok(deck):
     state["after"] = after
     out = kd.set_slide_text(d, 2, title="الإيرادات", body=["نمو", "ربح"])
     assert out["ok"]
-    assert state["jxa"][0]["specs"] == [{"n": 2, "texts": {"1": "الإيرادات", "0": "نمو\nربح"}, "notes": None}]
+    assert state["jxa"][0]["specs"] == [{"n": 2, "title": "الإيرادات", "body": "نمو\nربح", "notes": None}]
+    assert "position().y" in state["jxa_body"][0]  # boxes picked by position in the writing session
 
 
 def test_set_slide_text_wrong_box_rolls_back(deck):
@@ -101,7 +115,7 @@ def test_set_slide_text_other_slide_changed_rolls_back(deck):
 
 @pytest.fixture()
 def builder(tmp_path, monkeypatch):
-    state = {"as": None, "specs": None, "notes_ok": True, "corrupt": False}
+    state = {"as": None, "specs": None, "notes_ok": True, "corrupt": False, "shuffle": False}
     blank = {"slide": 1, "layout": "Title", "items": [_item(0, "", 300, 9000), _item(1, "", 420, 5000)]}
     content = {"layout": "Title & Bullets", "items": [_item(0, "", 600, 90000), _item(1, "", 40, 8000)]}
 
@@ -120,8 +134,16 @@ def builder(tmp_path, monkeypatch):
         st = shaped(state["as"][0], state["as"][1:])
         if state["specs"]:
             for sp in state["specs"]:
-                for k, v in sp["texts"].items():
-                    st["slides"][sp["n"] - 1]["items"][int(k)]["text"] = v.replace("\n", "\r")
+                items = st["slides"][sp["n"] - 1]["items"]
+                roles = kd.pick_roles(items)
+                for role in ("title", "body"):
+                    if sp[role] is not None:
+                        idx = roles[role] if roles[role] is not None else roles["title"]
+                        items[idx]["text"] = sp[role].replace("\n", "\r")
+                if state["shuffle"]:  # Keynote may list text boxes in another order next session
+                    items.reverse()
+                    for n, it in enumerate(items):
+                        it["index"] = n
             if state["corrupt"]:
                 st["slides"][-1]["items"][1]["text"] = "wrong"
         return st
@@ -154,7 +176,13 @@ def test_build_deck_ok(builder):
     out = kd.build_deck(tmp / "pitch.key", OUTLINE, theme="Basic White")
     assert out["ok"] and out["layouts"] == ["Title", "Title & Bullets", "Title & Bullets"]
     assert state["as"] == [3, "Title", "Title & Bullets", "Title & Bullets"]
-    assert state["specs"][1]["texts"] == {"1": "Revenue", "0": "Q1 up 20%\nQ2 up 35%"}
+    assert state["specs"][1] == {"n": 2, "title": "Revenue", "body": "Q1 up 20%\nQ2 up 35%", "notes": "ملاحظات"}
+
+
+def test_build_deck_survives_text_box_reordering(builder):
+    tmp, state = builder
+    state["shuffle"] = True
+    assert kd.build_deck(tmp / "pitch.key", OUTLINE)["ok"]
 
 
 def test_build_deck_mismatch_removes_new_file(builder):
