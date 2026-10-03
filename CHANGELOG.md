@@ -4,6 +4,15 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.2.0
+
+Pages tables, Arabic direction, formula safety.
+
+- **Pages tables:** `pages_read_tables` reads every table (values, shown text, formulas, dates); `pages_set_table_cells` writes text, numbers and formulas into an existing table. Every other cell, every table's size and the body text are checked; text that Pages would silently turn into a number is caught and rolled back. New tables can't be created (Pages 15 doesn't script it).
+- **Arabic paragraph direction in Pages:** replace-all rolls back if a right-to-left paragraph flips to left-to-right; set-body reports Arabic paragraphs that come out left-to-right.
+- **Formula safety:** a test proves a save that breaks a formula (`#REF!`) is refused, and a live test proves formulas made in Numbers survive every no-app write.
+- The harmless "unsupported version" warning from numbers-parser is silenced.
+
 ## 2.1.0
 
 Charts.

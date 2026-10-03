@@ -86,6 +86,10 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | `set_body` (replaces the whole body; resets body formatting) | Supported |
 | Preflight for TCC / template-chooser dialogs (one prompt, never retry) | Supported |
 | List / fill template placeholders (body checked to change only there) | Supported |
+| Read every table (values, shown text, formulas, dates) | Supported — AppleScript (JXA can't see Pages tables) |
+| Write cells of an existing table (text, numbers, formulas, clear); every other cell, table size and body text checked | Supported |
+| Create a new table | Not possible — broken in Pages 15 scripting |
+| Paragraph direction (RTL) after replace / set body | Checked — a flipped RTL paragraph rolls back; Arabic paragraphs written LTR are flagged |
 | Render-verify (export PDF via Pages) | Supported |
 | Margins / page setup | Planned |
 | Anything richer (styles, tables, sections, regex) | OUT OF SCOPE (`PagesOutOfScopeError`) |
@@ -116,7 +120,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 50 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 52 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

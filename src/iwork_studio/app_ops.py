@@ -27,7 +27,7 @@ from iwork_studio.apps import app_name
 
 __all__ = [
     "set_formula", "sort_table", "list_placeholders", "fill_placeholders", "set_transition",
-    "add_image", "add_chart", "slideshow", "create_document", "TRANSITIONS", "CHART_TYPES", "AppOpError",
+    "read_tables", "set_table_cells", "add_image", "add_chart", "slideshow", "create_document", "TRANSITIONS", "CHART_TYPES", "AppOpError",
 ]
 
 
@@ -487,6 +487,252 @@ end run"""
     return {"ok": True, "file": str(target), "filled": sorted(values), "backup": str(backup)}
 
 
+# ── Pages tables (existing tables; AppleScript only — JXA can't see them) ────
+
+_CELL = re.compile(r"^[A-Z]{1,3}[1-9][0-9]{0,4}$")
+_MAX_TABLE_CELLS = 10000
+
+_PAGES_TABLE_HELPERS = """
+property US : character id 31
+property RS : character id 30
+
+on pad(n)
+  set n to n as integer
+  if n < 10 then return "0" & (n as text)
+  return n as text
+end pad
+
+on ser(v)
+  if v is missing value then return "e" & US
+  set k to class of v
+  if k is integer or k is real then return "n" & US & (v as text)
+  if k is boolean then return "b" & US & (v as text)
+  if k is date then
+    set s to time of v
+    return "d" & US & ((year of v) as integer as text) & "-" & pad(month of v as integer) & "-" & pad(day of v) & "T" & pad(s div 3600) & ":" & pad((s mod 3600) div 60) & ":" & pad(s mod 60)
+  end if
+  return "t" & US & (v as text)
+end ser
+"""
+
+_PAGES_READ_TABLES = """    set out to ""
+    set ts to every table of d
+    repeat with t in ts
+      set nm to name of t
+      set rc to row count of t
+      set cc to column count of t
+      set out to out & "T" & US & nm & US & (rc as text) & US & (cc as text) & RS
+      if rc * cc <= (item 3 of argv) as integer then
+        set names to name of every cell of t
+        set vals to value of every cell of t
+        set fvals to formatted value of every cell of t
+        set fms to {}
+        try
+          set fms to formula of every cell of t
+        end try
+        repeat with i from 1 to count of names
+          set f to ""
+          try
+            set f to item i of fms
+            if f is missing value then set f to ""
+          end try
+          set fv to item i of fvals
+          if fv is missing value then set fv to ""
+          set out to out & "C" & US & (item i of names) & US & my ser(item i of vals) & US & (fv as text) & US & (f as text) & RS
+        end repeat
+      end if
+    end repeat
+"""
+
+
+def _num(text: str):
+    t = text.strip().replace(",", ".")
+    f = float(t)
+    return int(f) if f.is_integer() and "e" not in t.lower() and abs(f) < 2 ** 53 else f
+
+
+def _parse_tables(raw: str) -> list[dict]:
+    tables: list[dict] = []
+    for rec in raw.rstrip("\n").split(_RS):
+        parts = rec.split(_US)
+        if parts[0] == "T" and len(parts) >= 4:
+            tables.append({"index": len(tables) + 1, "name": parts[1], "rows": int(parts[2]),
+                           "columns": int(parts[3]), "cells": {}})
+        elif parts[0] == "C" and len(parts) >= 6 and tables:
+            ref, kind, val, shown, formula = parts[1], parts[2], parts[3], parts[4], parts[5]
+            value = {"e": None, "n": lambda: _num(val), "b": lambda: val == "true", "d": val, "t": val}[kind]
+            value = value() if callable(value) else value
+            cell = {"value": value, "shown_as": shown}
+            if formula:
+                cell["formula"] = formula
+            if kind == "d":
+                cell["type"] = "date"
+            tables[-1]["cells"][ref] = cell
+    for t in tables:
+        if not t["cells"] and t["rows"] * t["columns"] > 0:
+            t["truncated"] = f"more than {_MAX_TABLE_CELLS} cells; not read"
+    return tables
+
+
+def _pages_script(path: Path, inner: str, args: list[str], *, write: bool) -> str:
+    """JXA opens the document (sandbox access); AppleScript finds it by path and runs
+    `inner`. Our window is closed afterwards; a document the user had open is refused
+    for writes and left open for reads."""
+    from iwork_studio import pages_io
+
+    pages_io._assert_aqua()
+    name = app_name("Pages")
+    if '"' in name:
+        raise AppOpError(f"refusing unsafe app name {name!r}")
+    was_open = _pages_open(path)
+    if was_open and write:
+        from iwork_studio.keynote_slides import DocumentOpenError
+
+        raise DocumentOpenError(f"{path.name} is open in Pages. Save and close it first.")
+    close = "close" if not was_open else "keep"
+    script = f"""{_PAGES_TABLE_HELPERS}
+on run argv
+  tell application "{name}"
+{_PAGES_FIND}    try
+{inner}
+    on error errMsg number errNum
+      if (item 2 of argv) is "close" then close d saving no
+      error errMsg number errNum
+    end try
+    if (item 2 of argv) is "close" then close d saving no
+    return out
+  end tell
+end run"""
+    r = subprocess.run(["osascript", "-e", script, str(path), close, *map(str, args)],
+                       capture_output=True, text=True, timeout=300)
+    if r.returncode != 0:
+        if not was_open:
+            _pages_close(path)
+        raise RuntimeError(f"AppleScript failed (rc={r.returncode}): {r.stderr.strip()[:400]}")
+    return r.stdout
+
+
+def read_tables(path) -> dict:
+    """Every table in a .pages document: name, size, and each cell's value, shown text and formula."""
+    from iwork_studio import pages_io
+
+    target = Path(path).resolve()
+    if target.suffix.lower() != ".pages":
+        raise AppOpError(f"{target.name} is not a .pages document")
+    if not target.exists():
+        raise FileNotFoundError(target)
+    pages_io.preflight()
+    tables = _parse_tables(_pages_script(target, _PAGES_READ_TABLES, [_MAX_TABLE_CELLS], write=False))
+    return {"file": str(target), "tables": tables}
+
+
+def _same(a, b) -> bool:
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool):
+        return abs(float(a) - float(b)) <= 1e-9 * max(1.0, abs(float(a)))
+    return (a in (None, "") and b in (None, "")) or a == b
+
+
+def set_table_cells(path, table, cells: dict, *, backup_dir=None, max_backups: int = 10) -> dict:
+    """Write cells of an existing table: table = name or 1-based number; cells = {"B2": 1200,
+    "C3": "تم", "D9": "=SUM(D2:D8)"}. Numbers stay numbers; "=…" makes a formula.
+    Every other cell of every table, and the body text, are checked unchanged."""
+    from iwork_studio import pages_io
+
+    target = Path(path).resolve()
+    if target.suffix.lower() != ".pages":
+        raise AppOpError(f"{target.name} is not a .pages document")
+    if not target.exists():
+        raise FileNotFoundError(target)
+    if not cells or len(cells) > 500:
+        raise AppOpError("give 1–500 cells, like {\"B2\": 1200}")
+    plan = {}
+    for ref, v in cells.items():
+        r = str(ref).strip().upper()
+        if not _CELL.match(r):
+            raise AppOpError(f"bad cell {ref!r}; use A1-style references like B2")
+        if isinstance(v, bool) or not (v is None or isinstance(v, (int, float, str))):
+            raise AppOpError(f"{r}: values must be text, a number, a formula (\"=…\") or null to clear")
+        if isinstance(v, (int, float)):
+            _as_number(v)  # validates finite
+        plan[r] = v
+    pages_io.preflight()
+    if _pages_open(target, open_it=False):
+        from iwork_studio.keynote_slides import DocumentOpenError
+
+        raise DocumentOpenError(f"{target.name} is open in Pages. Save and close it first.")
+
+    before = read_tables(target)["tables"]
+    named = [t["index"] for t in before if t["name"] == str(table)]
+    if not named and (isinstance(table, int) or str(table).isdigit()):
+        idx = int(table)
+        if not 1 <= idx <= len(before):
+            raise AppOpError(f"table {table} out of range (document has {len(before)} tables)")
+    else:
+        hits = named
+        if len(hits) != 1:
+            raise AppOpError(f"{len(hits)} tables named {table!r}; tables: {[t['name'] for t in before]} "
+                             "(pass the table number instead)")
+        idx = hits[0]
+    tb = before[idx - 1]
+    if tb.get("truncated"):
+        raise AppOpError(f"table {tb['name']!r} is too large to verify ({tb['rows']}×{tb['columns']})")
+    missing = [r for r in plan if r not in tb["cells"]]
+    if missing:
+        raise AppOpError(f"{missing[:5]} outside table {tb['name']!r} ({tb['rows']} rows × {tb['columns']} columns)")
+    try:
+        body_before = pages_io.read_body_text(target)
+    except pages_io.OutOfScopeError:
+        body_before = None  # page layout
+
+    lines, args = [], []
+    for r, v in plan.items():
+        if isinstance(v, (int, float)):
+            rhs = _as_number(v)
+        else:
+            args.append("" if v is None else v)
+            rhs = f"(item {2 + len(args)} of argv)"
+        lines.append(f'      set value of cell "{r}" of table {idx} of d to {rhs}')
+    inner = "\n".join(lines) + "\n      save d\n      set out to \"ok\""
+
+    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    backup = pages_io._versioned_backup(target, bdir)
+    pages_io._prune_backups(bdir, max_backups)
+    try:
+        _pages_script(target, inner, args, write=True)
+        after = read_tables(target)["tables"]
+        if [(t["name"], t["rows"], t["columns"]) for t in after] != [(t["name"], t["rows"], t["columns"]) for t in before]:
+            raise pages_io.EditVerificationError("tables were added, removed or resized — rolled back")
+        for t_b, t_a in zip(before, after):
+            for ref, cb in t_b["cells"].items():
+                ca = t_a["cells"].get(ref, {})
+                if t_b["index"] == idx and ref in plan:
+                    want = plan[ref]
+                    if isinstance(want, str) and want.startswith("="):
+                        if not ca.get("formula"):
+                            raise pages_io.EditVerificationError(f"{ref} did not become a formula — rolled back")
+                    elif not _same(ca.get("value"), want):
+                        hint = (" (Pages turns text that looks like a number or date into one; pass a real "
+                                "number, or different text)" if isinstance(want, str) else "")
+                        raise pages_io.EditVerificationError(
+                            f"{ref} reads {ca.get('value')!r}, wanted {want!r}{hint} — rolled back")
+                    continue
+                if cb.get("formula"):
+                    if ca.get("formula") != cb["formula"]:
+                        raise pages_io.EditVerificationError(f"formula in {t_b['name']}!{ref} changed — rolled back")
+                elif not _same(ca.get("value"), cb.get("value")):
+                    raise pages_io.EditVerificationError(
+                        f"{t_b['name']}!{ref} changed ({cb.get('value')!r} → {ca.get('value')!r}) — rolled back")
+        if body_before is not None and pages_io.read_body_text(target) != body_before:
+            raise pages_io.EditVerificationError("the body text changed — rolled back")
+    except Exception:
+        _pages_close(target)
+        _restore(target, backup)
+        raise
+    got = after[idx - 1]["cells"]
+    return {"ok": True, "file": str(target), "table": tb["name"], "backup": str(backup),
+            "cells": {r: got[r] for r in plan}}
+
+
 # ── Keynote: transitions, images, slideshow ───────────────────────────────────
 
 
@@ -601,7 +847,7 @@ def _as_number(v) -> str:
     from decimal import Decimal
 
     if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
-        raise AppOpError(f"chart data must be numbers, got {v!r}")
+        raise AppOpError(f"{v!r} isn't a finite number")
     d = Decimal(repr(float(v))) if isinstance(v, float) else Decimal(v)
     return format(d, "f")
 
