@@ -1,0 +1,107 @@
+name: Release
+
+# Push a tag like v2.3.0 → headless tests → PyPI → MCP Registry → GitHub release
+# with the Claude Desktop extension (.mcpb) attached.
+#
+# One-time setup (repository owner):
+#   1. pypi.org → Your account → Publishing → add a pending trusted publisher:
+#      project iwork-studio, owner Arkanji, repository iwork-studio,
+#      workflow release.yml, environment pypi.
+#   2. GitHub → Settings → Environments → create "pypi".
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test]"
+      - run: pytest -m "not aqua" -q
+      - name: Tag matches every version field
+        run: |
+          python - <<'PY'
+          import json, os, tomllib
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          versions = {
+              "pyproject": tomllib.load(open("pyproject.toml", "rb"))["project"]["version"],
+              "server.json": json.load(open("server.json"))["version"],
+              "mcpb manifest": json.load(open("mcpb/manifest.json"))["version"],
+          }
+          bad = {k: v for k, v in versions.items() if v != tag}
+          assert not bad, f"tag v{tag} but {bad}"
+          PY
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: pip install build && python -m build
+      - run: bash scripts/build_mcpb.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/iwork-studio
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: rm -f dist/*.mcpb
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  mcp-registry:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mcp-publisher
+        run: curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
+
+  github-release:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Release with the Claude Desktop extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+                 --notes "See CHANGELOG.md. Claude Desktop: download iwork-studio-*.mcpb and double-click it."
+          gh release upload "$GITHUB_REF_NAME" dist/*.mcpb --repo "$GITHUB_REPOSITORY" --clobber

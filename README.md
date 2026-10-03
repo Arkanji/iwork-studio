@@ -1,10 +1,12 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
+<!-- mcp-name: io.github.Arkanji/iwork-studio -->
 
-[![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.2.0-1a7f79)](CHANGELOG.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+<img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
+
+[![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Arkanji/iwork-studio/blob/main/.github/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-2.2.0-1a7f79)](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
 [![MCP server](https://img.shields.io/badge/MCP-53%20tools-8A2BE2)](#all-53-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
@@ -15,12 +17,12 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 53 tools](#all-53-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 53 tools](#all-53-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 
 <br>
 
 <a href="https://arkanji.com/images/posts/iwork-studio-film-v3.mp4">
-  <img src="assets/iwork-studio-film.webp" alt="iWork Studio in action: an AI agent edits a Numbers cell and keeps its formula, updates every Keynote slide without touching the formatting, and writes an Arabic letter in Pages" width="100%">
+  <img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/iwork-studio-film.webp" alt="iWork Studio in action: an AI agent edits a Numbers cell and keeps its formula, updates every Keynote slide without touching the formatting, and writes an Arabic letter in Pages" width="100%">
 </a>
 
 <sub>▶ <a href="https://arkanji.com/images/posts/iwork-studio-film-v3.mp4"><b>Watch the film with sound</b></a> (46s) · <a href="https://arkanji.com/posts/iwork-studio-launch/">Read the launch story</a></sub>
@@ -44,7 +46,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 - **Check it:** ask *"what can iwork-studio do on this Mac?"*.
 - **Remove:** `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp uninstall`
 
-> **AI agent setting this up for someone?** Pick the row for their app, run it, then call `iwork_capabilities`. Rules for using the tools are in [`AGENTS.md`](AGENTS.md).
+> **AI agent setting this up for someone?** Pick the row for their app, run it, then call `iwork_capabilities`. Rules for using the tools are in [`AGENTS.md`](https://github.com/Arkanji/iwork-studio/blob/main/AGENTS.md).
 
 ## Just ask, in English or Arabic
 
@@ -188,10 +190,10 @@ Keynote slide, theme, transition and image tools refuse a deck that's open in Ke
 
 ## For AI agents
 
-- **[`AGENTS.md`](AGENTS.md)**: setup and usage rules for any agent (Codex, Cursor, Copilot, Gemini; Claude Code reads it via `CLAUDE.md`).
+- **[`AGENTS.md`](https://github.com/Arkanji/iwork-studio/blob/main/AGENTS.md)**: setup and usage rules for any agent (Codex, Cursor, Copilot, Gemini; Claude Code reads it via `CLAUDE.md`).
 - **MCP instructions**: the server sends its rules on connect, so the model has them even without this repo.
-- **Skill**: [`skill-pack/SKILL.md`](skill-pack/SKILL.md), auto-discovered by Claude Code in this repo, or `bash skill-pack/install.sh` for other skill-based agents. It includes CLI scripts with JSON output for agents without MCP.
-- **[`llms.txt`](llms.txt)**: a short machine-readable summary.
+- **Skill**: [`skill-pack/SKILL.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/SKILL.md), auto-discovered by Claude Code in this repo, or `bash skill-pack/install.sh` for other skill-based agents. It includes CLI scripts with JSON output for agents without MCP.
+- **[`llms.txt`](https://github.com/Arkanji/iwork-studio/blob/main/llms.txt)**: a short machine-readable summary.
 
 **The contract:** JSON in, JSON out. Errors are typed and say what to tell the user: `ChartRefusalError`, `DocumentOpenError`, `PagesOutOfScopeError`, `AquaSessionError` (no Mac GUI here) and so on. Don't retry a refused write with a trick.
 
@@ -217,12 +219,12 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 <details>
 <summary><b>Traps we mapped so your agent doesn't hit them</b></summary>
 
-1. **`save in <path>` is denied by the iWork sandbox.** In-place `save` and `export` work. → [`sandbox-trap.md`](skill-pack/references/sandbox-trap.md)
-2. **Keynote's slide `title`/`body` properties throw `-1700`.** Use the text item's `object text`. → [`keynote-1700-defect.md`](skill-pack/references/keynote-1700-defect.md)
+1. **`save in <path>` is denied by the iWork sandbox.** In-place `save` and `export` work. → [`sandbox-trap.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/sandbox-trap.md)
+2. **Keynote's slide `title`/`body` properties throw `-1700`.** Use the text item's `object text`. → [`keynote-1700-defect.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/keynote-1700-defect.md)
 3. **Chart files corrupt quietly** when the file-level libraries rewrite them, so those routes refuse them. When the app makes the edit it keeps its own charts linked, so app-driven routes allow them and count every chart before and after.
 4. **Byte-equal saves don't exist** in iWork's format. The real bar is semantic: it reopens, and the full model matches.
-5. **First-run permission and template-chooser dialogs** block every script call. A preflight turns the hang into one clear prompt. → [`tcc-preflight.md`](skill-pack/references/tcc-preflight.md)
-6. **"Creator Studio" apps have different names.** A hardcoded `Application("Numbers")` drives the wrong app; names are resolved per call. → [`apps.py`](src/iwork_studio/apps.py)
+5. **First-run permission and template-chooser dialogs** block every script call. A preflight turns the hang into one clear prompt. → [`tcc-preflight.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/tcc-preflight.md)
+6. **"Creator Studio" apps have different names.** A hardcoded `Application("Numbers")` drives the wrong app; names are resolved per call. → [`apps.py`](https://github.com/Arkanji/iwork-studio/blob/main/src/iwork_studio/apps.py)
 7. **stdout is the MCP wire.** Import-time warnings from libraries would corrupt it, so they go to stderr.
 8. **Keynote's JavaScript insert and move are broken**; AppleScript `make new slide` and `move slide … to before slide …` work.
 9. **Keynote master slides can't be reached from JavaScript** (`-1700`); layouts go through AppleScript.
@@ -238,7 +240,7 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 19. **A rounding library used by numbers-parser wipes every warning filter in the process** on each save. It's wrapped so it stays quiet without touching anyone else's settings.
 20. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
 
-More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
+More, each with its status: [`jxa-traps.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 
 </details>
 
@@ -269,8 +271,8 @@ uv run --extra test pytest -m "not aqua"      # headless suite, what CI runs
 uv run --extra test pytest -m aqua            # live suite: a Mac with Numbers, Keynote and Pages
 ```
 
-iWork changes between releases. If something breaks, check the [capabilities](skill-pack/references/capability-matrix.md) and [traps](skill-pack/references/jxa-traps.md), run the live suite, and pin what changed. New write routes must follow the safety model and come with tests that prove the rollback. Clone outside iCloud-synced folders.
+iWork changes between releases. If something breaks, check the [capabilities](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/capability-matrix.md) and [traps](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/jxa-traps.md), run the live suite, and pin what changed. New write routes must follow the safety model and come with tests that prove the rollback. Clone outside iCloud-synced folders.
 
 ## License
 
-[MIT](LICENSE), traps included. Take them.
+[MIT](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE), traps included. Take them.

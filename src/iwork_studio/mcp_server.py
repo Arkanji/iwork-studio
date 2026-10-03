@@ -887,7 +887,14 @@ if keynote_slides.slide_ops_enabled():
 
 
 def main() -> None:
-    # `iwork-studio-mcp install|uninstall|config` = set-up helpers; no args = serve.
+    # no args / `serve [--roots DIR…]` = serve; `install|uninstall|config` = set-up helpers.
+    if len(sys.argv) > 1 and sys.argv[1] == "serve":
+        roots = sys.argv[sys.argv.index("--roots") + 1:] if "--roots" in sys.argv else []
+        roots = [r for r in roots if r and not r.startswith("${")]  # unfilled extension placeholders
+        if roots:
+            os.environ["IWORK_STUDIO_ROOTS"] = os.pathsep.join(os.path.expanduser(r) for r in roots)
+        mcp.run("stdio")
+        return
     if len(sys.argv) > 1:
         from iwork_studio.installer import main as installer_main
 
