@@ -103,6 +103,7 @@ _HINTS = {
     "FormatError": "fix the request (range, colour as #RRGGBB, option names) and try again",
     "CellRefError": "the cell/range is outside the table; check with numbers_inspect_format",
     "FormatMismatch": "the rendered file does not show that formatting",
+    "ThemeError": "fix the request: check names with keynote_list_themes / keynote_inspect_style",
 }
 
 
@@ -468,6 +469,55 @@ if _slide_tool("notes"):
     def keynote_set_presenter_notes(path: str, slide: int, notes: str) -> dict[str, Any]:
         """Set the presenter notes of slide number `slide` (1-based). Arabic-safe."""
         return _call(keynote_slides.set_presenter_notes, _path(path, ".key"), slide, notes)
+
+
+# ── Keynote theming (via the app) ────────────────────────────────────────────
+
+if keynote_slides.slide_ops_enabled():
+
+    @mcp.tool(annotations=APP_READ)
+    def keynote_list_themes() -> dict[str, Any]:
+        """Themes available in Keynote on this Mac (names to pass to keynote_set_theme)."""
+        from iwork_studio import keynote_theme as kt
+
+        return _call(lambda: {"themes": kt.list_themes()})
+
+    @mcp.tool(annotations=APP_READ)
+    def keynote_inspect_style(path: str) -> dict[str, Any]:
+        """A deck's styling: current theme, available slide layouts, and per slide its layout plus each text item's text, font, size and colour. Read this before theming."""
+        from iwork_studio import keynote_theme as kt
+
+        return _call(kt.read_style, _path(path, ".key"))
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_set_theme(path: str, theme: str) -> dict[str, Any]:
+        """Apply a different Keynote theme to the whole deck. Rolled back if any slide loses text."""
+        from iwork_studio import keynote_theme as kt
+
+        return _call(kt.set_theme, _path(path, ".key"), theme)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_set_slide_layout(path: str, slide: int, layout: str) -> dict[str, Any]:
+        """Change one slide's layout (master), e.g. "Title & Bullets". Other slides are verified untouched."""
+        from iwork_studio import keynote_theme as kt
+
+        return _call(kt.set_slide_layout, _path(path, ".key"), slide, layout)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_format_text(
+        path: str,
+        slide: int,
+        item: int | None = None,
+        match: str | None = None,
+        font: str | None = None,
+        size: float | None = None,
+        color: str | None = None,
+    ) -> dict[str, Any]:
+        """Font (PostScript name, e.g. "HelveticaNeue-Bold"), size (pt) and/or colour ("#RRGGBB") of one text item on a slide — pick it by item index (from keynote_inspect_style) or by a unique piece of its text (match). Alignment and shape fill are not scriptable."""
+        from iwork_studio import keynote_theme as kt
+
+        return _call(kt.format_text, _path(path, ".key"), slide, item=item, match=match, font=font,
+                     size=size, color=color)
 
 
 def main() -> None:

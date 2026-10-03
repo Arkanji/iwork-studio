@@ -57,6 +57,10 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | Add slide at end or at a position (default layout; master choice not offered) | Supported — AppleScript `make new slide` + `move` |
 | Move slide | Supported — AppleScript `move slide n to before/after slide t` |
 | Delete slide (never the last one) | Supported |
+| Change theme (refused/rolled back if any slide loses text) | Supported |
+| Change a slide's layout (master) | Supported — AppleScript (JXA master access throws -1700) |
+| Text item font (PostScript name), size, colour | Supported — colour read back after save |
+| Text alignment, shape fill/border, editing a theme's masters | Not exposed by Apple's scripting |
 | Deck open in Keynote | REFUSED (`DocumentOpenError`) — never closes a user's window |
 | App reports "ok" but nothing (or the wrong thing) changed | Rolled back (`SlideOpVerificationError`) |
 | Decks containing charts | REFUSED |
@@ -88,7 +92,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 24 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 29 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

@@ -98,7 +98,7 @@ Full table: [`skill-pack/references/capability-matrix.md`](skill-pack/references
 |---|---|:---:|:---:|:---:|---|---|
 | `.numbers` | `numbers-parser` 4.19.0 — pure Python, headless | ✅ full model (sheets→tables→cells, formulas, styles, formats) | ✅ cell edits, styles, number formats, borders, widths/heights, headers, merges — atomic | 🚫 refused, not mangled | ✅ byte-exact codepoints | ✅ PDF → text layer |
 | `.key` text | `keynote-parser` 1.14.5.0 — pure Python (+ AppleScript fallback in app) | ✅ slide/text-item tree | ✅ deck-wide find/replace — atomic | 🚫 refused, not mangled | ✅ `\u06xx` escape-aware | ✅ PDF → text layer |
-| `.key` slides | AppleScript via live Keynote (GUI session) | ✅ per-slide inventory | ✅ add · duplicate · delete · move · skip · presenter notes ¹ | 🚫 refused | ✅ notes Arabic-safe | ✅ PDF → text layer |
+| `.key` slides | AppleScript via live Keynote (GUI session) | ✅ per-slide inventory + styling | ✅ add · duplicate · delete · move · skip · presenter notes · theme · layout · text font/size/colour ¹ | 🚫 refused | ✅ notes Arabic-safe | ✅ PDF → text layer |
 | `.pages` | AppleScript via live Pages (GUI session) | ✅ body text, export to `.docx`/PDF | ⚠️ `replace_all`, `set_body` only — richer ops raise `PagesOutOfScopeError` | n/a | ✅ preserved end-to-end | ✅ PDF → text layer |
 
 ¹ **On by default.** Each slide op runs the full safety model plus a per-slide expectation gate: if Keynote does anything other than the requested change, the deck is rolled back byte-exact. Refuses a deck that is open in Keynote (it never closes a window that may hold unsaved edits) and never deletes the last slide. Off switch: `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
@@ -128,6 +128,8 @@ Full table: [`skill-pack/references/capability-matrix.md`](skill-pack/references
 | `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | Column widths and row heights · header rows/columns · merges (refused if they would hide data) |
 | `keynote_replace_text` | Deck-wide find/replace; structure verified unchanged |
 | `keynote_add_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_skip_slide` · `keynote_set_presenter_notes` | Slide ops via Keynote; every other slide verified unchanged |
+| `keynote_list_themes` · `keynote_inspect_style` | Available themes · a deck's theme, layouts, and each text item's font/size/colour |
+| `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` | Change the theme (rolled back if any text is lost) · a slide's layout · a text item's font, size, colour |
 | `pages_preflight` · `pages_replace_all` · `pages_set_body` | The two Pages ops |
 | `iwork_verify_render` | Export PDF through the app, assert the text is visibly there |
 | `iwork_verify_format` | Export PDF through the app, assert the text is drawn with the expected font, size, colour, bold and page size |
