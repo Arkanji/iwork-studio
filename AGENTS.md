@@ -43,7 +43,7 @@ Use it whenever a request touches one of those.
 | Edit / format `.numbers` (cells, style, number format, borders, sizes, headers, merge) | `numbers_edit_cell`, `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only |
 | Formulas · sort | `numbers_set_formula`, `numbers_sort` | macOS + Numbers + GUI session |
 | Find/replace `.key` text | `keynote_replace_text` | Python only |
-| Keynote slides: add, duplicate, delete, move, hide, notes, images, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_set_transition` | macOS + Keynote + GUI session |
+| Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_set_transition` | macOS + Keynote + GUI session |
 | Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
 | Present | `keynote_slideshow` | macOS + Keynote + GUI session |
 | Pages text | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders` | macOS + Pages + GUI session |
@@ -58,7 +58,10 @@ Use it whenever a request touches one of those.
   untouched. Report the error to the user; do not retry with tricks.
 - **Start with `iwork_capabilities`** when unsure what the machine can do.
   `AquaSessionError` = no macOS GUI here: say so, don't retry.
-- **Charts are refused** (`ChartRefusalError`). Tell the user; never bypass.
+- **Charts**: the no-app routes refuse files with charts (`ChartRefusalError`); the
+  app-driven routes work on them and check every chart is kept. Add Keynote
+  charts with `keynote_add_chart`; Numbers/Pages charts can't be created. Never
+  bypass a refusal.
 - **Pages has three writes**: `pages_replace_all`, `pages_set_body`
   (resets body formatting — warn the user) and `pages_fill_placeholders`.
   Anything richer is out of scope (`PagesOutOfScopeError`). Run

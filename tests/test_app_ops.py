@@ -16,7 +16,7 @@ sys.path.insert(0, str(REPO / "src"))
 from numbers_parser import Document  # noqa: E402
 
 from iwork_studio import app_ops, numbers_structure as ns  # noqa: E402
-from iwork_studio import keynote_slides as ks, keynote_theme as kt, pages_io  # noqa: E402
+from iwork_studio import keynote_io, keynote_slides as ks, keynote_theme as kt, pages_io  # noqa: E402
 from iwork_studio.numbers_io import CellRefError, WriteVerificationError  # noqa: E402
 
 
@@ -255,10 +255,10 @@ def test_page_layout_has_no_body_text(monkeypatch, tmp_path):
 # ── Keynote: transitions / images ────────────────────────────────────────────
 
 STYLE = {"theme": "Basic White", "layouts": ["Title"], "slides": [
-    {"slide": 1, "layout": "Title", "images": 0, "transition": {"effect": "no transition effect", "duration": 1.0,
+    {"slide": 1, "layout": "Title", "images": 0, "charts": 0, "transition": {"effect": "no transition effect", "duration": 1.0,
                                                                  "delay": 0.0, "automatic": False},
      "items": [{"index": 0, "text": "عرض", "font": "HelveticaNeue", "size": 40.0, "color": "#000000"}]},
-    {"slide": 2, "layout": "Title", "images": 1, "transition": {"effect": "no transition effect", "duration": 1.0,
+    {"slide": 2, "layout": "Title", "images": 1, "charts": 1, "transition": {"effect": "no transition effect", "duration": 1.0,
                                                                  "delay": 0.0, "automatic": False},
      "items": [{"index": 0, "text": "Two", "font": "HelveticaNeue", "size": 40.0, "color": "#000000"}]},
 ]}
@@ -268,7 +268,13 @@ STYLE = {"theme": "Basic White", "layouts": ["Title"], "slides": [
 def deck(tmp_path, monkeypatch):
     d = tmp_path / "deck.key"
     d.write_bytes((REPO / "tests" / "fixtures" / "arabic.key").read_bytes())
-    state = {"after": None}
+    state = {"after": None, "as": []}
+
+    def fake_as(target, body, args):
+        state["as"].append((body, args))
+        Path(target).write_bytes(b"app wrote this")
+
+    monkeypatch.setattr(kt, "_applescript_op", fake_as)
     reads = {"n": 0}
 
     def fake_read(path):
@@ -344,6 +350,129 @@ def test_add_image_rejects_non_images(deck, tmp_path):
     f.write_text("x")
     with pytest.raises(app_ops.AppOpError):
         app_ops.add_image(d, 1, f)
+
+
+# ── Keynote charts ───────────────────────────────────────────────────────────
+
+def test_add_chart_ok(deck):
+    d, state = deck
+    state["after"] = _with(lambda a: a["slides"][0].update(charts=1))
+    out = app_ops.add_chart(d, 1, ["2025", "2026"], ["Q1", "Q2", "Q3"], [[1, 2.5, -3], [4, 5, 0.0003]], type="line")
+    assert out["type"] == "line" and out["rows"] == 2 and out["columns"] == 3
+    body, args = state["as"][0]
+    assert "type line_2d group by chart row" in body
+    assert "data {{1, 2.5, -3}, {4, 5, 0.0003}}" in body
+    assert args == [1, 2, 3, "2025", "2026", "Q1", "Q2", "Q3"]  # names travel as argv, never in the script
+
+
+def test_add_chart_wrong_slide_rolls_back(deck):
+    d, state = deck
+    before = _sha(d)
+    state["after"] = _with(lambda a: a["slides"][1].update(charts=2))
+    with pytest.raises(ks.SlideOpVerificationError):
+        app_ops.add_chart(d, 1, ["a"], ["x"], [[1]])
+    assert _sha(d) == before
+
+
+@pytest.mark.parametrize("kw", [
+    {"type": "donut"},
+    {"data": [[1, 2]]},                       # wrong width
+    {"data": [["1"]]},                        # not a number
+    {"data": [[True]]},
+    {"data": [[float("nan")]]},
+    {"group_by": "diagonal"},
+])
+def test_add_chart_bad_requests(deck, kw):
+    d, state = deck
+    args = {"rows": ["a"], "columns": ["x"], "data": [[1]], **kw}
+    with pytest.raises(app_ops.AppOpError):
+        app_ops.add_chart(d, 1, args.pop("rows"), args.pop("columns"), args.pop("data"), **args)
+    assert state["as"] == []
+
+
+def test_other_ops_check_charts_are_kept(deck):
+    d, state = deck
+    before = _sha(d)
+
+    def lost(a):
+        a["slides"][0]["transition"]["effect"] = "dissolve"
+        a["slides"][1]["charts"] = 0
+
+    state["after"] = _with(lost)
+    with pytest.raises(ks.SlideOpVerificationError):
+        app_ops.set_transition(d, 1, "dissolve")
+    assert _sha(d) == before
+
+
+def test_chart_deck_allowed_for_app_ops(tmp_path, deck):
+    _, state = deck
+    d = tmp_path / "chart.key"
+    d.write_bytes((REPO / "tests" / "fixtures" / "chart.key").read_bytes())
+    state["after"] = _with(lambda a: a["slides"][0]["transition"].update(effect="push"))
+    assert app_ops.set_transition(d, 1, "push")["ok"]
+
+
+def test_chart_deck_refused_when_charts_unreported(tmp_path, deck, monkeypatch):
+    d = tmp_path / "chart.key"
+    d.write_bytes((REPO / "tests" / "fixtures" / "chart.key").read_bytes())
+    blind = copy.deepcopy(STYLE)
+    for sl in blind["slides"]:
+        sl["charts"] = None
+    monkeypatch.setattr(kt, "read_style", lambda p: copy.deepcopy(blind))
+    with pytest.raises(keynote_io.ChartRefusalError):
+        app_ops.set_transition(d, 1, "push")
+
+
+# ── Numbers app ops on files with charts ─────────────────────────────────────
+
+@pytest.fixture()
+def chart_book(book, monkeypatch):
+    """A Numbers file the gate sees as holding charts."""
+    from iwork_studio import numbers_io
+
+    monkeypatch.setattr(numbers_io, "contains_charts", lambda p: True)
+    return book
+
+
+def _numbers_op(path, out):
+    return app_ops._numbers_write(path, None, None, "test", "", {}, lambda b, a, d: None, {})
+
+
+def test_numbers_app_op_keeps_charts(chart_book, monkeypatch):
+    monkeypatch.setattr(app_ops, "_edit_in_app", lambda k, p, b, params: {"charts": [1, 1]})
+    assert _numbers_op(chart_book, None)["ok"]
+
+
+def test_numbers_app_op_chart_lost_rolls_back(chart_book, monkeypatch):
+    before = _sha(chart_book)
+
+    def lose(k, p, b, params):
+        p.write_bytes(p.read_bytes())  # app "saved"
+        return {"charts": [1, 0]}
+
+    monkeypatch.setattr(app_ops, "_edit_in_app", lose)
+    with pytest.raises(WriteVerificationError, match="charts"):
+        _numbers_op(chart_book, None)
+    assert _sha(chart_book) == before
+
+
+def test_numbers_app_op_refuses_unreported_charts(chart_book, monkeypatch):
+    monkeypatch.setattr(app_ops, "_edit_in_app", lambda k, p, b, params: {"charts": [None, None]})
+    with pytest.raises(WriteVerificationError, match="doesn't report"):
+        _numbers_op(chart_book, None)
+
+
+def test_numbers_body_counts_charts(book, monkeypatch):
+    seen = {}
+
+    def fake(kind, path, body, params):
+        seen["body"] = body
+        return {"charts": [0, 0]}
+
+    monkeypatch.setattr(app_ops, "_edit_in_app", fake)
+    app_ops._numbers_write(book, None, None, "t", "    // op\n", {}, lambda b, a, d: None, {})
+    assert seen["body"].index("chartsBefore = countCharts()") < seen["body"].index("// op")
+    assert "result.charts = [chartsBefore, countCharts()]" in seen["body"]
 
 
 # ── slideshow / create ───────────────────────────────────────────────────────
@@ -437,6 +566,18 @@ def test_live_pages_placeholders(tmp_path):
             assert out["ok"]
             return
     pytest.skip(f"no placeholders in {names[:4]}")
+
+
+@pytest.mark.aqua
+def test_live_keynote_add_chart_then_edit(tmp_path):
+    deck = tmp_path / "deck.key"
+    deck.write_bytes((REPO / "tests" / "fixtures" / "arabic.key").read_bytes())
+    out = app_ops.add_chart(deck, 1, ["2025", "2026"], ["Q1", "Q2", "Q3"], [[10, 20, 30], [15, 25, 35]])
+    assert out["ok"]
+    assert keynote_io.contains_charts(deck)
+    # the deck now has a chart; app-driven edits still work and keep it
+    assert app_ops.set_transition(deck, 1, "dissolve")["ok"]
+    assert ks.duplicate_slide(deck, 1)["ok"]
 
 
 @pytest.mark.aqua

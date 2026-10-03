@@ -27,7 +27,8 @@ iWork and the Creator Studio apps. Arabic/RTL content is supported throughout.
 | Table styles (named table themes) | Not exposed — neither AppleScript nor the parser |
 | Render-verify (export PDF via Numbers → text-layer check) | Supported — needs Numbers + GUI session |
 | Format-verify (PDF font/size/colour/page size) | Supported — needs the app + GUI session |
-| Files containing charts | REFUSED for writes (do not bypass) |
+| Files containing charts | REFUSED for the parser writes above (a rewrite can break chart links); formulas and sort via the app ARE allowed, with the chart count checked before and after |
+| Create or edit Numbers charts | Not possible — Numbers doesn't script charts |
 
 Equality bar is semantic (file reopens, full model identical); strict zip
 byte-equality is impossible with IWA protobuf re-encoding.
@@ -45,7 +46,7 @@ numbers-parser 4.19 API notes: `d.sheets`/`s.tables` are ItemsList properties
 | Structure check on every write (rename-storm gate) + write manifest | Supported |
 | File open/locked in Keynote | `FileLockedError` → AppleScript fallback (`object text` of a text item) |
 | Render-verify (export PDF via Keynote) | Supported — needs Keynote + GUI session |
-| Decks containing charts | REFUSED for writes |
+| Decks containing charts | REFUSED for find/replace (parser rewrite); use the app-driven ops |
 
 Never use the slide `title`/`body` properties (throw -1700); use `object text`
 (see keynote-1700-defect.md).
@@ -73,7 +74,8 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | Text alignment, shape fill/border, editing a theme's masters | Not exposed by Apple's scripting |
 | Deck open in Keynote | REFUSED (`DocumentOpenError`) — never closes a user's window |
 | App reports "ok" but nothing (or the wrong thing) changed | Rolled back (`SlideOpVerificationError`) |
-| Decks containing charts | REFUSED |
+| Add a chart from data (bar, line, area, pie, scatter, stacked, 3D) | Supported — chart count +1 on that slide only, all text checked |
+| Decks containing charts | Allowed — every slide's chart count checked unchanged |
 
 ## .pages — via Pages (GUI session; no parser exists anywhere)
 
@@ -114,7 +116,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 49 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 50 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

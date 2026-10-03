@@ -3,7 +3,7 @@ name: iwork-studio
 description: Create, read, edit, format, theme and export Apple iWork files safely — Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text or template placeholders; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 2.0.0
+  version: 2.1.0
   author: iWork Studio
   homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
@@ -43,7 +43,7 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 | See / set Numbers formatting: style · number format · borders · widths/heights · headers · merge | `numbers_inspect_format` · `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere |
 | Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere |
 | List slides · notes · hide/show · duplicate · delete · move · add | `keynote_list_slides` · `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
-| Theme · layout · text font/size/colour · transition · image | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` · `keynote_set_transition` · `keynote_add_image` | Mac + Keynote, deck closed |
+| Theme · layout · text font/size/colour · transition · image · chart | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` · `keynote_set_transition` · `keynote_add_image` · `keynote_add_chart` | Mac + Keynote, deck closed |
 | Present (start/stop/next/previous) | `keynote_slideshow` | Mac + Keynote |
 | Pages: replace text · replace the whole body · fill template fields | `pages_replace_all` · `pages_set_body` · `pages_list_placeholders` + `pages_fill_placeholders` | Mac + Pages; run `pages_preflight` first |
 | Export: PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie | `iwork_export` | Mac + the app |
@@ -70,7 +70,7 @@ the end. The last slide can't be deleted.
 | Error | What it means | Tell the user |
 |---|---|---|
 | `DocumentOpenError` | The deck is open in Keynote | "Please save and close it in Keynote, then I'll retry." |
-| `ChartRefusalError` | The file contains charts; writes are refused by design | Say so plainly; don't look for a workaround |
+| `ChartRefusalError` | The file has charts, and this tool works without the app (its rewrite could break chart links) | Say so plainly; app-driven tools still work on it. Don't look for a workaround |
 | `PagesOutOfScopeError` | Pages only supports its three text operations — or the document is page layout (most letter/flyer templates), which has no body text | Offer `pages_replace_all` / `pages_set_body` / `pages_fill_placeholders` if they fit; page-layout documents only take placeholders |
 | `StructureError` / `AppOpError` / `FormatError` / `ThemeError` | The request itself is invalid (exists already, out of range, unknown name) | Fix the request from the message; it lists the valid choices |
 | `WriteVerificationError` / `EditVerificationError` | The result didn't match the request; rolled back | Nothing changed; report it |

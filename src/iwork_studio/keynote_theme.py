@@ -16,6 +16,9 @@ Expectations (what "nothing else changed" means here):
   format  : the item's font/size/colour read back; all text everywhere
             unchanged; every other item's formatting unchanged
 
+Charts: the app does the edit, so decks with charts are allowed; every slide's
+chart count is checked unchanged (add_chart: +1 on its slide only).
+
 Not exposed by Apple's scripting (refuse, don't improvise): shape fill /
 border, text alignment (writes silently no-op), editing a theme's masters.
 JXA `masterSlides()` throws -1700, so layouts go through AppleScript.
@@ -66,7 +69,9 @@ _STYLE_INVENTORY = """
                     delay: tp.transitionDelay, automatic: tp.automaticTransition};
     } catch (e) {}
     try { images = slides[s].images().length; } catch (e) {}
-    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images});
+    let charts = null;
+    try { charts = slides[s].charts().length; } catch (e) {}
+    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images, charts: charts});
   }
 """
 
@@ -185,10 +190,13 @@ def _run(path, op: str, plan, *, backup_dir=None, max_backups: int = 10) -> dict
     if target.suffix.lower() != ".key":
         raise ThemeError(f"{target.name} is not a .key deck")
     ks._gate_op("notes")  # shares the slide-ops on/off switch
-    if keynote_io.contains_charts(target):
-        raise keynote_io.ChartRefusalError(f"GATE-CHART: {target.name} contains charts; theming writes are refused")
+    has_charts = keynote_io.contains_charts(target)
 
     before = read_style(target)
+    if has_charts and any(sl.get("charts") is None for sl in before["slides"]):
+        raise keynote_io.ChartRefusalError(
+            f"GATE-CHART: {target.name} has charts and this Keynote doesn't report them per slide, "
+            "so the result can't be checked; refusing")
     script, params, expect, summary = plan(before)  # validates; raises ThemeError before any backup
 
     bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
@@ -206,6 +214,8 @@ def _run(path, op: str, plan, *, backup_dir=None, max_backups: int = 10) -> dict
             )
         after = read_style(target)
         expect(before, after)
+        if op != "add_chart" and [x.get("charts") for x in before["slides"]] != [x.get("charts") for x in after["slides"]]:
+            raise ks.SlideOpVerificationError("a chart was added, lost or moved — rolled back")
         keynote_io.read_key(target)  # parser re-parse gate
     except Exception:
         ks._restore(target, backup)

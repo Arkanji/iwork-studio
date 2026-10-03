@@ -144,7 +144,9 @@ _INVENTORY = """
     const texts = [];
     const tis = slides[s].textItems();
     for (let i = 0; i < tis.length; i++) texts.push(tis[i].objectText().toString());
-    inv.push({skipped: slides[s].skipped(), notes: notes, texts: texts});
+    let charts = null;
+    try { charts = slides[s].charts().length; } catch (e) {}
+    inv.push({skipped: slides[s].skipped(), notes: notes, texts: texts, charts: charts});
   }
 """
 
@@ -269,7 +271,8 @@ def _norm(sig: dict) -> dict:
     # Text items are compared as a multiset: Keynote does not keep text-item
     # order stable across a slide reorder (live probe: move tripped on order
     # alone). Content changes are still caught.
-    return {"skipped": bool(sig.get("skipped")), "notes": notes, "texts": sorted(sig.get("texts", []))}
+    return {"skipped": bool(sig.get("skipped")), "notes": notes, "texts": sorted(sig.get("texts", [])),
+            "charts": sig.get("charts")}
 
 
 def _expected(before: list[dict], op: str, p: dict) -> list[dict] | None:
@@ -346,13 +349,16 @@ def _run(path, op: str, params: dict, backup_dir=None, max_backups: int = 10) ->
     if target.suffix.lower() != ".key":
         raise SlideOpError(f"{target.name} is not a .key deck")
     _gate_op(op)
-    if keynote_io.contains_charts(target):
-        raise keynote_io.ChartRefusalError(
-            f"GATE-CHART: {target.name} contains chart instances; slide ops "
-            "refuse chart decks until a probe proves them"
-        )
+    has_charts = keynote_io.contains_charts(target)
 
     before = read_slides(target)
+    if has_charts and any(sl.get("charts") is None for sl in before):
+        # the app makes the change, so its charts stay intact — but only if we
+        # can count them per slide to prove it
+        raise keynote_io.ChartRefusalError(
+            f"GATE-CHART: {target.name} has charts and this Keynote doesn't report them "
+            "per slide, so the result can't be checked; refusing"
+        )
     _validate(op, params, len(before))
     expected = _expected(before, op, params)
 

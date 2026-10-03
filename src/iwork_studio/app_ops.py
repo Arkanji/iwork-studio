@@ -27,7 +27,7 @@ from iwork_studio.apps import app_name
 
 __all__ = [
     "set_formula", "sort_table", "list_placeholders", "fill_placeholders", "set_transition",
-    "add_image", "slideshow", "create_document", "TRANSITIONS", "AppOpError",
+    "add_image", "add_chart", "slideshow", "create_document", "TRANSITIONS", "CHART_TYPES", "AppOpError",
 ]
 
 
@@ -98,8 +98,6 @@ def _numbers_target(path, sheet, table):
         raise FileNotFoundError(target)
     if target.suffix.lower() != ".numbers":
         raise AppOpError(f"{target.name} is not a .numbers file")
-    if nio.contains_charts(target):
-        raise nio.ChartRefusalError(f"GATE-CHART: {target.name} contains charts; writes are refused")
     doc = Document(str(target))
     sh, tb = nio._resolve_cell(doc, sheet, table)
     return target, doc, sh, tb
@@ -132,19 +130,33 @@ def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect,
 
     target, doc, sh, tb = _numbers_target(path, sheet, table)
     before = _values(doc)
+    has_charts = nio.contains_charts(target)  # Numbers does the edit itself, so its charts stay linked
     bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
     backup = nio._versioned_backup(target, bdir)
     nio._prune_backups(bdir, max_backups)
     try:
-        _edit_in_app("Numbers", target, body, {"sheet": sh.name, "table": tb.name, **params})
+        out = _edit_in_app("Numbers", target, _COUNT_CHARTS + "    const chartsBefore = countCharts();\n" + body
+                           + "    result.charts = [chartsBefore, countCharts()];\n",
+                           {"sheet": sh.name, "table": tb.name, **params})
         after_doc = Document(str(target))
         expect(before, _values(after_doc), after_doc)
+        cb, ca = ((out or {}).get("charts") or [None, None])
+        if has_charts and (cb is None or ca is None):
+            raise nio.WriteVerificationError("this file has charts and Numbers doesn't report them, so the "
+                                             "result can't be checked — rolled back")
+        if cb != ca:
+            raise nio.WriteVerificationError(f"charts went from {cb} to {ca} — rolled back")
     except Exception:
         _restore(target, backup)
         raise
     return {"ok": True, "file": str(target), "op": op, "sheet": sh.name, "table": tb.name,
             "backup": str(backup), **summary}
 
+
+_COUNT_CHARTS = """    const countCharts = () => {
+      try { return doc.sheets().reduce((n, s) => n + s.charts().length, 0); } catch (e) { return null; }
+    };
+"""
 
 _NUM_TABLE = """    const sh = doc.sheets.byName(params.sheet);
     const tb = sh.tables.byName(params.table);
@@ -571,6 +583,86 @@ def add_image(path, slide: int, image, *, x: float | None = None, y: float | Non
             "slide": slide, "image": img.name}
 
     return kt._run(path, "add_image", plan, **kw)
+
+
+CHART_TYPES = {
+    "bar": "vertical_bar_2d", "stacked_bar": "stacked_vertical_bar_2d",
+    "horizontal_bar": "horizontal_bar_2d", "stacked_horizontal_bar": "stacked_horizontal_bar_2d",
+    "line": "line_2d", "area": "area_2d", "stacked_area": "stacked_area_2d",
+    "pie": "pie_2d", "scatter": "scatterplot_2d",
+    "bar_3d": "vertical_bar_3d", "stacked_bar_3d": "stacked_vertical_bar_3d",
+    "horizontal_bar_3d": "horizontal_bar_3d", "stacked_horizontal_bar_3d": "stacked_horizontal_bar_3d",
+    "line_3d": "line_3d", "area_3d": "area_3d", "stacked_area_3d": "stacked_area_3d", "pie_3d": "pie_3d",
+}
+
+
+def _as_number(v) -> str:
+    """A number as an AppleScript literal (plain decimal, no exponent)."""
+    from decimal import Decimal
+
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
+        raise AppOpError(f"chart data must be numbers, got {v!r}")
+    d = Decimal(repr(float(v))) if isinstance(v, float) else Decimal(v)
+    return format(d, "f")
+
+
+def add_chart(path, slide: int, rows: list[str], columns: list[str], data: list[list], *,
+              type: str = "bar", group_by: str = "row", **kw) -> dict:
+    """Add a chart to `slide` (1-based) from data: one data row per entry in `rows` (series
+    or categories, depending on group_by), one value per entry in `columns`.
+    type: bar, stacked_bar, horizontal_bar, stacked_horizontal_bar, line, area,
+    stacked_area, pie, scatter (and *_3d). Every slide's text and other charts are checked."""
+    from iwork_studio import keynote_slides as ks
+    from iwork_studio import keynote_theme as kt
+
+    kind = CHART_TYPES.get(str(type).lower())
+    if not kind:
+        raise AppOpError(f"unknown chart type {type!r}; choose one of: {', '.join(CHART_TYPES)}")
+    if group_by not in ("row", "column"):
+        raise AppOpError('group_by must be "row" or "column"')
+    if not rows or not columns:
+        raise AppOpError("give at least one row name and one column name")
+    if len(rows) > 100 or len(columns) > 100:
+        raise AppOpError("at most 100 rows × 100 columns")
+    if len(data) != len(rows) or any(len(r) != len(columns) for r in data):
+        raise AppOpError(f"data must be {len(rows)} rows × {len(columns)} values (one row per row name)")
+    literal = "{" + ", ".join("{" + ", ".join(_as_number(v) for v in r) + "}" for r in data) + "}"
+    names = [str(x) for x in rows] + [str(x) for x in columns]
+
+    def plan(before):
+        n = len(before["slides"])
+        if not isinstance(slide, int) or not 1 <= slide <= n:
+            raise kt.ThemeError(f"slide {slide!r} out of range (deck has {n})")
+        if before["slides"][slide - 1].get("charts") is None:
+            raise kt.ThemeError("this Keynote doesn't report slide charts; can't verify, refusing")
+
+        def expect(b, a):
+            kt._same_slide_count(b, a)
+            for i, (x, y) in enumerate(zip(b["slides"], a["slides"]), start=1):
+                if kt._sig(x) != kt._sig(y) or x.get("images") != y.get("images"):
+                    raise ks.SlideOpVerificationError(f"slide {i} content changed")
+                want = (x["charts"] or 0) + (1 if i == slide else 0)
+                if y.get("charts") != want:
+                    raise ks.SlideOpVerificationError(f"slide {i} has {y.get('charts')} charts, expected {want}")
+
+        # values are embedded as validated number literals; names travel as argv
+        body = f"""        set n to (item 2 of argv) as integer
+        set nr to (item 3 of argv) as integer
+        set nc to (item 4 of argv) as integer
+        set rn to {{}}
+        repeat with i from 1 to nr
+          set end of rn to item (4 + i) of argv
+        end repeat
+        set cn to {{}}
+        repeat with i from 1 to nc
+          set end of cn to item (4 + nr + i) of argv
+        end repeat
+        add chart slide n row names rn column names cn data {literal} type {kind} group by chart {group_by}"""
+        script = {"applescript": body, "args": [slide, len(rows), len(columns), *names]}
+        return script, {}, expect, {"slide": slide, "type": str(type).lower(), "rows": len(rows),
+                                    "columns": len(columns)}
+
+    return kt._run(path, "add_chart", plan, **kw)
 
 
 def slideshow(action: str, path=None, *, from_slide: int = 1) -> dict:

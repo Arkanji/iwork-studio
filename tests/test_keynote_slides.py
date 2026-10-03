@@ -91,12 +91,50 @@ class TestGate:
         with pytest.raises(ks.SlideOpError):
             ks.delete_slide(f, 1)
 
-    def test_chart_deck_refused(self, tmp_path, unverified_ok, fake_app):
+    def test_chart_deck_refused_when_charts_unreported(self, tmp_path, unverified_ok, fake_app):
         dest = tmp_path / "chart.key"
         dest.write_bytes(CHART_SRC.read_bytes())
         with pytest.raises(keynote_io.ChartRefusalError):
             ks.delete_slide(dest, 1)
         assert fake_app["calls"] == []
+
+
+CHART_DECK = [dict(s, charts=c) for s, c in zip(DECK, (1, 0, 0))]
+
+
+class TestChartDecks:
+    """The app makes the change, so chart decks are allowed — with every slide's charts counted."""
+
+    @pytest.fixture()
+    def chart_deck(self, tmp_path, unverified_ok, monkeypatch):
+        dest = tmp_path / "chart.key"
+        dest.write_bytes(CHART_SRC.read_bytes())
+        state = {"after": None, "reads": 0}
+
+        def fake_read(path):
+            state["reads"] += 1
+            return [dict(x) for x in (CHART_DECK if state["reads"] == 1 else state["after"])]
+
+        def fake_apply(target, op, params):
+            target.write_bytes(b"app wrote this")
+
+        monkeypatch.setattr(ks, "read_slides", fake_read)
+        monkeypatch.setattr(ks, "_apply", fake_apply)
+        monkeypatch.setattr(keynote_io, "read_key", lambda p: {})
+        return dest, state
+
+    def test_duplicate_slide_with_chart(self, chart_deck):
+        dest, state = chart_deck
+        state["after"] = [CHART_DECK[0], CHART_DECK[0], CHART_DECK[1], CHART_DECK[2]]
+        assert ks.duplicate_slide(dest, 1)["ok"]
+
+    def test_chart_lost_rolls_back(self, chart_deck):
+        dest, state = chart_deck
+        before = _sha(dest)
+        state["after"] = [dict(CHART_DECK[0], charts=0), CHART_DECK[1], dict(CHART_DECK[2], skipped=False)]
+        with pytest.raises(ks.SlideOpVerificationError):
+            ks.set_skipped(dest, 3, False)
+        assert _sha(dest) == before
 
 
 class TestPreflight:

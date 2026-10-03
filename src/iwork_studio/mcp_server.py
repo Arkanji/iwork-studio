@@ -50,8 +50,12 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   macOS GUI session.
 - Keynote slide ops refuse a deck that is open in Keynote: ask the user to save
   and close it. Slide numbers are 1-based.
-- Files containing charts are REFUSED for writes (ChartRefusalError). Do not try
-  to work around it; tell the user.
+- Charts: tools that work without the app refuse files containing charts
+  (ChartRefusalError) — their rewrite could break chart links. Tools that drive
+  the app (Keynote slide/theme/image/transition ops, Numbers formulas and sort)
+  work on them and check every chart is kept. keynote_add_chart adds a chart;
+  Numbers and Pages charts can't be created (Apple doesn't script them). Never
+  work around a refusal; tell the user.
 - New files: numbers_create / numbers_import_csv (no app), iwork_create (from
   Apple's built-in templates, needs the app), iwork_create_from_template (copy
   the user's own document). They never overwrite an existing file.
@@ -120,7 +124,7 @@ def _search_folders(folder: str | None) -> list[str]:
 _HINTS = {
     "AquaSessionError": "needs a logged-in macOS GUI session; .numbers/.key reads and edits work without one",
     "PagesUnavailableError": "a dialog is blocking Pages: ask the user to dismiss it once, then retry once",
-    "ChartRefusalError": "chart files are refused for writes by design; tell the user",
+    "ChartRefusalError": "files with charts are refused by the no-app tools (they could break chart links); app-driven tools work on them — tell the user",
     "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body and pages_fill_placeholders only",
     "StructureError": "fix the request (positions are 1-based; new files must not exist yet)",
     "AppOpError": "fix the request; the message lists the valid choices",
@@ -763,6 +767,21 @@ if keynote_slides.slide_ops_enabled():
 
         return _call(app_ops.set_transition, _path(path, ".key"), slide, effect, duration=duration, delay=delay,
                      automatic=automatic)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_add_chart(
+        path: str,
+        slide: int,
+        rows: list[str],
+        columns: list[str],
+        data: list[list[float]],
+        type: str = "bar",
+        group_by: str = "row",
+    ) -> dict[str, Any]:
+        """Add a chart to a slide from data. rows = series names, columns = category names, data = one list of numbers per row (rows × columns). type: bar | stacked_bar | horizontal_bar | stacked_horizontal_bar | line | area | stacked_area | pie | scatter (or *_3d). group_by: row | column. Text and other charts are verified untouched."""
+        from iwork_studio import app_ops
+
+        return _call(app_ops.add_chart, _path(path, ".key"), slide, rows, columns, data, type=type, group_by=group_by)
 
     @mcp.tool(annotations=WRITE)
     def keynote_add_image(path: str, slide: int, image: str, x: float | None = None, y: float | None = None,

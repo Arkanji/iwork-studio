@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iwork-studio"
-version = "2.0.0"
+version = "2.1.0"
 description = "Read and edit Apple Numbers, Keynote and Pages files with verified, reversible, Arabic-safe writes. Python library + MCP server + agent skill."
 readme = "README.md"
 license = "MIT"
