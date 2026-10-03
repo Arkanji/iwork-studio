@@ -41,6 +41,7 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 | Check rendered font/size/colour/page size | `iwork_verify_format` | Mac + the app |
 | Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere, no app needed |
 | Presenter notes · hide/show · duplicate · delete · move · add slide | `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
+| Keynote theming: list themes · inspect styling · change theme · slide layout · text font/size/colour | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` | Mac + Keynote, deck closed |
 | Pages: replace text everywhere / replace the whole body | `pages_replace_all` · `pages_set_body` | Mac + Pages; run `pages_preflight` first |
 | Check the rendered PDF shows a word | `iwork_verify_render` | Mac + the app |
 | Undo | `iwork_list_backups` · `iwork_restore_backup` | anywhere |

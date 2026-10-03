@@ -43,6 +43,11 @@ SLIDE_TOOLS = {
     "keynote_move_slide",
     "keynote_skip_slide",
     "keynote_set_presenter_notes",
+    "keynote_list_themes",
+    "keynote_inspect_style",
+    "keynote_set_theme",
+    "keynote_set_slide_layout",
+    "keynote_format_text",
 }
 
 
