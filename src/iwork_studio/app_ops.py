@@ -275,6 +275,59 @@ end run"""
     return out
 
 
+def _pages_texts(path: Path) -> dict:
+    """Every text the document holds: body (None for page-layout documents) and,
+    in order, each text box / shape's text (None if Pages won't list them)."""
+    body = """
+  const doc = app.open(Path(params.path));
+  const out = {body: null, items: null};
+  try {
+    try { const b = doc.bodyText(); out.body = (b === null || b === undefined) ? null : b.toString(); } catch (e) {}
+    try {
+      const items = [];
+      for (const coll of ['textItems', 'shapes']) {
+        const xs = doc[coll]();
+        for (let i = 0; i < xs.length; i++) {
+          let t = null;
+          try { t = xs[i].objectText().toString(); } catch (e) {}
+          items.push(t);
+        }
+      }
+      out.items = items;
+    } catch (e) {}
+  } finally {
+    app.close(doc, {saving: 'no'});
+  }
+  return JSON.stringify(out);"""
+    return _jxa("Pages", body, {"path": str(path)})
+
+
+def _expected_texts(before: dict, phs: list[dict], values: dict) -> dict:
+    """Body: placeholders replaced in document order. Text boxes: every occurrence of a
+    filled placeholder's text replaced (longest first)."""
+    exp = {"body": before["body"], "items": before["items"]}
+    if before["body"] is not None:
+        body, cursor = before["body"], 0
+        for p in phs:
+            if p["tag"] in values and p["text"]:
+                i = body.find(p["text"], cursor)
+                if i >= 0:
+                    body = body[:i] + values[p["tag"]] + body[i + len(p["text"]):]
+                    cursor = i + len(values[p["tag"]])
+        exp["body"] = body
+    if before["items"] is not None:
+        subs = sorted({(p["text"], values[p["tag"]]) for p in phs if p["tag"] in values and p["text"]},
+                      key=lambda x: -len(x[0]))
+        items = []
+        for t in before["items"]:
+            if t is not None:
+                for old, new in subs:
+                    t = t.replace(old, new)
+            items.append(t)
+        exp["items"] = items
+    return exp
+
+
 def list_placeholders(path) -> dict:
     target = Path(path).resolve()
     if target.suffix.lower() != ".pages":
@@ -288,7 +341,8 @@ def list_placeholders(path) -> dict:
 
 def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int = 10) -> dict:
     """values = {"Name": "وليد", "Date": "3 Oct"} — fill every placeholder with that tag.
-    The body is checked to equal the original with exactly those placeholders filled."""
+    Works for word-processing and page-layout documents. The body and every text box
+    are checked to equal the originals with exactly those placeholders filled."""
     from iwork_studio import pages_io
 
     target = Path(path).resolve()
@@ -304,14 +358,15 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
     unknown = sorted(set(values) - tags)
     if unknown:
         raise AppOpError(f"no placeholder tagged {unknown}; this document has {sorted(tags)}")
-    before = pages_io.read_body_text(target)
-    expected, cursor = before, 0
+    by_text: dict = {}
     for p in phs:
-        if p["tag"] in values and p["text"]:
-            i = expected.find(p["text"], cursor)
-            if i >= 0:
-                expected = expected[:i] + values[p["tag"]] + expected[i + len(p["text"]):]
-                cursor = i + len(values[p["tag"]])
+        by_text.setdefault(p["text"], set()).add(p["tag"])
+    clash = sorted({t for p in phs if p["tag"] in values for t in by_text[p["text"]] if t not in values})
+    if clash:
+        raise AppOpError(f"placeholders {clash} show the same text as ones being filled, so the result "
+                         f"can't be checked; fill them too")
+    before = _pages_texts(target)
+    expected = _expected_texts(before, phs, values)
 
     name = app_name("Pages")
     if '"' in name:
@@ -341,13 +396,20 @@ end run"""
         r = subprocess.run(["osascript", "-e", script, str(target), *pairs], capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
             raise RuntimeError(f"AppleScript failed (rc={r.returncode}): {r.stderr.strip()[:400]}")
-        after = pages_io.read_body_text(target)
-        if after != expected:
+        after = _pages_texts(target)
+        if after["body"] != expected["body"]:
             raise pages_io.EditVerificationError("body text after filling is not the original with just the "
                                                  "placeholders filled — rolled back")
-        left = [p for p in _pages_placeholders(target) if p["tag"] in values and p["text"] != values[p["tag"]]]
+        if expected["items"] is not None and after["items"] is not None and after["items"] != expected["items"]:
+            raise pages_io.EditVerificationError("text boxes after filling are not the originals with just the "
+                                                 "placeholders filled — rolled back")
+        now = _pages_placeholders(target)
+        left = [p for p in now if p["tag"] in values and p["text"] != values[p["tag"]]]
         if left:
             raise pages_io.EditVerificationError(f"placeholders still unfilled: {[p['tag'] for p in left]} — rolled back")
+        others = lambda xs: [(p["tag"], p["text"]) for p in xs if p["tag"] not in values]  # noqa: E731
+        if others(now) != others(phs):
+            raise pages_io.EditVerificationError("other placeholders changed — rolled back")
     except Exception:
         _restore(target, backup)
         raise
@@ -533,9 +595,9 @@ def create_document(path, template: str | None = None) -> dict:
 
             read_key(tmp)
         else:
-            from iwork_studio.pages_io import read_body_text
+            from iwork_studio.pages_io import document_info
 
-            read_body_text(tmp)
+            document_info(tmp)  # opens in Pages; page-layout templates have no body text
         if dst.exists():
             raise AppOpError(f"{dst} appeared while creating; not overwriting")
         dst.parent.mkdir(parents=True, exist_ok=True)

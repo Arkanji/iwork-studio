@@ -119,20 +119,18 @@ def test_sort_bad_column(book):
 def letter(tmp_path, monkeypatch):
     p = tmp_path / "letter.pages"
     p.write_bytes(b"original")
-    state = {"body": "Dear [Name],\rSee you on [Date].", "phs": [{"tag": "Name", "text": "[Name]"},
-                                                                  {"tag": "Date", "text": "[Date]"}],
-             "after_body": None, "after_phs": []}
-    reads = {"n": 0}
+    state = {"before": {"body": "Dear [Name],\rSee you on [Date].", "items": ["Sender [Name]", None]},
+             "phs": [{"tag": "Name", "text": "[Name]"}, {"tag": "Date", "text": "[Date]"}],
+             "after": None, "after_phs": []}
+    reads = {"texts": 0, "phs": 0}
 
-    def body(path):
-        reads["n"] += 1
-        return state["body"] if reads["n"] == 1 else state["after_body"]
-
-    phs_calls = {"n": 0}
+    def texts(path):
+        reads["texts"] += 1
+        return copy.deepcopy(state["before"] if reads["texts"] == 1 else state["after"])
 
     def phs(path):
-        phs_calls["n"] += 1
-        return copy.deepcopy(state["phs"] if phs_calls["n"] == 1 else state["after_phs"])
+        reads["phs"] += 1
+        return copy.deepcopy(state["phs"] if reads["phs"] == 1 else state["after_phs"])
 
     class R:
         returncode, stderr = 0, ""
@@ -142,7 +140,7 @@ def letter(tmp_path, monkeypatch):
         return R()
 
     monkeypatch.setattr(pages_io, "preflight", lambda: {"ok": True})
-    monkeypatch.setattr(pages_io, "read_body_text", body)
+    monkeypatch.setattr(app_ops, "_pages_texts", texts)
     monkeypatch.setattr(app_ops, "_pages_placeholders", phs)
     monkeypatch.setattr(app_ops.subprocess, "run", run)
     return p, state
@@ -150,16 +148,41 @@ def letter(tmp_path, monkeypatch):
 
 def test_fill_placeholders_ok(letter):
     p, state = letter
-    state["after_body"] = "Dear سارة,\rSee you on 3 Oct."
+    state["after"] = {"body": "Dear سارة,\rSee you on 3 Oct.", "items": ["Sender سارة", None]}
     out = app_ops.fill_placeholders(p, {"Name": "سارة", "Date": "3 Oct"})
     assert out["filled"] == ["Date", "Name"] and p.read_bytes() == b"changed by app"
 
 
+def test_fill_placeholders_page_layout(letter):
+    p, state = letter
+    state["before"] = {"body": None, "items": ["[Name]", "Date: [Date]", "Footer"]}
+    state["after"] = {"body": None, "items": ["سارة", "Date: 3 Oct", "Footer"]}
+    assert app_ops.fill_placeholders(p, {"Name": "سارة", "Date": "3 Oct"})["ok"]
+
+
 def test_fill_placeholders_unexpected_body_rolls_back(letter):
     p, state = letter
-    state["after_body"] = "Dear سارة,\rSee you on 3 Oct. EXTRA"
+    state["after"] = {"body": "Dear سارة,\rSee you on 3 Oct. EXTRA", "items": ["Sender سارة", None]}
     with pytest.raises(pages_io.EditVerificationError):
         app_ops.fill_placeholders(p, {"Name": "سارة", "Date": "3 Oct"})
+    assert p.read_bytes() == b"original"
+
+
+def test_fill_placeholders_text_box_damage_rolls_back(letter):
+    p, state = letter
+    state["before"] = {"body": None, "items": ["[Name]", "Footer"]}
+    state["after"] = {"body": None, "items": ["سارة", ""]}
+    with pytest.raises(pages_io.EditVerificationError, match="text boxes"):
+        app_ops.fill_placeholders(p, {"Name": "سارة"})
+    assert p.read_bytes() == b"original"
+
+
+def test_fill_placeholders_other_placeholder_changed_rolls_back(letter):
+    p, state = letter
+    state["after"] = {"body": "Dear سارة,\rSee you on [Date].", "items": ["Sender سارة", None]}
+    state["after_phs"] = [{"tag": "Date", "text": "?"}]
+    with pytest.raises(pages_io.EditVerificationError, match="other placeholders"):
+        app_ops.fill_placeholders(p, {"Name": "سارة"})
     assert p.read_bytes() == b"original"
 
 
@@ -168,6 +191,19 @@ def test_fill_placeholders_unknown_tag(letter):
     with pytest.raises(app_ops.AppOpError, match="Nope"):
         app_ops.fill_placeholders(p, {"Nope": "x"})
     assert p.read_bytes() == b"original"
+
+
+def test_fill_placeholders_refuses_ambiguous_texts(letter):
+    p, state = letter
+    state["phs"] = [{"tag": "A", "text": "[Text]"}, {"tag": "B", "text": "[Text]"}]
+    with pytest.raises(app_ops.AppOpError, match="same text"):
+        app_ops.fill_placeholders(p, {"A": "x"})
+
+
+def test_page_layout_has_no_body_text(monkeypatch, tmp_path):
+    monkeypatch.setattr(pages_io, "_jxa", lambda script, timeout=180: "null")
+    with pytest.raises(pages_io.PagesOutOfScopeError, match="page-layout"):
+        pages_io.read_body_text(tmp_path / "x.pages")
 
 
 # ── Keynote: transitions / images ────────────────────────────────────────────
@@ -289,6 +325,18 @@ def test_create_document_moves_checked_file(tmp_path, monkeypatch):
     assert out["template"] == "Basic White" and Path(out["file"]).exists()
 
 
+def test_create_pages_document_checks_it_opens(tmp_path, monkeypatch):
+    def fake(kind, body, params, timeout=300):
+        Path(params["out"]).write_bytes(b"pages zip")
+        return {"template": "Classic Letter"}
+
+    monkeypatch.setattr(app_ops, "_jxa", fake)
+    opened = []
+    monkeypatch.setattr(pages_io, "document_info", lambda p: opened.append(p) or {"kind": "page layout"})
+    out = app_ops.create_document(tmp_path / "l.pages", "Classic Letter")
+    assert opened and Path(out["file"]).read_bytes() == b"pages zip"
+
+
 def test_create_document_unknown_template(tmp_path, monkeypatch):
     monkeypatch.setattr(app_ops, "_jxa", lambda *a, **k: {"unknown": "Nope", "available": ["Blank"]})
     with pytest.raises(app_ops.AppOpError, match="Blank"):
@@ -331,16 +379,18 @@ def test_live_keynote_transition_and_image(tmp_path):
 def test_live_pages_placeholders(tmp_path):
     from iwork_studio import helpers
 
-    names = helpers.list_templates("pages")["templates"]
-    letter = next((n for n in names if "letter" in n.lower()), None)
-    if not letter:
+    names = [n for n in helpers.list_templates("pages")["templates"] if "letter" in n.lower()]
+    if not names:
         pytest.skip("no letter template in this Pages")
-    doc = tmp_path / "letter.pages"
-    app_ops.create_document(doc, letter)
-    tags = app_ops.list_placeholders(doc)["tags"]
-    if not tags:
-        pytest.skip(f"template {letter!r} has no placeholders")
-    assert app_ops.fill_placeholders(doc, {tags[0]: "تجربة"})["ok"]
+    for i, name in enumerate(names[:4]):
+        doc = tmp_path / f"letter{i}.pages"
+        app_ops.create_document(doc, name)  # page-layout templates must create fine too
+        tags = app_ops.list_placeholders(doc)["tags"]
+        if tags:
+            out = app_ops.fill_placeholders(doc, {tags[0]: "تجربة"})
+            assert out["ok"]
+            return
+    pytest.skip(f"no placeholders in {names[:4]}")
 
 
 @pytest.mark.aqua

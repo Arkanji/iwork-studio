@@ -63,7 +63,8 @@ Use it whenever a request touches one of those.
   (resets body formatting — warn the user) and `pages_fill_placeholders`.
   Anything richer is out of scope (`PagesOutOfScopeError`). Run
   `pages_preflight` first; a `PagesUnavailableError` / -1712 means a human must
-  dismiss a dialog once.
+  dismiss a dialog once. Page-layout documents (most letter/flyer templates)
+  have no body text: only `pages_fill_placeholders` applies to them.
 - **New files never overwrite.** Pick a new name if the tool says it exists.
 - **Formula tables**: rows/columns can only be appended headlessly
   (`StructureError` otherwise); suggest doing mid-table inserts in Numbers.

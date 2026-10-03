@@ -22,7 +22,8 @@ export, not just edit text. 49 MCP tools (was 16).
 - `keynote_list_slides`: every slide's text, notes and hidden state.
 
 ### Pages
-- **Placeholders:** `pages_list_placeholders`, `pages_fill_placeholders` (template fields such as Name and Date), alongside replace-all and set-body.
+- **Placeholders:** `pages_list_placeholders`, `pages_fill_placeholders` (template fields such as Name and Date), alongside replace-all and set-body. Works on page-layout documents too; the body and every text box are checked.
+- Page-layout documents (no body text) now get a clear error from replace-all / set-body instead of a script crash.
 
 ### Every file type
 - **Export** (`iwork_export`): PDF, Excel, CSV, Word, EPUB, text, RTF, PowerPoint, slide images, movie; optional password. Each export is read back with a second tool and compared with the source, and the source is checked unchanged.

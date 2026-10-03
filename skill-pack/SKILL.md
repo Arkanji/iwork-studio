@@ -71,7 +71,7 @@ the end. The last slide can't be deleted.
 |---|---|---|
 | `DocumentOpenError` | The deck is open in Keynote | "Please save and close it in Keynote, then I'll retry." |
 | `ChartRefusalError` | The file contains charts; writes are refused by design | Say so plainly; don't look for a workaround |
-| `PagesOutOfScopeError` | Pages only supports its three text operations | Offer `pages_replace_all` / `pages_set_body` / `pages_fill_placeholders` if they fit |
+| `PagesOutOfScopeError` | Pages only supports its three text operations — or the document is page layout (most letter/flyer templates), which has no body text | Offer `pages_replace_all` / `pages_set_body` / `pages_fill_placeholders` if they fit; page-layout documents only take placeholders |
 | `StructureError` / `AppOpError` / `FormatError` / `ThemeError` | The request itself is invalid (exists already, out of range, unknown name) | Fix the request from the message; it lists the valid choices |
 | `WriteVerificationError` / `EditVerificationError` | The result didn't match the request; rolled back | Nothing changed; report it |
 | `PagesUnavailableError` / -1712 | A dialog in Pages is blocking | "Please click away the dialog in Pages once." Don't loop |
