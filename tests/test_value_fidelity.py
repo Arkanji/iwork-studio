@@ -46,3 +46,12 @@ def test_strings_stored_verbatim(numbers_file, value):
 def test_numbers_stay_numbers(numbers_file, value):
     numbers_io.edit_cell(numbers_file, "B2", value)
     assert _cell(numbers_file, "R2C2") == pytest.approx(value)
+
+
+def test_warning_filters_survive_a_save(numbers_file):
+    """numbers-parser's sigfig call used to wipe every warning filter in the process."""
+    import warnings
+
+    warnings.filterwarnings("ignore", message="iwork-studio-marker")
+    numbers_io.edit_cell(numbers_file, "B2", 3.14)
+    assert any("iwork-studio-marker" in str(f[1]) for f in warnings.filters)

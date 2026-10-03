@@ -235,7 +235,8 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 16. **The Pages sandbox refuses AppleScript `open`** for files outside it; JavaScript `open` is allowed, so documents are opened that way and then found by their exact path.
 17. **numbers-parser can break formulas on re-save** (an upstream report). Every no-app write compares every formula, so a broken one is caught and nothing changes.
 18. **Numbers doesn't recalculate formulas when it opens a file changed without it**: a total keeps its old result. Edits made without the app say so, and `numbers_recalculate` has Numbers recompute every formula.
-19. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
+19. **A rounding library used by numbers-parser wipes every warning filter in the process** on each save. It's wrapped so it stays quiet without touching anyone else's settings.
+20. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
 
 More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 

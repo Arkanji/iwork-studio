@@ -12,7 +12,7 @@ Pages tables, Arabic direction, formula safety.
 - **Arabic paragraph direction in Pages:** replace-all rolls back if a right-to-left paragraph flips to left-to-right. Pages writes new paragraphs left-to-right, even Arabic ones (not scriptable), so set-body flags them.
 - **Formula safety:** a save that breaks a formula (`#REF!`) is refused, and formulas made in Numbers survive every no-app write.
 - **`numbers_recalculate`:** Numbers doesn't recalculate when it opens a file changed without it, so totals kept their old results. No-app edits on files with formulas now say so (`formulas_need_recalc`), this tool has Numbers recompute every formula, and `numbers_set_formula` recalculates first so its result is current.
-- The harmless "unsupported version" warning from numbers-parser is silenced.
+- The harmless "unsupported version" warning from numbers-parser is silenced. Along the way: numbers-parser's rounding helper (sigfig) wiped every warning filter in the process on each save; it's now wrapped so it can't.
 
 ## 2.1.0
 
