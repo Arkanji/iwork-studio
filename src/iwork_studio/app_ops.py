@@ -239,17 +239,42 @@ def sort_table(path, column: str, *, descending: bool = False, sheet: str | None
 
 _US, _RS = "\x1f", "\x1e"
 
-# Pages' AppleScript `open` can return missing value; then the document is the
-# front one. Confirm it is really this file before reading or writing anything.
-_PAGES_OPEN = """    set d to open (POSIX file (item 1 of argv))
-    if d is missing value then set d to front document
-    set fp to ""
-    try
-      set fp to POSIX path of ((file of d) as alias)
-    end try
-    if fp ends with "/" then set fp to text 1 thru -2 of fp
-    if fp is not (item 1 of argv) then error "Pages opened a different document (" & fp & ")" number -10000
+# Pages refuses AppleScript `open (POSIX file …)` on files outside its sandbox
+# ("Operation not permitted"); JXA `app.open(Path(…))` is granted access. So the
+# document is opened with JXA, and AppleScript then finds that open document by
+# its exact file path — never "front document" — before reading or writing.
+_PAGES_FIND = """    set d to missing value
+    repeat with x in documents
+      set fp to ""
+      try
+        set fp to POSIX path of ((file of x) as alias)
+      end try
+      if fp ends with "/" then set fp to text 1 thru -2 of fp
+      if fp is (item 1 of argv) then
+        set d to contents of x
+        exit repeat
+      end if
+    end repeat
+    if d is missing value then error "the document isn't open in Pages" number -10000
 """
+
+
+def _pages_open(path: Path, *, open_it: bool = True) -> bool:
+    """Open `path` in Pages via JXA (if open_it). Returns True if it was already open."""
+    out = _jxa("Pages", _OPEN_CHECK + """  if (params.open_it) app.open(Path(params.path));
+  return JSON.stringify({open_in_app: false});""", {"path": str(path), "open_it": open_it}, timeout=180)
+    return bool(out.get("open_in_app"))
+
+
+def _pages_close(path: Path) -> None:
+    """Close `path` in Pages without saving, if it is open (cleanup after a failure)."""
+    try:
+        _jxa("Pages", """  app.documents().forEach(d => {
+    try { const f = d.file(); if (f && f.toString() === params.path) app.close(d, {saving: 'no'}); } catch (e) {}
+  });
+  return JSON.stringify({});""", {"path": str(path)}, timeout=60)
+    except Exception:  # noqa: BLE001 — best effort; the original error matters more
+        pass
 
 
 def _pages_placeholders(path: Path) -> list[dict]:
@@ -260,9 +285,10 @@ def _pages_placeholders(path: Path) -> list[dict]:
     name = app_name("Pages")
     if '"' in name:
         raise AppOpError(f"refusing unsafe app name {name!r}")
+    keep_open = _pages_open(path)
     script = f"""on run argv
   tell application "{name}"
-{_PAGES_OPEN}    set out to ""
+{_PAGES_FIND}    set out to ""
     try
       repeat with ph in (every placeholder text of d)
         set t to ""
@@ -277,15 +303,18 @@ def _pages_placeholders(path: Path) -> list[dict]:
         set out to out & (t as text) & (character id 31) & x & (character id 30)
       end repeat
     on error errMsg number errNum
-      close d saving no
+      if (item 2 of argv) is "close" then close d saving no
       error errMsg number errNum
     end try
-    close d saving no
+    if (item 2 of argv) is "close" then close d saving no
     return out
   end tell
 end run"""
-    r = subprocess.run(["osascript", "-e", script, str(path)], capture_output=True, text=True, timeout=180)
+    r = subprocess.run(["osascript", "-e", script, str(path), "keep" if keep_open else "close"],
+                       capture_output=True, text=True, timeout=180)
     if r.returncode != 0:
+        if not keep_open:
+            _pages_close(path)
         raise RuntimeError(f"AppleScript failed (rc={r.returncode}): {r.stderr.strip()[:400]}")
     out = []
     for rec in r.stdout.rstrip("\n").split(_RS):
@@ -373,6 +402,10 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
     if not values or not all(isinstance(k, str) and isinstance(v, str) for k, v in values.items()):
         raise AppOpError('values must be {"Tag": "text", …}')
     pages_io.preflight()
+    if _pages_open(target, open_it=False):
+        from iwork_studio.keynote_slides import DocumentOpenError
+
+        raise DocumentOpenError(f"{target.name} is open in Pages. Save and close it first.")
     phs = _pages_placeholders(target)
     tags = {p["tag"] for p in phs}
     unknown = sorted(set(values) - tags)
@@ -394,7 +427,7 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
     pairs = [x for k, v in values.items() for x in (k, v)]
     script = f"""on run argv
   tell application "{name}"
-{_PAGES_OPEN}    try
+{_PAGES_FIND}    try
       repeat with i from 2 to (count of argv) by 2
         set t to item i of argv
         set v to item (i + 1) of argv
@@ -412,6 +445,8 @@ end run"""
     backup = pages_io._versioned_backup(target, bdir)
     pages_io._prune_backups(bdir, max_backups)
     try:
+        if _pages_open(target):
+            raise RuntimeError(f"{target.name} was opened in Pages meanwhile; nothing written")
         r = subprocess.run(["osascript", "-e", script, str(target), *pairs], capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
             raise RuntimeError(f"AppleScript failed (rc={r.returncode}): {r.stderr.strip()[:400]}")
@@ -430,6 +465,7 @@ end run"""
         if others(now) != others(phs):
             raise pages_io.EditVerificationError("other placeholders changed — rolled back")
     except Exception:
+        _pages_close(target)  # never leave our window open over the restored file
         _restore(target, backup)
         raise
     return {"ok": True, "file": str(target), "filled": sorted(values), "backup": str(backup)}
