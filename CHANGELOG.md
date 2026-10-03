@@ -14,6 +14,7 @@ Reach + decks: designed documents, previews, one-click install.
 - **Install anywhere:** packaged for PyPI (`pip install iwork-studio`), listed for the MCP Registry, and shipped as a one-click Claude Desktop extension (`.mcpb`, with a folder picker). Releases publish automatically from a tag.
 - **Unattended live runs:** `scripts/live.sh` runs the Mac test suite, logs it, and quits the iWork apps the run opened (never an app with your documents).
 - `iwork_capabilities` describes the current routes.
+- **PDF checks now use pdfminer.six (MIT)** instead of PyMuPDF (AGPL), so the whole package is permissively licensed. Arabic text layers are normalised (NFKC), so shaped letters and the lam-alef ligature match plain text.
 
 ## 2.2.0
 

@@ -1,11 +1,10 @@
-"""PDF formatting check — headless, on PDFs drawn with PyMuPDF itself."""
+"""PDF formatting check — headless, on PDFs drawn with reportlab."""
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import pymupdf as fitz
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -16,12 +15,17 @@ from iwork_studio import format_check as fc  # noqa: E402
 
 @pytest.fixture()
 def pdf(tmp_path):
+    from reportlab.pdfgen import canvas
+
     p = tmp_path / "x.pdf"
-    doc = fitz.open()
-    page = doc.new_page(width=595, height=842)  # A4
-    page.insert_text((72, 100), "Revenue", fontname="helv", fontsize=14, color=(0x1A / 255, 0x7F / 255, 0x79 / 255))
-    page.insert_text((72, 140), "Notes", fontname="hebo", fontsize=10, color=(0, 0, 0))
-    doc.save(p)
+    c = canvas.Canvas(str(p), pagesize=(595, 842))  # A4
+    c.setFont("Helvetica", 14)
+    c.setFillColorRGB(0x1A / 255, 0x7F / 255, 0x79 / 255)
+    c.drawString(72, 742, "Revenue")
+    c.setFont("Helvetica-Bold", 10)
+    c.setFillColorRGB(0, 0, 0)
+    c.drawString(72, 702, "Notes")
+    c.save()
     return p
 
 

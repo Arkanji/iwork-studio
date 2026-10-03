@@ -3,7 +3,7 @@
 The writers verify formatting by re-reading the file with the same library
 that wrote it. This module is the independent second opinion: export a PDF
 through the real app and read what was actually drawn — the font, size and
-colour of the text spans, and the page size — with PyMuPDF.
+colour of the text spans, and the page size — with pdfminer.six.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import re
 import tempfile
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF (`import fitz` prints to stdout)
+from iwork_studio import pdf as _pdf
 
 __all__ = ["inspect_pdf_text", "check_pdf_format", "verify_format", "FormatMismatch"]
 
@@ -30,27 +30,12 @@ def _norm_font(name: str) -> str:
     return re.sub(r"[\s_-]", "", name).lower()
 
 
-def _hex(color_int: int) -> str:
-    return f"#{color_int:06x}"
-
-
 def inspect_pdf_text(pdf_path: str | os.PathLike, contains: str | None = None) -> dict:
     """Spans (text, font, size, colour) per page, optionally filtered."""
-    out = {"pages": []}
-    with fitz.open(str(pdf_path)) as doc:
-        for i, page in enumerate(doc, start=1):
-            spans = []
-            for block in page.get_text("dict")["blocks"]:
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        t = span.get("text", "")
-                        if not t.strip() or (contains and contains not in t):
-                            continue
-                        spans.append({"text": t, "font": span["font"], "size": round(span["size"], 1),
-                                      "color": _hex(span["color"]), "bold": "bold" in span["font"].lower()})
-            out["pages"].append({"page": i, "width_pt": round(page.rect.width, 1),
-                                 "height_pt": round(page.rect.height, 1), "spans": spans})
-    return out
+    pages = _pdf.spans(pdf_path)
+    for p in pages:
+        p["spans"] = [s for s in p["spans"] if not contains or contains in s["text"]]
+    return {"pages": pages}
 
 
 def check_pdf_format(pdf_path: str | os.PathLike, text: str, *, font: str | None = None,

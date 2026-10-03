@@ -2,7 +2,7 @@
 r"""iWork Studio — render verification for any iWork file.
 
 Opens the file in its native app (Numbers/Keynote/Pages) via AppleScript,
-exports a PDF, and asserts the PyMuPDF text layer contains the expected
+exports a PDF, and asserts the PDF text layer contains the expected
 fragment (ligature-aware for Arabic — 'الاسم' extracts as 'االسسم'-style
 visual order; the matcher tolerates lam-alef split + bidi, never passes a
 wrong-language render as OK).

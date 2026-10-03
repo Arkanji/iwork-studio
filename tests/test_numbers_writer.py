@@ -240,7 +240,7 @@ class TestRenderVerify:
 
     @pytest.mark.aqua
     def test_render_verify_numbers_pdf_text(self, numbers_file, tmp_path):
-        """B6 live loop: Numbers → export PDF → PyMuPDF text-layer match."""
+        """B6 live loop: Numbers → export PDF → PDF text-layer match."""
         evidence_pdf = tmp_path / "render_verify_output.pdf"
         result = render_verify.verify_render(
             numbers_file,

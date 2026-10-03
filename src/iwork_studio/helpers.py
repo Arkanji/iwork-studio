@@ -98,11 +98,27 @@ def thumbnail(path, out_dir=None) -> dict:
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / f"{p.stem}-preview.jpg"
     dest.write_bytes(data)
-    import pymupdf as fitz
-
-    pix = fitz.Pixmap(str(dest))
-    return {"file": str(p), "thumbnail": str(dest), "width": pix.width, "height": pix.height,
+    width, height = _jpeg_size(data)
+    return {"file": str(p), "thumbnail": str(dest), "width": width, "height": height,
             "note": "made by the app at its last save; edits made without the app aren't reflected"}
+
+
+def _jpeg_size(data: bytes) -> tuple[int | None, int | None]:
+    """Width and height from a JPEG's start-of-frame marker."""
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        length = int.from_bytes(data[i + 2:i + 4], "big")
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+        i += 2 + length
+    return None, None
 
 
 def find_files(folders: list[str], *, kind: str | None = None, name: str | None = None, limit: int = 50) -> dict:

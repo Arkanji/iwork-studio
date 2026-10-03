@@ -20,6 +20,19 @@ from iwork_studio import keynote_io, keynote_slides as ks, keynote_theme as kt, 
 from iwork_studio.numbers_io import CellRefError, WriteVerificationError  # noqa: E402
 
 
+def _tiny_png(size: int = 64) -> bytes:
+    """A solid teal PNG, no imaging library needed."""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    row = b"\x00" + bytes((0x1A, 0x7F, 0x79)) * size
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(row * size)) + chunk(b"IEND", b""))
+
+
 def _sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
@@ -736,13 +749,11 @@ def test_live_create_from_builtin_template(tmp_path, ext):
 
 @pytest.mark.aqua
 def test_live_keynote_transition_and_image(tmp_path):
-    import pymupdf
-
     deck = tmp_path / "deck.key"
     deck.write_bytes((REPO / "tests" / "fixtures" / "arabic.key").read_bytes())
     assert app_ops.set_transition(deck, 1, "dissolve", duration=1.5)["ok"]
     img = tmp_path / "dot.png"
-    pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 64, 64), 0).save(str(img))
+    img.write_bytes(_tiny_png())
     assert app_ops.add_image(deck, 1, img, x=100, y=100, width=64)["ok"]
 
 

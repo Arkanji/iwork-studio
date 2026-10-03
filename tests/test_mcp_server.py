@@ -180,7 +180,7 @@ def test_roots_fence(numbers_file, tmp_path):
 
 
 def test_keynote_read_keeps_the_wire_clean(tmp_path):
-    # keynote-parser prints "Reading from …" and PyMuPDF warns on stdout;
+    # keynote-parser prints "Reading from …" and other libraries may print on stdout;
     # _session fails if either reaches the protocol stream
     deck = tmp_path / "deck.key"
     shutil.copy2(REPO / "tests" / "fixtures" / "arabic.key", deck)
