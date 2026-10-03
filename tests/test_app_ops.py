@@ -60,6 +60,38 @@ def test_formula_not_applied_rolls_back(book, monkeypatch):
     assert _sha(book) == before
 
 
+def test_set_formula_recalculates_first(book, monkeypatch):
+    seen = {}
+
+    def fake(kind, path, body, params):
+        seen["body"] = body
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(app_ops, "_edit_in_app", fake)
+    with pytest.raises(RuntimeError):
+        app_ops.set_formula(book, "B4", "=1")
+    assert seen["body"].index("cells[i].value = fs[i]") < seen["body"].index("byName(params.ref)")
+
+
+def test_recalculate_ok(book, monkeypatch):
+    monkeypatch.setattr(app_ops, "_edit_in_app", lambda k, p, b, params: {"charts": [0, 0], "recalculated": 2})
+    out = app_ops.recalculate(book)
+    assert out["ok"] and out["recalculated"] == 2 and "sheet" not in out
+
+
+def test_recalculate_that_changes_an_input_rolls_back(book, monkeypatch):
+    before = _sha(book)
+
+    def bad(k, p, b, params):
+        _rewrite(p, lambda t: t.write(1, 1, 31))
+        return {"charts": [0, 0], "recalculated": 1}
+
+    monkeypatch.setattr(app_ops, "_edit_in_app", bad)
+    with pytest.raises(WriteVerificationError):
+        app_ops.recalculate(book)
+    assert _sha(book) == before
+
+
 def test_formula_body_targets_the_named_cell(book, monkeypatch):
     seen = {}
 
@@ -765,11 +797,15 @@ def test_live_pages_tables(tmp_path):
     from iwork_studio import helpers
 
     names = helpers.list_templates("pages")["templates"]
-    picks = [n for n in names if any(w in n.lower() for w in ("invoice", "report", "budget", "table"))][:4]
+    words = ("invoice", "budget", "schedule", "table", "planner", "report")
+    picks = sorted((n for n in names if any(w in n.lower() for w in words)),
+                   key=lambda n: next(i for i, w in enumerate(words) if w in n.lower()))[:8]
+    seen = {}
     for i, name in enumerate(picks):
         doc = tmp_path / f"t{i}.pages"
         app_ops.create_document(doc, name)
         tables = app_ops.read_tables(doc)["tables"]
+        seen[name] = [(t["name"], t["rows"], t["columns"]) for t in tables]
         usable = [t for t in tables if not t.get("truncated") and t["rows"] >= 2 and t["columns"] >= 2]
         if not usable:
             continue
@@ -778,7 +814,7 @@ def test_live_pages_tables(tmp_path):
         out = app_ops.set_table_cells(doc, t["index"], {free[0]: "تجربة", free[1]: 1234.5})
         assert out["cells"][free[0]]["value"] == "تجربة" and out["cells"][free[1]]["value"] == 1234.5
         return
-    pytest.skip(f"no template with a table among {picks}")
+    pytest.skip(f"no usable table; tables found per template: {seen}")
 
 
 @pytest.mark.aqua

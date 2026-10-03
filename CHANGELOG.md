@@ -9,8 +9,9 @@ compare → atomic swap.
 Pages tables, Arabic direction, formula safety.
 
 - **Pages tables:** `pages_read_tables` reads every table (values, shown text, formulas, dates); `pages_set_table_cells` writes text, numbers and formulas into an existing table. Every other cell, every table's size and the body text are checked; text that Pages would silently turn into a number is caught and rolled back. New tables can't be created (Pages 15 doesn't script it).
-- **Arabic paragraph direction in Pages:** replace-all rolls back if a right-to-left paragraph flips to left-to-right; set-body reports Arabic paragraphs that come out left-to-right.
-- **Formula safety:** a test proves a save that breaks a formula (`#REF!`) is refused, and a live test proves formulas made in Numbers survive every no-app write.
+- **Arabic paragraph direction in Pages:** replace-all rolls back if a right-to-left paragraph flips to left-to-right. Pages writes new paragraphs left-to-right, even Arabic ones (not scriptable), so set-body flags them.
+- **Formula safety:** a save that breaks a formula (`#REF!`) is refused, and formulas made in Numbers survive every no-app write.
+- **`numbers_recalculate`:** Numbers doesn't recalculate when it opens a file changed without it, so totals kept their old results. No-app edits on files with formulas now say so (`formulas_need_recalc`), this tool has Numbers recompute every formula, and `numbers_set_formula` recalculates first so its result is current.
 - The harmless "unsupported version" warning from numbers-parser is silenced.
 
 ## 2.1.0

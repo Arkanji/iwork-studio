@@ -262,7 +262,10 @@ def _structural(path, sheet, table, axis: str, op: str, at: int | None, count: i
 
         return {"check": check, "summary": {"what": axis, "op": op, "at": pos + 1, "count": count}}
 
-    return _protected_write(path, sheet, table, f"{op}_{axis}", plan, structural=True, **kw)
+    out = _protected_write(path, sheet, table, f"{op}_{axis}", plan, structural=True, **kw)
+    from iwork_studio.numbers_io import recalc_note
+
+    return {**out, **recalc_note(read_numbers(out["file"]))}
 
 
 def insert(path, what: str, count: int = 1, at: int | None = None, values: list[list] | None = None,

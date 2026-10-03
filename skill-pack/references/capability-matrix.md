@@ -24,6 +24,7 @@ iWork and the Creator Studio apps. Arabic/RTL content is supported throughout.
 | Merge a range (refused if it would hide data or cross the header edge) | Supported |
 | Formula in a cell (Numbers computes it; every other input checked unchanged) | Supported — needs Numbers + GUI session |
 | Sort body rows by a column (checked to be a pure reorder) | Supported — needs Numbers + GUI session |
+| Recalculate every formula (Numbers doesn't on open after no-app edits; formulas and inputs checked unchanged) | Supported — needs Numbers + GUI session |
 | Table styles (named table themes) | Not exposed — neither AppleScript nor the parser |
 | Render-verify (export PDF via Numbers → text-layer check) | Supported — needs Numbers + GUI session |
 | Format-verify (PDF font/size/colour/page size) | Supported — needs the app + GUI session |
@@ -89,7 +90,7 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | Read every table (values, shown text, formulas, dates) | Supported — AppleScript (JXA can't see Pages tables) |
 | Write cells of an existing table (text, numbers, formulas, clear); every other cell, table size and body text checked | Supported |
 | Create a new table | Not possible — broken in Pages 15 scripting |
-| Paragraph direction (RTL) after replace / set body | Checked — a flipped RTL paragraph rolls back; Arabic paragraphs written LTR are flagged |
+| Paragraph direction (RTL) after replace / set body | Checked — a flipped RTL paragraph rolls back; Pages writes new paragraphs LTR (not scriptable), so Arabic ones are flagged |
 | Render-verify (export PDF via Pages) | Supported |
 | Margins / page setup | Planned |
 | Anything richer (styles, tables, sections, regex) | OUT OF SCOPE (`PagesOutOfScopeError`) |
@@ -120,7 +121,7 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 52 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 53 tools with read-only / destructive hints | Supported |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |
