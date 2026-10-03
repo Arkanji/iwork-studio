@@ -68,6 +68,7 @@ SLIDE_TOOLS = {
     "keynote_format_text",
     "keynote_set_transition",
     "keynote_add_image",
+    "keynote_add_chart",
 }
 
 

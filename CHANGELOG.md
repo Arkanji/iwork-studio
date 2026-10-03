@@ -4,6 +4,15 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.1.0
+
+Charts.
+
+- **`keynote_add_chart`**: add a bar, stacked bar, horizontal bar, line, area, pie or scatter chart (2D or 3D) to a slide from data. Checked: one new chart on that slide, nothing else changed.
+- **App-driven tools now work on files with charts.** Keynote slide ops, theming, transitions and images, and Numbers formulas and sort, used to refuse them. The app makes the change and keeps its charts linked; every slide's (or sheet's) chart count is checked before and after, and any difference rolls back.
+- The tools that work without the app still refuse files with charts: their rewrite can break a chart's link to its data.
+- Numbers and Pages charts can't be created: Apple doesn't make them scriptable.
+
 ## 2.0.0
 
 The "do the whole job" release: create, structure, format, theme, present and

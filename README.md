@@ -3,10 +3,10 @@
 <img src="assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
 [![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.0.0-1a7f79)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.0-1a7f79)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-49%20tools-8A2BE2)](#all-49-tools)
+[![MCP server](https://img.shields.io/badge/MCP-50%20tools-8A2BE2)](#all-50-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
@@ -15,7 +15,7 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 49 tools](#all-49-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 50 tools](#all-50-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
 
 <br>
 
@@ -52,6 +52,8 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 >
 > *"In pitch.key, switch to the Gradient theme, make the title on slide 1 white at 60 pt, add a dissolve between every slide, and put logo.png on the last slide."*
 >
+> *"Add a bar chart of revenue by quarter for 2025 and 2026 to slide 4."*
+>
 > *"Duplicate slide 3, move the copy to the front and add presenter notes: ملاحظات المتحدث"*
 >
 > *"Fill the Name and Date fields in offer-letter.pages, then export it as a password-protected PDF."*
@@ -66,7 +68,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 |---|---|---|---|
 | **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme and styling | Body text and placeholders |
 | **Create** | From data or CSV ⚡ · from a built-in template · from your own file | From a built-in theme · from your own deck | From a built-in template · from your own file |
-| **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images | Replace text everywhere · replace the body · fill placeholders |
+| **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders |
 | **Format** | Fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Theme · slide layout · text font, size and colour · transitions | — |
 | **Export** | PDF · Excel · CSV | PDF · PowerPoint · images · movie | PDF · Word · EPUB · text · RTF |
 | **Present** | | Start, stop, next, previous | |
@@ -79,7 +81,8 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 
 On purpose, so it never breaks a file:
 
-- **Files with charts** are refused for writes. A text change can silently corrupt chart data.
+- **Files with charts** are refused by the tools that work without the app: their rewrite can silently break a chart's link to its data. The app-driven tools (Keynote slides, theming, transitions, images; Numbers formulas and sort) work on them and check every chart is still there.
+- **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added.
 - **Pages** is limited to text: replace, set body and placeholders (page-layout documents, like most letter templates, only take placeholders). There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, editing a theme's master slides. Page margins and page setup are planned.
@@ -107,7 +110,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 49 tools
+## All 50 tools
 
 Writes are marked destructive and reads read-only, so clients can ask before writing.
 
@@ -148,7 +151,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Keynote</b> (16)</summary>
+<summary><b>Keynote</b> (17)</summary>
 
 | Tool | What it does |
 |---|---|
@@ -160,6 +163,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` | Theme · one slide's layout · one text item's font, size, colour |
 | `keynote_set_transition` | Effect, duration, delay, auto-advance |
 | `keynote_add_image` | Place an image on a slide |
+| `keynote_add_chart` | Add a bar, line, area, pie or scatter chart from data |
 | `keynote_slideshow` | Start, stop, next, previous |
 
 </details>
@@ -210,7 +214,7 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 
 1. **`save in <path>` is denied by the iWork sandbox.** In-place `save` and `export` work. → [`sandbox-trap.md`](skill-pack/references/sandbox-trap.md)
 2. **Keynote's slide `title`/`body` properties throw `-1700`.** Use the text item's `object text`. → [`keynote-1700-defect.md`](skill-pack/references/keynote-1700-defect.md)
-3. **Chart files corrupt quietly** when their text is edited, so writes refuse them.
+3. **Chart files corrupt quietly** when the file-level libraries rewrite them, so those routes refuse them. When the app makes the edit it keeps its own charts linked, so app-driven routes allow them and count every chart before and after.
 4. **Byte-equal saves don't exist** in iWork's format. The real bar is semantic: it reopens, and the full model matches.
 5. **First-run permission and template-chooser dialogs** block every script call. A preflight turns the hang into one clear prompt. → [`tcc-preflight.md`](skill-pack/references/tcc-preflight.md)
 6. **"Creator Studio" apps have different names.** A hardcoded `Application("Numbers")` drives the wrong app; names are resolved per call. → [`apps.py`](src/iwork_studio/apps.py)
