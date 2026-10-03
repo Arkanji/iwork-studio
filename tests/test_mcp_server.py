@@ -27,6 +27,14 @@ CORE_TOOLS = {
     "pages_preflight",
     "pages_replace_all",
     "pages_set_body",
+    "numbers_inspect_format",
+    "numbers_set_dimensions",
+    "numbers_set_number_format",
+    "numbers_set_cell_style",
+    "numbers_set_borders",
+    "numbers_set_headers",
+    "numbers_merge_cells",
+    "iwork_verify_format",
 }
 SLIDE_TOOLS = {
     "keynote_add_slide",
@@ -156,3 +164,20 @@ def test_wrong_extension_rejected(numbers_file):
         return await c.call_tool("keynote_replace_text", {"path": str(numbers_file), "find": "a", "replace": "b"})
 
     assert _session(steps).is_error
+
+
+def test_format_tools_end_to_end(numbers_file):
+    async def steps(c):
+        p = str(numbers_file)
+        await c.call_tool("numbers_set_cell_style", {"path": p, "cells": "A1:C1", "bold": True, "fill_color": "#1A7F79"})
+        fmt = _payload(await c.call_tool("numbers_set_number_format",
+                                         {"path": p, "cells": "B2", "format": "currency", "currency_code": "SAR"}))
+        lay = _payload(await c.call_tool("numbers_inspect_format", {"path": p}))
+        bad = await c.call_tool("numbers_set_borders", {"path": p, "cells": "Z9"})
+        return fmt, lay, bad
+
+    fmt, lay, bad = _session(steps)
+    assert fmt["now_shown_as"]["B2"].startswith("SAR")
+    a1 = next(c for c in lay["cells"] if c["ref"] == "A1")
+    assert a1["style"]["bold"] and a1["style"]["bg_color"] == "#1a7f79"
+    assert bad.is_error and "CellRefError" in bad.content[0].text

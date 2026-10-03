@@ -4,7 +4,7 @@
 
 ## Core routes (classic iWork and Creator Studio apps)
 
-- **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Writes: cell edits, create, find/replace, atomic swap. Charts refused by design. Arabic byte-exact.
+- **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Writes: cell edits, cell styles, number formats (currency/%/dates), borders, widths/heights, headers, merges — atomic, only the requested cells change. Charts refused by design. Arabic byte-exact.
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Charts refused by design. AppleScript fallback inside live app.
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, export to .docx/PDF. Write: `replace_all` and `set_body` ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
 
