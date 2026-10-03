@@ -40,6 +40,18 @@ CORE_TOOLS = {
     "iwork_thumbnail",
     "iwork_find",
     "iwork_list_templates",
+    "numbers_create",
+    "numbers_import_csv",
+    "numbers_insert",
+    "numbers_delete",
+    "numbers_add_table",
+    "iwork_create_from_template",
+    "iwork_create",
+    "numbers_set_formula",
+    "numbers_sort",
+    "pages_list_placeholders",
+    "pages_fill_placeholders",
+    "keynote_slideshow",
 }
 SLIDE_TOOLS = {
     "keynote_add_slide",
@@ -54,6 +66,8 @@ SLIDE_TOOLS = {
     "keynote_set_theme",
     "keynote_set_slide_layout",
     "keynote_format_text",
+    "keynote_set_transition",
+    "keynote_add_image",
 }
 
 

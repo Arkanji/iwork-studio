@@ -20,8 +20,9 @@ working **with** or **on** this repo.
 
 ## Using it: edit iWork files for a user
 
-iWork Studio reads and edits Apple **Numbers (`.numbers`)**, **Keynote (`.key`)**
-and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
+iWork Studio creates, reads, edits, formats, themes and exports Apple
+**Numbers (`.numbers`)**, **Keynote (`.key`)** and **Pages (`.pages`)** files.
+Use it whenever a request touches one of those.
 
 **Pick your interface, in this order:**
 
@@ -29,20 +30,26 @@ and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
    as in the table above.
 2. **Skill** — [`skill-pack/SKILL.md`](skill-pack/SKILL.md) (also at
    `.claude/skills/iwork-studio/`): CLI scripts with JSON output.
-3. **Python** — `pip install -e .`, then `iwork_studio.numbers_io`, `keynote_io`,
-   `keynote_slides`, `pages_io`, `backups`.
+3. **Python** — `pip install -e .`, then `iwork_studio.numbers_io`, `numbers_format`,
+   `numbers_structure`, `keynote_io`, `keynote_slides`, `keynote_theme`, `pages_io`,
+   `app_ops`, `exporter`, `helpers`, `backups`.
 
 **What each route needs**
 
 | Task | Tools | Needs |
 |---|---|---|
-| Read / edit `.numbers` cells | `iwork_read`, `numbers_edit_cell` | Python only — works anywhere |
-| Format `.numbers` (style, number format, borders, widths/heights, headers, merge) | `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only — works anywhere |
-| Read / find-replace `.key` text | `iwork_read`, `keynote_replace_text` | Python only — works anywhere |
-| Keynote slides: add, duplicate, delete, move, hide, presenter notes | `keynote_*_slide`, `keynote_set_presenter_notes` | macOS + Keynote + logged-in GUI session |
-| Keynote theming: theme, slide layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
-| Pages body text | `pages_preflight`, `pages_replace_all`, `pages_set_body` | macOS + Pages + GUI session |
-| Check the rendered result | `iwork_verify_render`, `iwork_verify_format` (font/size/colour/page size) | macOS + the app + GUI session |
+| Read any file · find files · metadata · thumbnail | `iwork_read`, `iwork_find`, `iwork_metadata`, `iwork_thumbnail` | Python only (`.pages` read needs the app) |
+| Create `.numbers` from data / CSV · insert/delete rows & columns · add tables | `numbers_create`, `numbers_import_csv`, `numbers_insert`, `numbers_delete`, `numbers_add_table` | Python only |
+| Edit / format `.numbers` (cells, style, number format, borders, sizes, headers, merge) | `numbers_edit_cell`, `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only |
+| Formulas · sort | `numbers_set_formula`, `numbers_sort` | macOS + Numbers + GUI session |
+| Find/replace `.key` text | `keynote_replace_text` | Python only |
+| Keynote slides: add, duplicate, delete, move, hide, notes, images, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_set_transition` | macOS + Keynote + GUI session |
+| Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
+| Present | `keynote_slideshow` | macOS + Keynote + GUI session |
+| Pages text | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders` | macOS + Pages + GUI session |
+| New file from Apple's templates · from the user's own file | `iwork_list_templates`, `iwork_create` · `iwork_create_from_template` | the app · Python only |
+| Export (PDF, xlsx, csv, docx, epub, pptx, images, movie…) | `iwork_export` | macOS + the app |
+| Check the rendered result | `iwork_verify_render`, `iwork_verify_format` | macOS + the app + GUI session |
 | Undo any write | `iwork_list_backups`, `iwork_restore_backup` | works anywhere |
 
 **Rules — follow them, don't work around them**
@@ -52,11 +59,15 @@ and **Pages (`.pages`)** files. Use it whenever a request touches one of those.
 - **Start with `iwork_capabilities`** when unsure what the machine can do.
   `AquaSessionError` = no macOS GUI here: say so, don't retry.
 - **Charts are refused** (`ChartRefusalError`). Tell the user; never bypass.
-- **Pages has exactly two writes**: `pages_replace_all`, `pages_set_body`
-  (`set_body` resets body formatting — warn the user). Anything richer is out of
-  scope (`PagesOutOfScopeError`). Run `pages_preflight` first; a
-  `PagesUnavailableError` / -1712 means a human must dismiss a dialog once.
-- **Keynote slide ops** refuse a deck open in Keynote (`DocumentOpenError`): ask
+- **Pages has three writes**: `pages_replace_all`, `pages_set_body`
+  (resets body formatting — warn the user) and `pages_fill_placeholders`.
+  Anything richer is out of scope (`PagesOutOfScopeError`). Run
+  `pages_preflight` first; a `PagesUnavailableError` / -1712 means a human must
+  dismiss a dialog once.
+- **New files never overwrite.** Pick a new name if the tool says it exists.
+- **Formula tables**: rows/columns can only be appended headlessly
+  (`StructureError` otherwise); suggest doing mid-table inserts in Numbers.
+- **Keynote slide/theme/image/transition ops** refuse a deck open in Keynote (`DocumentOpenError`): ask
   the user to save and close it. Slide numbers are 1-based. The last slide can't
   be deleted.
 - **Arabic/RTL**: text round-trips exactly. For `iwork_verify_render`, assert ONE
