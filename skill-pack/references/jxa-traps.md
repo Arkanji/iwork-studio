@@ -96,4 +96,5 @@ returned ok; re-read from disk. Every case below is a headless regression test
 | L7 | Pages Creator Studio: in-place save + PDF export work (upstream's 15.1.1 "save hangs / export error 6" not reproduced) | CONFIRMED | |
 | L8 | Keynote text colour (`objectText.color`) takes 0–65535 per channel; 0–1 floats (as some tools write) give near-black | CONFIRMED | `keynote_format_text` writes 0–65535 and reads the colour back |
 | L9 | numbers-parser: assigning attributes on `cell.style` in place is accepted but silently not saved | CONFIRMED | styles are applied by deriving a registered style; readback catches any silent drop |
-
+| L10 | Pages AppleScript `set d to open …` can return `missing value`; then `… of d` and even `close d` fail (-1700 "Can't make missing value into type specifier") | CONFIRMED | fall back to `front document` and confirm its file path is the requested one before reading or writing; JXA `app.open()` returns the document |
+| L11 | Pages page-layout documents (most letter/flyer templates) have no body text: `bodyText()` is null | CONFIRMED | body ops refuse them with a clear error; placeholders are checked across every text box |

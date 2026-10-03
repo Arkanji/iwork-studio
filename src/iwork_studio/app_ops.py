@@ -239,6 +239,18 @@ def sort_table(path, column: str, *, descending: bool = False, sheet: str | None
 
 _US, _RS = "\x1f", "\x1e"
 
+# Pages' AppleScript `open` can return missing value; then the document is the
+# front one. Confirm it is really this file before reading or writing anything.
+_PAGES_OPEN = """    set d to open (POSIX file (item 1 of argv))
+    if d is missing value then set d to front document
+    set fp to ""
+    try
+      set fp to POSIX path of ((file of d) as alias)
+    end try
+    if fp ends with "/" then set fp to text 1 thru -2 of fp
+    if fp is not (item 1 of argv) then error "Pages opened a different document (" & fp & ")" number -10000
+"""
+
 
 def _pages_placeholders(path: Path) -> list[dict]:
     """AppleScript: [{tag, text}] in document order (open → read → close, no save)."""
@@ -250,11 +262,19 @@ def _pages_placeholders(path: Path) -> list[dict]:
         raise AppOpError(f"refusing unsafe app name {name!r}")
     script = f"""on run argv
   tell application "{name}"
-    set d to open (POSIX file (item 1 of argv))
-    set out to ""
+{_PAGES_OPEN}    set out to ""
     try
       repeat with ph in (every placeholder text of d)
-        set out to out & (tag of ph) & (character id 31) & (ph as text) & (character id 30)
+        set t to ""
+        try
+          set t to tag of ph
+          if t is missing value then set t to ""
+        end try
+        set x to ""
+        try
+          set x to (ph as text)
+        end try
+        set out to out & (t as text) & (character id 31) & x & (character id 30)
       end repeat
     on error errMsg number errNum
       close d saving no
@@ -374,8 +394,7 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
     pairs = [x for k, v in values.items() for x in (k, v)]
     script = f"""on run argv
   tell application "{name}"
-    set d to open (POSIX file (item 1 of argv))
-    try
+{_PAGES_OPEN}    try
       repeat with i from 2 to (count of argv) by 2
         set t to item i of argv
         set v to item (i + 1) of argv
