@@ -39,7 +39,7 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 | New file from Apple's templates / from the user's own file | `iwork_list_templates` + `iwork_create` · `iwork_create_from_template` | Mac + the app · anywhere |
 | Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere |
 | Insert/delete rows or columns · add a table or sheet | `numbers_insert` · `numbers_delete` · `numbers_add_table` | anywhere |
-| Formula in a cell · sort a table | `numbers_set_formula` · `numbers_sort` | Mac + Numbers, file closed |
+| Formula in a cell · recalculate formulas · sort a table | `numbers_set_formula` · `numbers_recalculate` · `numbers_sort` | Mac + Numbers, file closed |
 | See / set Numbers formatting: style · number format · borders · widths/heights · headers · merge | `numbers_inspect_format` · `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere |
 | Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere |
 | List slides · notes · hide/show · duplicate · delete · move · add | `keynote_list_slides` · `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
@@ -57,7 +57,9 @@ Keynote shape fill/text alignment are not exposed — say so, don't improvise.
 
 Building a spreadsheet: `numbers_create` (or `numbers_import_csv`) → format the
 header with `numbers_set_cell_style` → `numbers_set_number_format` for money/% →
-`numbers_set_dimensions` → `numbers_set_formula` for totals (Mac). New files are
+`numbers_set_dimensions` → `numbers_set_formula` for totals (Mac). After no-app edits
+to a file with formulas (the result says `formulas_need_recalc`), run `numbers_recalculate`:
+Numbers otherwise keeps showing the old totals. New files are
 never overwritten. In a table with formulas, rows/columns can only be appended
 headlessly.
 

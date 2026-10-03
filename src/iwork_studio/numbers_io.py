@@ -524,7 +524,19 @@ def edit_cell(
         },
         "backup": str(backup_path),
         "sheets": sheets_after,
+        **recalc_note(after),
     }
+
+
+def recalc_note(model: dict) -> dict:
+    """Numbers shows the stored result of a formula and doesn't recalculate when it
+    opens a file changed without it. Flag files whose formulas may now be stale."""
+    n = sum(1 for s in model["sheets"] for t in s["tables"] for c in t["cells"] if c.get("formula"))
+    if not n:
+        return {}
+    return {"formulas_need_recalc": n,
+            "next_step": "Formula results in this file still show their old values; Numbers doesn't recalculate "
+                         "on open. Run numbers_recalculate (needs Numbers on a Mac) so totals reflect the change."}
 
 
 def _prune_backups(backup_dir: Path, max_backups: int) -> None:

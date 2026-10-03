@@ -27,7 +27,7 @@ from iwork_studio.apps import app_name
 
 __all__ = [
     "set_formula", "sort_table", "list_placeholders", "fill_placeholders", "set_transition",
-    "read_tables", "set_table_cells", "add_image", "add_chart", "slideshow", "create_document", "TRANSITIONS", "CHART_TYPES", "AppOpError",
+    "read_tables", "set_table_cells", "recalculate", "add_image", "add_chart", "slideshow", "create_document", "TRANSITIONS", "CHART_TYPES", "AppOpError",
 ]
 
 
@@ -88,7 +88,7 @@ def _restore(target: Path, backup: Path) -> None:
 # ── Numbers (app computes formulas and sorts) ─────────────────────────────────
 
 
-def _numbers_target(path, sheet, table):
+def _numbers_target(path, sheet, table, *, whole_document: bool = False):
     from numbers_parser import Document
 
     from iwork_studio import numbers_io as nio
@@ -99,6 +99,8 @@ def _numbers_target(path, sheet, table):
     if target.suffix.lower() != ".numbers":
         raise AppOpError(f"{target.name} is not a .numbers file")
     doc = Document(str(target))
+    if whole_document:
+        return target, doc, None, None
     sh, tb = nio._resolve_cell(doc, sheet, table)
     return target, doc, sh, tb
 
@@ -123,12 +125,13 @@ def _fnorm(f: str | None) -> str:
 
 
 def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect, summary: dict,
-                   backup_dir=None, max_backups: int = 10) -> dict:
+                   backup_dir=None, max_backups: int = 10, whole_document: bool = False) -> dict:
     from numbers_parser import Document
 
     from iwork_studio import numbers_io as nio
 
-    target, doc, sh, tb = _numbers_target(path, sheet, table)
+    target, doc, sh, tb = _numbers_target(path, sheet, table, whole_document=whole_document)
+    where = {} if whole_document else {"sheet": sh.name, "table": tb.name}
     before = _values(doc)
     has_charts = nio.contains_charts(target)  # Numbers does the edit itself, so its charts stay linked
     bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
@@ -137,9 +140,11 @@ def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect,
     try:
         out = _edit_in_app("Numbers", target, _COUNT_CHARTS + "    const chartsBefore = countCharts();\n" + body
                            + "    result.charts = [chartsBefore, countCharts()];\n",
-                           {"sheet": sh.name, "table": tb.name, **params})
+                           {**where, **params})
         after_doc = Document(str(target))
         expect(before, _values(after_doc), after_doc)
+        if isinstance(out, dict) and out.get("recalculated") is not None:
+            summary = {**summary, "recalculated": out["recalculated"]}
         cb, ca = ((out or {}).get("charts") or [None, None])
         if has_charts and (cb is None or ca is None):
             raise nio.WriteVerificationError("this file has charts and Numbers doesn't report them, so the "
@@ -149,13 +154,28 @@ def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect,
     except Exception:
         _restore(target, backup)
         raise
-    return {"ok": True, "file": str(target), "op": op, "sheet": sh.name, "table": tb.name,
-            "backup": str(backup), **summary}
+    return {"ok": True, "file": str(target), "op": op, **where, "backup": str(backup), **summary}
 
 
 _COUNT_CHARTS = """    const countCharts = () => {
       try { return doc.sheets().reduce((n, s) => n + s.charts().length, 0); } catch (e) { return null; }
     };
+"""
+
+# Numbers shows a formula's stored result and doesn't recalculate on open, so after
+# no-app edits totals can be stale. Re-entering each formula as-is makes Numbers
+# recompute it from the current inputs.
+_RECALC_ALL = """    let recalculated = 0;
+    doc.sheets().forEach(s => s.tables().forEach(t => {
+      let fs = [];
+      try { fs = t.cells.formula(); } catch (e) {}
+      if (!fs.some(f => f)) return;
+      const cells = t.cells();
+      for (let i = 0; i < fs.length; i++) {
+        if (fs[i]) { cells[i].value = fs[i]; recalculated++; }
+      }
+    }));
+    result.recalculated = recalculated;
 """
 
 _NUM_TABLE = """    const sh = doc.sheets.byName(params.sheet);
@@ -197,13 +217,32 @@ def set_formula(path, ref: str, formula: str, *, sheet: str | None = None, table
             if (f is None) != (after[k][1] is None):
                 raise nio.WriteVerificationError(f"{k[1]}!R{k[2] + 1}C{k[3] + 1} changed kind")
 
-    body = _NUM_TABLE + "    tb.cells.byName(params.ref).value = params.formula;\n"
+    body = _RECALC_ALL + _NUM_TABLE + "    tb.cells.byName(params.ref).value = params.formula;\n"
     out = _numbers_write(path, sheet, table, "set_formula", body,
                          {"ref": a1, "formula": formula.strip()}, expect, {"ref": a1, "formula": formula.strip()}, **kw)
     from numbers_parser import Document
 
     t2 = nio._resolve_cell(Document(out["file"]), out["sheet"], out["table"])[1]
     out["result"] = t2.cell(r, c).value
+    return out
+
+
+def recalculate(path, **kw) -> dict:
+    """Make Numbers recompute every formula from the current values (after no-app edits,
+    Numbers keeps showing the old results). Formulas and all other values are checked unchanged."""
+    from iwork_studio import numbers_io as nio
+
+    def expect(before, after, after_doc):
+        if set(after) != set(before):
+            raise nio.WriteVerificationError("table shape changed — rolled back")
+        for k, (v, f) in before.items():
+            if f is None:
+                if after[k][1] is not None or not _same(after[k][0], v):
+                    raise nio.WriteVerificationError(f"{k[1]}!R{k[2] + 1}C{k[3] + 1} changed — rolled back")
+            elif _fnorm(after[k][1]) != _fnorm(f):
+                raise nio.WriteVerificationError(f"formula at {k[1]}!R{k[2] + 1}C{k[3] + 1} changed — rolled back")
+
+    out = _numbers_write(path, None, None, "recalculate", _RECALC_ALL, {}, expect, {}, whole_document=True, **kw)
     return out
 
 

@@ -180,6 +180,14 @@ def test_older_parser_artifacts_read_as_written():
 
 # ── formulas must survive library re-saves (upstream report: re-save → #REF!) ─
 
+def test_recalc_note():
+    from iwork_studio.numbers_io import recalc_note
+
+    m = {"sheets": [{"tables": [{"cells": [{"formula": "SUM(A1)"}, {"value": 1}]}]}]}
+    assert recalc_note(m)["formulas_need_recalc"] == 1 and "numbers_recalculate" in recalc_note(m)["next_step"]
+    assert recalc_note({"sheets": [{"tables": [{"cells": [{"value": 1}]}]}]}) == {}
+
+
 def test_edit_cell_refuses_a_save_that_breaks_a_formula(book, monkeypatch):
     import copy
 
@@ -224,6 +232,12 @@ def test_live_formulas_survive_library_writes(book):
     ns.insert(book, "columns", values=[["Note"]], sheet="Sales")
     assert formula() == f0
 
-    # Numbers still computes it from the edited value: 2000 + 950.5 + 700
+    # Numbers shows the stored (stale) total until it recalculates: 1200 + 950.5 + 700
+    t = Document(str(book)).sheets["Sales"].tables[0]
+    assert abs(t.cell(4, 1).value - 2850.5) < 1e-9
+    rec = app_ops.recalculate(book)
+    assert rec["recalculated"] >= 1 and formula() == f0
+    t = Document(str(book)).sheets["Sales"].tables[0]
+    assert abs(t.cell(4, 1).value - 3650.5) < 1e-9  # 2000 + 950.5 + 700
     out = app_ops.set_formula(book, "C5", "=B5", sheet="Sales")
     assert abs(out["result"] - 3650.5) < 1e-9

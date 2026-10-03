@@ -6,7 +6,7 @@
 [![Version](https://img.shields.io/badge/version-2.2.0-1a7f79)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-52%20tools-8A2BE2)](#all-52-tools)
+[![MCP server](https://img.shields.io/badge/MCP-53%20tools-8A2BE2)](#all-53-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
@@ -15,7 +15,7 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 52 tools](#all-52-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 53 tools](#all-53-tools) · [For AI agents](#for-ai-agents) · [Changelog](CHANGELOG.md)
 
 <br>
 
@@ -70,7 +70,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 |---|---|---|---|
 | **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text, placeholders and tables |
 | **Create** | From data or CSV ⚡ · from a built-in template · from your own file | From a built-in theme · from your own deck | From a built-in template · from your own file |
-| **Edit content** | Cells ⚡ · formulas · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
+| **Edit content** | Cells ⚡ · formulas · recalculate · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
 | **Format** | Fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Theme · slide layout · text font, size and colour · transitions | — |
 | **Export** | PDF · Excel · CSV | PDF · PowerPoint · images · movie | PDF · Word · EPUB · text · RTF |
 | **Present** | | Start, stop, next, previous | |
@@ -109,11 +109,11 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 ## Arabic & RTL
 
 - Arabic text round-trips exactly in all three apps, including presenter notes, Pages placeholders and Pages table cells.
-- **Paragraph direction is checked in Pages.** A replace that flips a right-to-left paragraph to left-to-right is rolled back, and new Arabic paragraphs that come out left-to-right are flagged.
+- **Paragraph direction is checked in Pages.** A replace that flips a right-to-left paragraph to left-to-right is rolled back. Pages writes new paragraphs left-to-right, even Arabic ones, and scripting can't change that, so those are flagged: set the direction in Pages (Format › Text).
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 52 tools
+## All 53 tools
 
 Writes are marked destructive and reads read-only, so clients can ask before writing.
 
@@ -135,13 +135,14 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Numbers</b> (15)</summary>
+<summary><b>Numbers</b> (16)</summary>
 
 | Tool | What it does |
 |---|---|
 | `numbers_create` · `numbers_import_csv` | New file from rows of data · from a CSV/TSV |
 | `numbers_edit_cell` | Set one cell |
 | `numbers_set_formula` | Put a formula in a cell; Numbers computes it |
+| `numbers_recalculate` | Have Numbers recompute every formula after edits made without it |
 | `numbers_insert` · `numbers_delete` | Rows or columns, anywhere |
 | `numbers_add_table` | New table on a sheet, or on a new sheet |
 | `numbers_sort` | Sort body rows by a column |
@@ -233,7 +234,8 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 15. **Pages tables are invisible to JavaScript** scripting but readable and writable from AppleScript; creating tables is broken in Pages 15, so only existing tables are offered.
 16. **The Pages sandbox refuses AppleScript `open`** for files outside it; JavaScript `open` is allowed, so documents are opened that way and then found by their exact path.
 17. **numbers-parser can break formulas on re-save** (an upstream report). Every no-app write compares every formula, so a broken one is caught and nothing changes.
-18. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
+18. **Numbers doesn't recalculate formulas when it opens a file changed without it**: a total keeps its old result. Edits made without the app say so, and `numbers_recalculate` has Numbers recompute every formula.
+19. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
 
 More, each with its status: [`jxa-traps.md`](skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 

@@ -49,6 +49,7 @@ CORE_TOOLS = {
     "iwork_create",
     "numbers_set_formula",
     "numbers_sort",
+    "numbers_recalculate",
     "pages_list_placeholders",
     "pages_fill_placeholders",
     "pages_read_tables",

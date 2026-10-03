@@ -56,6 +56,9 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   work on them and check every chart is kept. keynote_add_chart adds a chart;
   Numbers and Pages charts can't be created (Apple doesn't script them). Never
   work around a refusal; tell the user.
+- Numbers doesn't recalculate formulas when it opens a file changed without it.
+  If a no-app edit returns formulas_need_recalc, call numbers_recalculate (Mac)
+  so totals are current, or tell the user to.
 - New files: numbers_create / numbers_import_csv (no app), iwork_create (from
   Apple's built-in templates, needs the app), iwork_create_from_template (copy
   the user's own document). They never overwrite an existing file.
@@ -660,6 +663,14 @@ def numbers_set_formula(path: str, ref: str, formula: str, sheet: str | None = N
     from iwork_studio import app_ops
 
     return _call(app_ops.set_formula, _path(path, ".numbers"), ref, formula, sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=WRITE)
+def numbers_recalculate(path: str) -> dict[str, Any]:
+    """Make Numbers recompute every formula from the current values. Numbers keeps showing a formula's old result after edits made without it (numbers_edit_cell, numbers_insert…), so run this after those when the file has formulas — their result says so (formulas_need_recalc). Formulas and inputs are verified unchanged. Needs macOS + Numbers, file closed."""
+    from iwork_studio import app_ops
+
+    return _call(app_ops.recalculate, _path(path, ".numbers"))
 
 
 @mcp.tool(annotations=WRITE)

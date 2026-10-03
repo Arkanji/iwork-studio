@@ -41,7 +41,7 @@ Use it whenever a request touches one of those.
 | Read any file · find files · metadata · thumbnail | `iwork_read`, `iwork_find`, `iwork_metadata`, `iwork_thumbnail` | Python only (`.pages` read needs the app) |
 | Create `.numbers` from data / CSV · insert/delete rows & columns · add tables | `numbers_create`, `numbers_import_csv`, `numbers_insert`, `numbers_delete`, `numbers_add_table` | Python only |
 | Edit / format `.numbers` (cells, style, number format, borders, sizes, headers, merge) | `numbers_edit_cell`, `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only |
-| Formulas · sort | `numbers_set_formula`, `numbers_sort` | macOS + Numbers + GUI session |
+| Formulas · recalculate · sort | `numbers_set_formula`, `numbers_recalculate`, `numbers_sort` | macOS + Numbers + GUI session |
 | Find/replace `.key` text | `keynote_replace_text` | Python only |
 | Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_set_transition` | macOS + Keynote + GUI session |
 | Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
@@ -70,6 +70,8 @@ Use it whenever a request touches one of those.
   dismiss a dialog once. Page-layout documents (most letter/flyer templates)
   have no body text: only `pages_fill_placeholders` applies to them.
 - **New files never overwrite.** Pick a new name if the tool says it exists.
+- **Stale totals**: Numbers doesn't recalculate on open. When a no-app edit
+  returns `formulas_need_recalc`, run `numbers_recalculate` (Mac) or tell the user.
 - **Formula tables**: rows/columns can only be appended headlessly
   (`StructureError` otherwise); suggest doing mid-table inserts in Numbers.
 - **Keynote slide/theme/image/transition ops** refuse a deck open in Keynote (`DocumentOpenError`): ask
