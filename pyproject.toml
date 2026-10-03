@@ -5,9 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "iwork-studio"
 version = "2.2.0"
-description = "Read and edit Apple Numbers, Keynote and Pages files with verified, reversible, Arabic-safe writes. Python library + MCP server + agent skill."
+description = "Create, edit, design and export Apple Numbers, Keynote and Pages files from any AI agent: verified, reversible, Arabic-safe. MCP server + Python library + agent skill."
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "iWork Studio contributors" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Office Suites",
+    "Natural Language :: Arabic",
+    "Natural Language :: English",
+]
 requires-python = ">=3.12"
 # Pins mirror skill-pack/references/pins.txt (single source of truth);
 # tests/test_packaging.py fails if the two drift apart.
@@ -30,6 +44,9 @@ iwork-studio-mcp = "iwork_studio.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/Arkanji/iwork-studio"
+Repository = "https://github.com/Arkanji/iwork-studio"
+Changelog = "https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Arkanji/iwork-studio/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
