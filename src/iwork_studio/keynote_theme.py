@@ -60,7 +60,9 @@ _STYLE_INVENTORY = """
       try { font = ot.font(); } catch (e) {}
       try { size = ot.size(); } catch (e) {}
       try { color = ot.color(); } catch (e) {}
-      items.push({index: i, text: ot().toString(), font: font, size: size, color: color});
+      let y = null, area = null;
+      try { y = tis[i].position().y; area = tis[i].width() * tis[i].height(); } catch (e) {}
+      items.push({index: i, text: ot().toString(), font: font, size: size, color: color, y: y, area: area});
     }
     let transition = null, images = null;
     try {
