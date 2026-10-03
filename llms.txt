@@ -31,24 +31,14 @@
 - Keep clones out of iCloud-synced folders (conflict copies corrupt .git).
 - ~25 more scripting traps (imported from reichenbach/iwork_mcp, each status-marked): skill-pack/references/jxa-traps.md
 
-## Install
+## Install (setting this up for a user)
 
-MCP (Claude Code / Desktop / Codex):
-
-```bash
-claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
-```
-
-Library:
-
-```bash
-git clone https://github.com/Arkanji/iwork-studio.git
-cd iwork-studio
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e .
-```
-
-Agent skill install: `bash skill-pack/install.sh`
+- Claude desktop app (Mac): `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh`, then quit Claude (Cmd-Q) and reopen. Optional folder fence: `| sh -s -- --roots ~/Documents`.
+- Claude Code: `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`
+- Any other MCP client: `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` prints the JSON entry (absolute uvx path — GUI apps don't inherit PATH).
+- No Python install needed (uv brings its own). Remove: `… iwork-studio-mcp uninstall`.
+- First run: approve the one-time "Claude wants to control Keynote/Pages/Numbers" prompt; then call `iwork_capabilities`.
+- Library for developers: `pip install -e .` inside a clone.
 
 ## Canonical links
 

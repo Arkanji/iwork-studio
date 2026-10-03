@@ -2,7 +2,7 @@
 
 <img src="assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
-[![CI](https://github.com/arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#capability-matrix)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-byte%20exact%20round--trips-informational?logo=languagetool&logoColor=white)](#arabicrtl)
@@ -12,7 +12,7 @@
 
 **Give your AI agent the keys to Apple iWork.** Read and edit **Numbers (`.numbers`)**, **Keynote (`.key`)** and **Pages (`.pages`)** files — with verified writes, versioned backups, one-call undo, and Arabic/RTL fidelity that actually holds. Ships as an **MCP server**, a Python library, and a drop-in agent skill.
 
-[Quick start](#quick-start) · [The safety model](#the-safety-model) · [Capability matrix](#capability-matrix) · [MCP server](#mcp-server) · [Traps we mapped](#traps-we-mapped-so-you-dont-die-on-them)
+[Install](#install) · [The safety model](#the-safety-model) · [Capability matrix](#capability-matrix) · [MCP server](#mcp-server) · [Traps we mapped](#traps-we-mapped-so-you-dont-die-on-them)
 
 <br>
 
@@ -42,44 +42,35 @@ keynote_slides.set_presenter_notes("pitch.key", 1, "ملاحظات")   # via Key
 backups.restore_backup("revenue.numbers", backups.list_backups("revenue.numbers")[0]["name"])  # undo
 ```
 
-## Quick start
+## Install
 
-Requires **Python 3.12**. `.numbers` and `.key` reads and edits are pure Python and run anywhere (CI runs them on Linux). `.pages`, render verification and Keynote slide ops drive the real apps: macOS with iWork and a logged-in GUI session. Works with classic iWork and the **Creator Studio** apps.
+> **AI agent setting this up for a user?** Use the row for the user's app below, then call `iwork_capabilities`. Everything you need is in this section; [`AGENTS.md`](AGENTS.md) has the usage rules.
 
-**MCP server — one line** (Claude Code; same command shape for Codex and other MCP clients):
+| Your app | Do this |
+|---|---|
+| **Claude desktop app** (Mac) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh` — then quit Claude (Cmd-Q) and reopen |
+| **Claude Code** | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
+| **Cursor, VS Code, Codex, any MCP client** | Run `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` and paste the JSON it prints into the client's MCP settings |
 
-```bash
-claude mcp add iwork-studio -- uvx --from git+https://github.com/arkanji/iwork-studio iwork-studio-mcp
-```
+- **Nothing else to install.** The installer sets up [`uv`](https://docs.astral.sh/uv/) if it's missing, and uv fetches its own Python. Don't install Python yourself.
+- **Optional fence** (recommended): only let it touch certain folders — `… | sh -s -- --roots ~/Documents ~/Desktop`. Other MCP clients: set `IWORK_STUDIO_ROOTS` to the folders, separated by `:`.
+- **Remove it:** `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp uninstall`
 
-Working inside this repo? It ships a project [`.mcp.json`](.mcp.json): open Claude Code here, approve `iwork-studio` once, done.
+### First run on a Mac
 
-Then just ask, in English or Arabic:
+1. **Check it's there:** ask Claude *"what can iwork-studio do on this Mac?"* — it calls `iwork_capabilities`. The very first start downloads ~60 MB, so give it a minute.
+2. **One permission prompt:** the first time it drives Keynote, Pages or Numbers, macOS asks *"Claude wants to control Keynote"* (or your terminal's name in Claude Code). Click **OK**. Clicked *Don't Allow* by mistake? System Settings → Privacy & Security → **Automation** → turn it on.
+3. **Close the file in its app** before slide operations — they refuse a document that is open, so they never close a window with unsaved work.
+4. **Something wrong?** The log is `~/Library/Logs/Claude/mcp-server-iwork-studio.log`.
+
+### Then just ask, in English or Arabic
 
 > *"Change 2025 to 2026 on every slide of ~/Decks/pitch.key"*
 > *"Duplicate slide 3, move the copy to the front, and add Arabic presenter notes: ملاحظات المتحدث"*
 > *"Set B2 in budget.numbers to 2500, then show me the backups"*
 > *"Undo the last change to pitch.key"*
 
-Close the deck in Keynote first — slide ops refuse a file that is open (it never closes a window that may hold unsaved edits).
-
-**Library:**
-
-```bash
-git clone https://github.com/Arkanji/iwork-studio.git
-cd iwork-studio
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e .            # pins come from pyproject.toml (== skill-pack/references/pins.txt)
-```
-
-**CLI** (JSON on stdout, safe to pipe):
-
-```bash
-python skill-pack/scripts/read.py revenue.numbers            # .numbers / .key / .pages
-python skill-pack/scripts/edit_numbers.py edit-cell revenue.numbers --ref B2 --value 2500
-python skill-pack/scripts/edit_key.py replace pitch.key "2024" "2025"
-python skill-pack/scripts/verify_render.py pitch.key --assert-text "الإيرادات"
-```
+**What needs what:** `.numbers` and `.key` text reads and edits work anywhere, even without the apps. Pages, slide operations and render checks drive the real app on a Mac (classic iWork or the Creator Studio apps).
 
 ## The safety model
 
@@ -139,7 +130,7 @@ Full table: [`skill-pack/references/capability-matrix.md`](skill-pack/references
 | `iwork_list_backups` · `iwork_restore_backup` | Undo: every write's versioned backup, restored atomically |
 
 - Writes carry `destructiveHint` and reads carry `readOnlyHint`, so clients can ask before writing.
-- Optional fence: `IWORK_STUDIO_ROOTS=~/Documents/Decks` keeps the server inside the folders you name.
+- Optional fence: `IWORK_STUDIO_ROOTS` (folders separated by `:`, `~` allowed) keeps the server inside the folders you name; the installer's `--roots` sets it for you.
 - The protocol stream stays clean: library chatter (keynote-parser progress, PyMuPDF warnings) goes to stderr, never into the JSON-RPC wire — covered by a test.
 
 ## Traps we mapped so you don't die on them
@@ -203,12 +194,38 @@ src/iwork_studio/     numbers_io · keynote_io · keynote_slides · keynote_appl
                       render_verify · backups · apps · mcp_server
 skill-pack/           SKILL.md · install.sh · CLI scripts · references/ (matrix, traps, pins)
 tests/                pytest + fixtures/ — headless lane in CI · `pytest -m aqua` = live Mac lane
+install.sh            one-line setup for the Claude desktop app
 scripts/              probe_keynote_slides.py — check slide ops against your own Keynote (throwaway copies)
 .github/workflows/    ci.yml — headless tests on every push and PR
 .mcp.json             project MCP config (Claude Code picks it up here)
 AGENTS.md · CLAUDE.md agent instructions (Codex, Cursor, Copilot, Gemini, Claude Code)
 .claude/skills/       the skill, auto-discovered by Claude Code in this repo
 assets/               banner + media
+```
+
+## For developers
+
+**Library** (Python 3.12):
+
+```bash
+git clone https://github.com/Arkanji/iwork-studio.git
+cd iwork-studio
+uv sync --extra test        # or: python3.12 -m venv .venv && pip install -e ".[test]"
+```
+
+```python
+from iwork_studio import numbers_io, keynote_io, keynote_slides, backups
+```
+
+Inside a clone, Claude Code picks up the project [`.mcp.json`](.mcp.json) automatically (contributors only — it points at the local checkout).
+
+**CLI** (JSON on stdout, safe to pipe):
+
+```bash
+python skill-pack/scripts/read.py revenue.numbers            # .numbers / .key / .pages
+python skill-pack/scripts/edit_numbers.py edit-cell revenue.numbers --ref B2 --value 2500
+python skill-pack/scripts/edit_key.py replace pitch.key "2024" "2025"
+python skill-pack/scripts/verify_render.py pitch.key --assert-text "الإيرادات"
 ```
 
 ## Contributing
