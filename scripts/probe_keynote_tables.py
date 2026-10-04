@@ -65,7 +65,7 @@ STEPS = [
                  'return ((position of t) as text) & " w " & ((width of t) as text) & " h " & ((height of t) as text)'),
     ("header_rows", 'set t to last table of slide 1\nset header row count of t to 1\n'
                     'return (header row count of t) as text'),
-    ("add_row", 'set t to last table of slide 1\nadd row below row 4 of t\nreturn (row count of t) as text'),
+    ("add_row", 'set t to last table of slide 1\nset row count of t to 5\nreturn (row count of t) as text'),
     ("delete_table", 'set n to count of tables of slide 1\nmake new table at end of tables of slide 1\n'
                      'delete last table of slide 1\nreturn (n as text) & " → " & ((count of tables of slide 1) as text)'),
 ]
@@ -73,15 +73,6 @@ STEPS = [
 REREAD = ('set t to last table of slide 1\nreturn ((count of tables of slide 1) as text) & " | " & '
           '(value of cell 1 of row 1 of t) & " | " & (value of cell 1 of row 2 of t) & " | " & '
           '((value of cell 2 of row 4 of t) as text)')
-
-
-def _wrap(name: str, body: str) -> str:
-    return f"""      try
-        set r to my step_{name}(d)
-        set out to out & "{name}" & tab & "ok" & tab & r & linefeed
-      on error m number n
-        set out to out & "{name}" & tab & "error" & tab & (n as text) & " " & m & linefeed
-      end try"""
 
 
 def main() -> int:
@@ -92,17 +83,7 @@ def main() -> int:
     deck = tmp / "probe.key"
     shutil.copytree(FIXTURE, deck) if FIXTURE.is_dir() else shutil.copy2(FIXTURE, deck)
 
-    handlers = []
-    calls = []
-    for name, body in STEPS:
-        inner = "\n".join("    " + ln for ln in body.splitlines())
-        handlers.append(f'on step_{name}(d)\n  tell application "{app}"\n  tell d\n{inner}\n  end tell\n  end tell\nend step_{name}')
-        calls.append(_wrap(name, body))
-    script = "\n\n".join(handlers) + f"""
-
-on run argv
-  tell application "{app}"
-    set d to missing value
+    find = """    set d to missing value
     repeat with x in documents
       set fp to ""
       try
@@ -114,60 +95,40 @@ on run argv
         exit repeat
       end if
     end repeat
-    if d is missing value then error "the probe deck isn't open in Keynote" number -10000
-  end tell
-  set out to ""
-{chr(10).join(calls)}
-  tell application "{app}"
-    save d
-    close d saving no
-  end tell
-  return out
-end run"""
-    reread = f"""on run argv
-  tell application "{app}"
-    set d to missing value
-    repeat with x in documents
-      set fp to ""
-      try
-        set fp to POSIX path of ((file of x) as alias)
-      end try
-      if fp ends with "/" then set fp to text 1 thru -2 of fp
-      if fp is (item 1 of argv) then
-        set d to contents of x
-        exit repeat
-      end if
-    end repeat
-    if d is missing value then error "the probe deck isn't open in Keynote" number -10000
-    try
-      set r to my reread(d)
-    on error m number n
-      set r to "error " & (n as text) & " " & m
-    end try
-    close d saving no
-    return r
-  end tell
-end run
+    if d is missing value then error "the probe deck isn't open in Keynote" number -10000"""
 
-on reread(d)
+    def step_script(body: str) -> str:
+        inner = "\n".join("      " + ln for ln in body.splitlines())
+        return f"""on run argv
   tell application "{app}"
+{find}
     tell d
-{REREAD}
+{inner}
     end tell
   end tell
-end reread"""
+end run"""
+
+    # One osascript per step: a step that doesn't compile (a verb Keynote lacks) or
+    # fails is recorded, and the rest still run.
     results: dict = {"app": app, "steps": {}}
     deck = deck.resolve()
     _jxa_open(app, deck)
-    r = subprocess.run(["osascript", "-e", script, str(deck)], capture_output=True, text=True, timeout=300)
-    results["rc"] = r.returncode
-    results["stderr"] = r.stderr.strip()[:800]
-    for line in r.stdout.splitlines():
-        parts = line.split("\t", 2)
-        if len(parts) == 3:
-            results["steps"][parts[0]] = {"status": parts[1], "detail": parts[2]}
+    for name, body in STEPS:
+        r = subprocess.run(["osascript", "-e", step_script(body), str(deck)], capture_output=True, text=True,
+                           timeout=120)
+        results["steps"][name] = ({"status": "ok", "detail": r.stdout.strip()[:300]} if r.returncode == 0
+                                  else {"status": "error", "detail": r.stderr.strip()[:300]})
+    save = f"""on run argv
+  tell application "{app}"
+{find}
+    save d
+    close d saving no
+  end tell
+end run"""
+    r = subprocess.run(["osascript", "-e", save, str(deck)], capture_output=True, text=True, timeout=120)
+    results["save"] = "ok" if r.returncode == 0 else r.stderr.strip()[:300]
     _jxa_open(app, deck)
-    r2 = subprocess.run(["osascript", "-e", reread, str(deck)], capture_output=True, text=True, timeout=120)
+    r2 = subprocess.run(["osascript", "-e", step_script(REREAD), str(deck)], capture_output=True, text=True, timeout=120)
     results["reopen"] = (r2.stdout or r2.stderr).strip()[:500]
     # Best effort: never leave the probe deck open (only this path; never the user's documents).
     js = ("const a = Application(" + json.dumps(app) + "); a.documents().forEach(d => { try { "
@@ -175,7 +136,9 @@ end reread"""
     subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=60)
     try:
         from iwork_studio import keynote_io
-        results["parser_read"] = json.dumps(keynote_io.read_key(deck), ensure_ascii=False, default=str)[:800]
+        info = keynote_io.read_key(deck)
+        info.pop("path", None)
+        results["parser_read"] = json.dumps(info, ensure_ascii=False, default=str)[:800]
     except Exception as exc:  # noqa: BLE001
         results["parser_read"] = f"error: {exc}"[:500]
     shutil.rmtree(tmp, ignore_errors=True)
@@ -183,7 +146,7 @@ end reread"""
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, ensure_ascii=False, indent=2))
     print(json.dumps(results, ensure_ascii=False, indent=2))
-    return 0 if r.returncode == 0 else 1
+    return 0 if results["save"] == "ok" else 1
 
 
 if __name__ == "__main__":
