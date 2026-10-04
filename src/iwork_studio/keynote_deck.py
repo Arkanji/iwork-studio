@@ -27,6 +27,7 @@ __all__ = ["build_deck", "set_slide_text", "DeckError", "pick_roles"]
 
 _TITLE_LAYOUTS = ("Title", "Title - Center", "Title & Subtitle", "Title - Top")
 _CONTENT_LAYOUTS = ("Title & Bullets", "Title, Bullets & Photo", "Bullets", "Title - Top")
+_CHART_LAYOUTS = ("Title Only", "Title - Top", "Title & Bullets")
 _MAX_SLIDES = 200
 
 
@@ -170,23 +171,104 @@ def set_slide_text(path, slide: int, *, title: str | None = None, body=None, **k
     return kt._run(path, "set_slide_text", plan, **kw)
 
 
-def _pick_layout(available: list[str], wanted: str | None, first: bool) -> str:
+def _pick_layout(available: list[str], wanted: str | None, first: bool, chart: bool = False) -> str:
     if wanted:
         if wanted not in available:
             raise DeckError(f"unknown layout {wanted!r}; this theme has: {available}")
         return wanted
-    for name in (_TITLE_LAYOUTS if first else _CONTENT_LAYOUTS):
+    for name in (_CHART_LAYOUTS if chart else _TITLE_LAYOUTS if first else _CONTENT_LAYOUTS):
         if name in available:
             return name
     return available[0]
 
 
+def _chart_spec(chart, where: str) -> dict:
+    """Validate a slide's chart and resolve a Numbers source into rows/columns/data.
+
+    {"type": "bar", "rows": [...], "columns": [...], "data": [[...], ...], "group_by": "row"}
+    or {"type": "line", "from": "/path/report.numbers", "sheet": …, "table": …,
+        "rows": [subset], "columns": [subset]} — the table's header row gives the column
+    names, its first column the row names, and the cells in between the numbers."""
+    from iwork_studio import app_ops
+
+    if not isinstance(chart, dict):
+        raise DeckError(f"{where}: chart must be an object with type and data (or from)")
+    kind = str(chart.get("type", "bar")).lower()
+    if kind not in app_ops.CHART_TYPES:
+        raise DeckError(f"{where}: unknown chart type {kind!r}; choose one of: {', '.join(app_ops.CHART_TYPES)}")
+    group_by = chart.get("group_by", "row")
+    if group_by not in ("row", "column"):
+        raise DeckError(f'{where}: group_by must be "row" or "column"')
+    if chart.get("from"):
+        rows, columns, data = _numbers_series(chart, where)
+    else:
+        rows, columns, data = chart.get("rows"), chart.get("columns"), chart.get("data")
+        if not rows or not columns or not isinstance(data, list):
+            raise DeckError(f"{where}: give rows, columns and data (or from: a .numbers file)")
+        if len(data) != len(rows) or any(not isinstance(r, list) or len(r) != len(columns) for r in data):
+            raise DeckError(f"{where}: data must be {len(rows)} rows × {len(columns)} values")
+    if len(rows) > 100 or len(columns) > 100:
+        raise DeckError(f"{where}: at most 100 rows × 100 columns")
+    for r in data:
+        for v in r:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
+                raise DeckError(f"{where}: chart value {v!r} isn't a finite number")
+    return {"type": kind, "group_by": group_by, "rows": [str(x) for x in rows],
+            "columns": [str(x) for x in columns], "data": data}
+
+
+def _numbers_series(chart: dict, where: str):
+    from numbers_parser import Document
+
+    from iwork_studio.numbers_io import _resolve_cell
+
+    src = Path(str(chart["from"])).expanduser()
+    if src.suffix.lower() != ".numbers" or not src.is_file():
+        raise DeckError(f"{where}: chart source {chart['from']!r} must be an existing .numbers file")
+    try:
+        _, tb = _resolve_cell(Document(str(src)), chart.get("sheet"), chart.get("table"))
+    except Exception as exc:  # noqa: BLE001
+        raise DeckError(f"{where}: {exc}") from exc
+    h = max(1, tb.num_header_rows)
+    columns = [str(tb.cell(h - 1, c).value or "").strip() for c in range(1, tb.num_cols)]
+    rows, data = [], []
+    for r in range(h, tb.num_rows):
+        name = str(tb.cell(r, 0).value or "").strip()
+        values = [tb.cell(r, c).value for c in range(1, tb.num_cols)]
+        if not name and all(v in (None, "") for v in values):
+            continue  # blank row
+        rows.append(name)
+        data.append(values)
+    want_cols, want_rows = chart.get("columns"), chart.get("rows")
+    if want_cols:
+        missing = [c for c in want_cols if c not in columns]
+        if missing:
+            raise DeckError(f"{where}: columns {missing} not in the table's header: {columns}")
+        idx = [columns.index(c) for c in want_cols]
+        columns, data = list(want_cols), [[r[i] for i in idx] for r in data]
+    if want_rows:
+        missing = [r for r in want_rows if r not in rows]
+        if missing:
+            raise DeckError(f"{where}: rows {missing} not in the table's first column: {rows}")
+        data = [data[rows.index(r)] for r in want_rows]
+        rows = list(want_rows)
+    if not rows or not columns:
+        raise DeckError(f"{where}: the table has no data rows or columns to chart")
+    for r, vals in zip(rows, data):
+        for c, v in zip(columns, vals):
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                raise DeckError(f"{where}: {r!r} / {c!r} is {v!r}, not a number; pick numeric columns with columns=[…]")
+    return rows, columns, data
+
+
 def build_deck(path, slides: list[dict], *, theme: str | None = None, transition: str | None = None,
                kit=None) -> dict:
     """slides = [{"title": "…", "body": ["point", "point"], "layout": "Title & Bullets",
-    "notes": "…", "image": "/path/logo.png"}, …]. The first slide defaults to a title layout,
-    the rest to Title & Bullets. `kit` (a design kit name or dict) sets the theme and styles every
-    slide. Creates a new deck (never overwrites)."""
+    "notes": "…", "image": "/path/logo.png", "chart": {…}}, …]. The first slide defaults to a
+    title layout, chart slides to Title Only, the rest to Title & Bullets. A chart is
+    {"type": "bar", "rows": […], "columns": […], "data": [[…]]} or {"type": "line", "from":
+    "report.numbers"} (header row → column names, first column → row names). `kit` (a design
+    kit name or dict) sets the theme and styles every slide. Creates a new deck (never overwrites)."""
     from iwork_studio import app_ops
 
     target = Path(path).expanduser().resolve()
@@ -197,13 +279,14 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
     if not slides or len(slides) > _MAX_SLIDES:
         raise DeckError(f"give 1–{_MAX_SLIDES} slides")
     for i, sp in enumerate(slides, start=1):
-        if not isinstance(sp, dict) or not any(sp.get(k) for k in ("title", "body", "image", "notes")):
-            raise DeckError(f"slide {i}: give at least a title, body, notes or image")
+        if not isinstance(sp, dict) or not any(sp.get(k) for k in ("title", "body", "image", "notes", "chart")):
+            raise DeckError(f"slide {i}: give at least a title, body, notes, image or chart")
         if sp.get("image") and not Path(str(sp["image"])).expanduser().is_file():
             raise DeckError(f"slide {i}: image {sp['image']!r} not found")
     if transition:
         if transition.strip().lower() not in app_ops.TRANSITIONS + ("none", "no transition"):
             raise DeckError(f"unknown transition {transition!r}")
+    charts = {i: _chart_spec(sp["chart"], f"slide {i}") for i, sp in enumerate(slides, start=1) if sp.get("chart")}
 
     design_kit = None
     if kit is not None:
@@ -214,7 +297,8 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
     created = app_ops.create_document(target, theme)
     try:
         available = kt.read_style(target)["layouts"]
-        layouts = [_pick_layout(available, sp.get("layout"), i == 0) for i, sp in enumerate(slides)]
+        layouts = [_pick_layout(available, sp.get("layout"), i == 0, chart=bool(sp.get("chart")))
+                   for i, sp in enumerate(slides)]
         body = """        set n to (item 2 of argv) as integer
         set base slide of slide 1 to master slide (item 3 of argv)
         repeat with i from 2 to n
@@ -245,6 +329,10 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
             if sp.get("image"):
                 app_ops.add_image(target, i, sp["image"], x=sp.get("image_x"), y=sp.get("image_y"),
                                   width=sp.get("image_width"), backup_dir=target.parent / f".{target.name}.build")
+            if i in charts:
+                c = charts[i]
+                app_ops.add_chart(target, i, c["rows"], c["columns"], c["data"], type=c["type"], group_by=c["group_by"],
+                                  backup_dir=target.parent / f".{target.name}.build")
             if transition:
                 app_ops.set_transition(target, i, transition, backup_dir=target.parent / f".{target.name}.build")
         if design_kit is not None:
@@ -257,7 +345,8 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
         raise
     _cleanup(target)
     return {"ok": True, "file": str(target), "theme": created["template"], "slides": len(slides),
-            "layouts": layouts, "transition": transition, "kit": design_kit["name"] if design_kit else None}
+            "layouts": layouts, "transition": transition, "kit": design_kit["name"] if design_kit else None,
+            "charts": {i: {"type": c["type"], "rows": len(c["rows"]), "columns": len(c["columns"])} for i, c in charts.items()}}
 
 
 def _cleanup(target: Path) -> None:

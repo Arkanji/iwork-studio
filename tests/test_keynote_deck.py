@@ -259,3 +259,97 @@ def test_live_build_deck_and_set_text(tmp_path):
     out = kd.build_deck(tmp_path / "pitch.key", OUTLINE, transition="dissolve")
     assert out["ok"] and out["slides"] == 3
     assert kd.set_slide_text(tmp_path / "pitch.key", 3, title="الخطوات التالية", body=["إطلاق", "توسع"])["ok"]
+
+
+# ── Chart slides ──────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def charted(builder, monkeypatch):
+    tmp, state = builder
+    state["charts"] = []
+
+    def add_chart(path, slide, rows, columns, data, *, type="bar", group_by="row", **kw):
+        state["charts"].append({"slide": slide, "rows": rows, "columns": columns, "data": data, "type": type})
+        return {"ok": True}
+
+    monkeypatch.setattr(app_ops, "add_chart", add_chart)
+    return tmp, state
+
+
+def test_build_deck_chart_from_data(charted):
+    tmp, state = charted
+    out = kd.build_deck(tmp / "c.key", [OUTLINE[0], {"title": "الإيرادات تضاعفت", "chart": {
+        "type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2"], "data": [[10, 12], [20, 26.5]]}}])
+    assert out["charts"] == {2: {"type": "bar", "rows": 2, "columns": 2}}
+    assert state["charts"] == [{"slide": 2, "rows": ["2025", "2026"], "columns": ["Q1", "Q2"],
+                                "data": [[10, 12], [20, 26.5]], "type": "bar"}]
+    assert out["layouts"][1] == "Title & Bullets"  # theme has no Title Only: next best
+
+
+def test_build_deck_chart_from_numbers_table(charted):
+    from iwork_studio import numbers_structure as ns
+
+    tmp, state = charted
+    src = tmp / "report.numbers"
+    ns.create(src, [{"name": "S", "tables": [{"name": "T", "rows": [
+        ["المنطقة", "Q1", "Q2", "Note"], ["الرياض", 1200, 1500, "x"], ["Jeddah", 950.5, 990, "y"], [None, None, None, None]]}]}])
+    out = kd.build_deck(tmp / "c.key", [{"title": "By region", "chart": {
+        "type": "line", "from": str(src), "columns": ["Q1", "Q2"]}}])
+    assert out["ok"]
+    assert state["charts"][0]["rows"] == ["الرياض", "Jeddah"] and state["charts"][0]["columns"] == ["Q1", "Q2"]
+    assert state["charts"][0]["data"] == [[1200, 1500], [950.5, 990]] and state["charts"][0]["type"] == "line"
+
+
+@pytest.mark.parametrize("chart,msg", [
+    ({"type": "donut", "rows": ["a"], "columns": ["b"], "data": [[1]]}, "unknown chart type"),
+    ({"type": "bar", "rows": ["a"], "columns": ["b", "c"], "data": [[1]]}, "1 rows × 2 values"),
+    ({"type": "bar", "rows": ["a"], "columns": ["b"], "data": [["x"]]}, "finite number"),
+    ({"type": "bar"}, "give rows, columns and data"),
+    ({"type": "bar", "from": "/nope.numbers"}, "existing .numbers"),
+    ({"type": "bar", "rows": ["a"], "columns": ["b"], "data": [[1]], "group_by": "diagonal"}, "group_by"),
+])
+def test_build_deck_bad_chart_refused_before_creating(charted, chart, msg):
+    tmp, state = charted
+    with pytest.raises(kd.DeckError, match=msg):
+        kd.build_deck(tmp / "c.key", [{"title": "x", "chart": chart}])
+    assert not (tmp / "c.key").exists() and state["as"] is None
+
+
+def test_build_deck_numbers_text_column_refused(charted):
+    from iwork_studio import numbers_structure as ns
+
+    tmp, _ = charted
+    src = tmp / "r.numbers"
+    ns.create(src, [{"name": "S", "tables": [{"name": "T", "rows": [["Region", "Q1", "Note"], ["Riyadh", 1, "x"]]}]}])
+    with pytest.raises(kd.DeckError, match="not a number"):
+        kd.build_deck(tmp / "c.key", [{"title": "x", "chart": {"type": "bar", "from": str(src)}}])
+    with pytest.raises(kd.DeckError, match="not in the table's header"):
+        kd.build_deck(tmp / "c.key", [{"title": "x", "chart": {"type": "bar", "from": str(src), "columns": ["Q9"]}}])
+
+
+def test_build_deck_chart_failure_removes_new_file(charted, monkeypatch):
+    tmp, _ = charted
+
+    def boom(*a, **k):
+        raise ks.SlideOpVerificationError("slide 2 has 0 charts, expected 1")
+
+    monkeypatch.setattr(app_ops, "add_chart", boom)
+    with pytest.raises(ks.SlideOpVerificationError):
+        kd.build_deck(tmp / "c.key", [OUTLINE[0], {"title": "x", "chart": {"rows": ["a"], "columns": ["b"], "data": [[1]]}}])
+    assert not (tmp / "c.key").exists()
+
+
+def test_chart_layout_preferred():
+    assert kd._pick_layout(["Title", "Title Only", "Title & Bullets"], None, False, chart=True) == "Title Only"
+
+
+@pytest.mark.aqua
+def test_live_build_deck_with_chart(tmp_path):
+    out = kd.build_deck(tmp_path / "chart.key", [
+        {"title": "Revenue doubled"},
+        {"title": "الإيرادات حسب الربع", "chart": {"type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2", "Q3"],
+                                                   "data": [[10, 12, 15], [20, 26.5, 31]]}},
+    ], kit="executive")
+    assert out["ok"] and out["charts"] == {2: {"type": "bar", "rows": 2, "columns": 3}}
+    assert [s.get("charts") for s in kt.read_style(tmp_path / "chart.key")["slides"]] == [0, 1]
