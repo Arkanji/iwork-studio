@@ -3,7 +3,7 @@ name: iwork-studio
 description: Create, read, edit, design and export Apple iWork files safely — build designed Keynote decks from an outline (with charts and tables from Numbers data), apply the user's brand kit, review a deck's design, style tables with design kits, in Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text, template placeholders or tables; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 2.3.0
+  version: 2.4.1
   author: iWork Studio
   homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]

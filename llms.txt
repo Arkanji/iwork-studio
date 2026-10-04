@@ -1,6 +1,6 @@
 # iWork Studio
 
-> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (64 tools, 4 prompts) + Python library + drop-in agent skill. Version 2.4.0. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
+> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (64 tools, 4 prompts) + Python library + drop-in agent skill. Version 2.4.1. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
 
 ## Core routes (classic iWork and Creator Studio apps)
 

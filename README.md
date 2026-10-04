@@ -5,7 +5,7 @@
 <img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/banner.svg" alt="iWork Studio — read and edit Apple Numbers, Keynote and Pages with Python" width="100%">
 
 [![CI](https://github.com/Arkanji/iwork-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Arkanji/iwork-studio/blob/main/.github/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.3.0-1a7f79)](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/pypi/v/iwork-studio?label=version&color=1a7f79)](https://pypi.org/project/iwork-studio/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
 [![MCP server](https://img.shields.io/badge/MCP-64%20tools-8A2BE2)](#all-64-tools)

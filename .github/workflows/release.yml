@@ -29,13 +29,15 @@ jobs:
       - name: Tag matches every version field
         run: |
           python - <<'PY'
-          import json, os, tomllib
+          import json, os, re, tomllib
           tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
           versions = {
               "pyproject": tomllib.load(open("pyproject.toml", "rb"))["project"]["version"],
               "server.json": json.load(open("server.json"))["version"],
               "mcpb manifest": json.load(open("mcpb/manifest.json"))["version"],
               "claude plugin": json.load(open("skill-pack/.claude-plugin/plugin.json"))["version"],
+              "skill": re.search(r"^  version: (\S+)$", open("skill-pack/SKILL.md").read(), re.M).group(1),
+              "llms.txt": re.search(r"Version (\d+\.\d+\.\d+)\.", open("llms.txt").read()).group(1),
           }
           bad = {k: v for k, v in versions.items() if v != tag}
           assert not bad, f"tag v{tag} but {bad}"
