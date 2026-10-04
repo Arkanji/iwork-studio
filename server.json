@@ -3,19 +3,30 @@
   "name": "io.github.Arkanji/iwork-studio",
   "title": "iWork Studio",
   "description": "Create, edit, design and export Apple Numbers, Keynote and Pages files. Verified and Arabic-safe.",
-  "repository": { "url": "https://github.com/Arkanji/iwork-studio", "source": "github" },
-  "version": "2.4.1",
+  "repository": {
+    "url": "https://github.com/Arkanji/iwork-studio",
+    "source": "github"
+  },
+  "version": "2.5.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "iwork-studio",
-      "version": "2.4.1",
+      "version": "2.5.0",
       "runtimeHint": "uvx",
-      "transport": { "type": "stdio" },
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "IWORK_STUDIO_ROOTS",
           "description": "Folders the server may touch, separated by ':' (recommended)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IWORK_STUDIO_TOOLSETS",
+          "description": "Load only some tools: comma-separated files, numbers, keynote, pages, design (default all)",
           "isRequired": false,
           "format": "string"
         }

@@ -132,6 +132,7 @@ in-place save and export only.
 | Capability | Status |
 |---|---|
 | MCP server (stdio): 64 tools with read-only / destructive hints, 4 prompts | Supported |
+| Toolsets: load only files / numbers / keynote / pages / design tools (`IWORK_STUDIO_TOOLSETS`, `serve --toolsets`) | Supported — core tools always load; prompts follow their tools |
 | Brand kits: extract from a deck or table, save / delete by name (`~/.iwork-studio/kits`, `IWORK_STUDIO_KITS_DIR`) | Supported — contrast checked; presets can't be shadowed |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |

@@ -4,6 +4,14 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.5.0
+
+Load only what you need.
+
+- **Toolsets:** `IWORK_STUDIO_TOOLSETS` (or `serve --toolsets`, or the Desktop extension's *Toolsets* field) loads only the tool groups you pick: `files`, `numbers`, `keynote`, `pages`, `design`. A Keynote-only setup goes from 64 tools to 29, so the AI reads less and picks better. Capabilities, read, find, undo and the kit list always load; prompts appear only when their tools are loaded; `iwork_capabilities` reports what's active. The default is still everything.
+- **Sharper "when to use it" guidance** on every tool: when to use it, when not to, and the sibling to use instead (e.g. `numbers_set_headers` vs `numbers_set_dimensions` vs `numbers_set_cell_style`).
+- The README's version badge reads PyPI, and the release checks every place the version appears.
+
 ## 2.4.1
 
 Clearer tools for the AI that calls them.

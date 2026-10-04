@@ -44,6 +44,7 @@ Every write is backed up, checked and swapped in atomically, and any change can 
 That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, and uv brings its own Python.
 
 - **Fence it** (recommended): `… | sh -s -- --roots ~/Documents ~/Desktop` limits it to those folders. Other clients: set `IWORK_STUDIO_ROOTS` (`:`-separated).
+- **Load less** (optional): only work in Keynote? Set `IWORK_STUDIO_TOOLSETS=keynote,design` (any of `files`, `numbers`, `keynote`, `pages`, `design`; default all). Fewer tools keep the AI focused and its context small. The Claude Desktop extension has a *Toolsets* field; in Claude Code: `claude mcp add iwork-studio -e IWORK_STUDIO_TOOLSETS=keynote,design -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`. Capabilities, read, find, undo and the kit list always load.
 - **First run:** macOS asks once whether Claude may control Keynote / Pages / Numbers. Click **OK**. (Missed it? System Settings → Privacy & Security → Automation.)
 - **Check it:** ask *"what can iwork-studio do on this Mac?"*.
 - **Remove:** `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp uninstall`
@@ -152,7 +153,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 
 ## All 64 tools
 
-Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview. Every tool has a title, every parameter a description, and every tool says when to use it instead of its siblings.
+Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview. Every tool has a title, every parameter a description, and every tool says when to use it instead of its siblings. Need fewer? Load only some toolsets (see *Load less* under [Install](#install)).
 
 <details open>
 <summary><b>Any file</b> (17)</summary>
