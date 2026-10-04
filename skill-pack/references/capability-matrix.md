@@ -81,6 +81,12 @@ mismatch. On by default; off switch `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
 | Apply a design kit (theme, fonts incl. Arabic, sizes, colours); text checked unchanged | Supported |
 | Add a chart from data (bar, line, area, pie, scatter, stacked, 3D) | Supported — chart count +1 on that slide only, all text checked |
 | Decks containing charts | Allowed — every slide's chart count checked unchanged |
+| Chart and table slides in a new deck, from data or straight from a Numbers table | Supported — validated before the deck is created |
+| Add a table (≤ 50 × 15; text, numbers, formulas), optionally styled from a design kit | Supported — AppleScript `tell slide n to make new table`; every cell's value, font, colours and alignment read back via JXA |
+| Delete a table | Not offered — Keynote refuses (-10000); a failed add is undone from the backup |
+| Decks containing tables | Allowed — every table's shape and cells checked unchanged by every other op |
+| Design review of the rendered deck (off-slide / overflowing text, overlap, small text, crowded slides) | Supported — PDF export, drawn lines matched to their boxes; read-only |
+| One slide as an image | Supported — slide-images export, scaled with `sips`; read-only |
 
 ## .pages — via Pages (GUI session; no parser exists anywhere)
 
@@ -125,7 +131,8 @@ in-place save and export only.
 
 | Capability | Status |
 |---|---|
-| MCP server (stdio): 58 tools with read-only / destructive hints | Supported |
+| MCP server (stdio): 64 tools with read-only / destructive hints, 4 prompts | Supported |
+| Brand kits: extract from a deck or table, save / delete by name (`~/.iwork-studio/kits`, `IWORK_STUDIO_KITS_DIR`) | Supported — contrast checked; presets can't be shadowed |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
 | Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |

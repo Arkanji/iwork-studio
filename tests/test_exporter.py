@@ -133,10 +133,21 @@ def test_existing_destination_refused_then_backed_up(numbers_file, fake_app):
     assert Path(r["previous_output_saved_as"]).read_bytes() == b"old"
 
 
-def test_slide_images_folder(key_file, fake_app):
+def test_slide_images_folder(key_file, fake_app, monkeypatch):
+    converted = []
+    monkeypatch.setattr(ex, "_convert_images", lambda folder, fmt: converted.append(fmt))
     r = ex.export(key_file, "images", image_format="png")
     assert Path(r["output"]).is_dir() and r["checked"]["images"] == 1
-    assert fake_app["calls"][-1][2] == {"imageFormat": "PNG"}
+    # Keynote's JXA export rejects imageFormat (-1700): never sent, converted afterwards
+    assert "imageFormat" not in fake_app["calls"][-1][2] and converted == ["png"]
+
+
+def test_convert_images_skips_matching_format(tmp_path, monkeypatch):
+    (tmp_path / "s.001.png").write_bytes(b"png")
+    calls = []
+    monkeypatch.setattr(ex.subprocess, "run", lambda *a, **k: calls.append(a))
+    ex._convert_images(tmp_path, "png")
+    assert calls == [] and (tmp_path / "s.001.png").exists()
 
 
 @pytest.mark.parametrize("call", [
@@ -169,3 +180,12 @@ def test_cellnorm_uses_spreadsheet_precision():
     assert ex._cellnorm(33.999999999999996) == ex._cellnorm(34.0) == "34"
     assert ex._cellnorm(0.1 + 0.2) == ex._cellnorm(0.3)
     assert ex._cellnorm(3.14) == "3.14"
+
+
+@pytest.mark.aqua
+def test_live_slide_images_as_jpeg(tmp_path):
+    src = tmp_path / "d.key"
+    src.write_bytes((REPO / "tests" / "fixtures" / "arabic.key").read_bytes())
+    r = ex.export(src, "images", tmp_path / "slides", image_format="jpeg")
+    files = [f for f in Path(r["output"]).rglob("*") if f.is_file()]
+    assert files and all(f.suffix == ".jpeg" for f in files) and files[0].read_bytes()[:2] == b"\xff\xd8"

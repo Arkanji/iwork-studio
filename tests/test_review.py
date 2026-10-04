@@ -14,7 +14,7 @@ from iwork_studio import review  # noqa: E402
 
 
 def _box(text, x, y, w, h, font="HelveticaNeue"):
-    return {"text": text, "x": x, "y": y, "w": w, "h": h, "font": font, "size": 40.0}
+    return {"text": text, "x": x, "y": y, "w": w, "h": h, "font": font, "size": None}
 
 
 def _line(text, x0, top, x1, bottom, size=40.0):
@@ -46,6 +46,15 @@ def test_overflow_past_box_bottom():
     pg = _page(_line("one two three four", 110, 310, 800, 350, 32), _line("five six seven eight", 110, 400, 800, 460, 32))
     f = review.analyse(st, [pg])
     assert kinds(f) == [(1, "overflow")] and f[0]["severity"] == "error" and "60 pt" in f[0]["message"]
+
+
+def test_text_shrunk_to_fit():
+    body = "A lot of words that Keynote had to shrink"
+    st = _style({"items": [dict(_box(body, 100, 300, 800, 200), size=40.0)]})
+    pg = _page(_line(body, 110, 310, 800, 340, 24.0))
+    f = review.analyse(st, [pg])
+    assert kinds(f) == [(1, "shrunk")] and "set at 40 pt, drawn at 24 pt" in f[0]["message"]
+    assert review.analyse(st, [_page(_line(body, 110, 310, 800, 350, 38.0))]) == []
 
 
 def test_off_slide_edge():
@@ -124,5 +133,6 @@ def test_live_review_flags_overflow(tmp_path):
     long = " ".join(["Programmable value for every business, everywhere, every day."] * 12)
     kd.build_deck(tmp_path / "r.key", [{"title": "Clean"}, {"title": "Too much", "body": long}])
     out = review.review_deck(tmp_path / "r.key")
-    assert out["slides"] == 2 and any(f["slide"] == 2 for f in out["findings"])
+    assert out["slides"] == 2 and not [f for f in out["findings"] if f["slide"] == 1]
+    assert {"dense"} <= {f["kind"] for f in out["findings"] if f["slide"] == 2}
     assert review.slide_image(tmp_path / "r.key", 1)[:2] == b"\xff\xd8"  # JPEG

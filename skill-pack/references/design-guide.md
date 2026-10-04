@@ -14,7 +14,9 @@ Principles paraphrased from Impeccable (Paul Bakaus, Apache-2.0) and UI/UX Pro M
 | A new designed deck | `keynote_build_deck(path, slides, kit="executive")` |
 | Restyle an existing deck | `keynote_apply_design(path, kit)` (preview first with `dry_run=true`) |
 | A designed table | `numbers_create` → `numbers_apply_design(path, kit)` → `numbers_set_number_format` for money/% |
-| A brand | pass `kit={"colors": {"title": "#…", "body": "#…", "accent": "#…", "header_fill": "#…", "header_text": "#…", "band": "#…"}, "fonts": {…}}` — contrast is checked (4.5:1) |
+| Numbers on a slide | a slide with `"chart": {"type": "bar", "from": "report.numbers", "columns": [...]}` or `"table": {"from": "report.numbers", "max_rows": 8}` — never numbers as bullets |
+| The user's brand | `iwork_extract_design_kit(file, name="Brand", save=true)` from a deck or table that has the look, then `kit="Brand"` anywhere; or `iwork_save_design_kit("Brand", {"colors": {"title": "#…", "body": "#…", "accent": "#…", "header_fill": "#…", "header_text": "#…", "band": "#…"}, "fonts": {…}})` — contrast is checked (4.5:1) |
+| Check it before saying done | `keynote_review_deck(path)`: fix every error (overflow, off-slide), weigh the warnings; `keynote_slide_image(path, n)` to look |
 
 Kits: **executive** (calm corporate) · **banking** (navy + gold) · **classic** (serif, boards
 and formal reports) · **teal** (fresh) · **analytics** (data-forward) · **midnight** (dark stage,

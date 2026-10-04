@@ -4,6 +4,18 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.4.0
+
+Data to deck, on brand.
+
+- **Chart and table slides:** a slide in `keynote_build_deck` can carry a chart or a table, from data or straight from a Numbers table (the header row gives the columns, the first column the rows; pick columns by name, cap the rows). Everything is validated before the deck is created.
+- **Tables on Keynote slides:** `keynote_add_table` adds a table, styled from a design kit: header band, Arabic-aware fonts, banding, numbers right-aligned. Every cell's value, font and colours are read back; text Keynote would turn into a number rolls back with a hint. Every other Keynote write now checks that no table changed.
+- **Your brand kit:** `iwork_extract_design_kit` reads the fonts (Latin and Arabic) and colours from a deck or table that already has your look; `iwork_save_design_kit` / `iwork_delete_design_kit` keep kits by name, usable anywhere a kit goes. Contrast is still checked; presets can't be shadowed; nothing is replaced without `overwrite`.
+- **Design review:** `keynote_review_deck` renders the deck through Keynote and compares every drawn line with its text box. Errors: text off the slide or past the bottom of its box. Warnings: text Keynote had to shrink to fit, overlapping boxes, text under 18 pt, crowded slides, long titles. `keynote_slide_image` returns a slide as an image so an agent can look at it.
+- **Prompts:** *Pitch deck from an outline*, *Report deck from a Numbers table*, *Restyle with my brand*, *Make this table look designed* — ready-made workflows in clients that show MCP prompts.
+- **Fixed:** `iwork_export` slide images with `image_format` failed in Keynote (`-1700`); slides now export in Keynote's format and are converted with macOS `sips`.
+- **Live runs:** `scripts/live.sh` runs the Mac suite unattended, so it can run on a schedule; `scripts/probe_keynote_tables.py` maps what Keynote's table scripting can do.
+
 ## 2.3.0
 
 Reach + decks: designed documents, previews, one-click install.

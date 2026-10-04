@@ -8,7 +8,7 @@
 [![Version](https://img.shields.io/badge/version-2.3.0-1a7f79)](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-58%20tools-8A2BE2)](#all-58-tools)
+[![MCP server](https://img.shields.io/badge/MCP-64%20tools-8A2BE2)](#all-64-tools)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
@@ -17,7 +17,7 @@
 Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
 Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 58 tools](#all-58-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 64 tools](#all-64-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 
 <br>
 
@@ -53,6 +53,12 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 
 > *"Build a 6-slide pitch deck on programmable gift cards in the midnight kit, with speaker notes, and export it to PowerPoint."*
 >
+> *"Turn sales.numbers into a board deck: chart the quarters, a table of the top regions, in our Resal kit."*
+>
+> *"Take the fonts and colours from brand.key and save them as our Resal kit."*
+>
+> *"Review pitch.key and fix anything that overflows or is too small to read."*
+>
 > *"Make budget.numbers look professional with the banking kit — and show me a preview first."*
 >
 > *"Turn sales.csv into a Numbers file, make the header bold on a teal fill, show column B as SAR with two decimals, and add a total row."*
@@ -76,9 +82,10 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 | | **Numbers** | **Keynote** | **Pages** |
 |---|---|---|---|
 | **Read** | Every sheet, table, cell, formula and format | Every slide's text, notes, layout, theme, styling and charts | Body text, placeholders and tables |
-| **Create** | From data or CSV ⚡ · from a built-in template · from your own file | **A designed deck from an outline** · from a built-in theme · from your own deck | From a built-in template · from your own file |
-| **Edit content** | Cells ⚡ · formulas · recalculate · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · slide titles and bullets · add, duplicate, delete, move, hide slides · presenter notes · images · charts | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
-| **Design** | Design kits ⚡ · fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Design kits · theme · slide layout · text font, size and colour · transitions | — |
+| **Create** | From data or CSV ⚡ · from a built-in template · from your own file | **A designed deck from an outline, with chart and table slides** (straight from a Numbers table) · from a built-in theme · from your own deck | From a built-in template · from your own file |
+| **Edit content** | Cells ⚡ · formulas · recalculate · insert/delete rows and columns ⚡ · add tables and sheets ⚡ · sort | Find/replace across the deck ⚡ · slide titles and bullets · add, duplicate, delete, move, hide slides · presenter notes · images · charts · tables | Replace text everywhere · replace the body · fill placeholders · table cells (text, numbers, formulas) |
+| **Design** | Design kits ⚡ · your brand kit ⚡ · fonts, colours, fill, alignment, wrap ⚡ · currency, %, dates, decimals ⚡ · borders ⚡ · widths and heights ⚡ · headers ⚡ · merges ⚡ | Design kits · your brand kit · theme · slide layout · text font, size and colour · styled tables · transitions | — |
+| **Review** | | **Design review** of what Keynote draws: text off the slide or past its box, text Keynote had to shrink, overlaps, small text, crowded slides · any slide as an image | |
 | **Export** | PDF · Excel · CSV | PDF · PowerPoint · images · movie | PDF · Word · EPUB · text · RTF |
 | **Present** | | Start, stop, next, previous | |
 
@@ -94,7 +101,7 @@ On purpose, so it never breaks a file:
 - **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added.
 - **Pages** is limited to text and existing tables: replace, set body, placeholders and table cells. New tables can't be created (Pages 15 doesn't script it), and page-layout documents, like most letter templates, have no body text. There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
-- **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, editing a theme's master slides. Page margins and page setup are planned.
+- **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, deleting a Keynote table, editing a theme's master slides. Page margins and page setup are planned.
 
 ## Designed, not just edited
 
@@ -111,6 +118,12 @@ Six **design kits** turn a plain deck or table into something you'd present: a f
 
 Build with one (`keynote_build_deck(..., kit="midnight")`), restyle anything (`keynote_apply_design`, `numbers_apply_design`), or bring your brand as colours and fonts — contrast is checked. Agents also get a [design guide](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/design-guide.md): one idea per slide, titles that state the takeaway, right-aligned numbers, restrained colour.
 
+**Your brand, once.** Point `iwork_extract_design_kit` at a deck or table that already has your look: it reads the fonts (Latin and Arabic) and colours, and saves them as a named kit you can use anywhere a kit goes. Or save your colours and fonts directly with `iwork_save_design_kit`.
+
+**Numbers on slides.** A slide in `keynote_build_deck` can carry a chart or a table, from data or straight from a Numbers table: the header row gives the columns, the first column the rows. Tables get the kit's header band, fonts, banding and right-aligned numbers, and every cell is read back.
+
+**It checks its own work.** `keynote_review_deck` renders the deck through Keynote and compares every drawn line with its text box: text off the slide or running past its box is an error; text Keynote had to shrink to fit, overlapping boxes, text under 18 pt and crowded slides are warnings. `keynote_slide_image` hands a slide back as an image, so an agent can look before it says "done".
+
 ## The safety model
 
 An iWork app will happily say "saved" about a file it just broke. Nothing here trusts "saved".
@@ -121,7 +134,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 ```
 
 - **Backup first**, versioned, next to the file in `<file>.backups/`.
-- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder. On files with charts, every chart is counted before and after. An export is read back with a second, independent tool.
+- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder. On files with charts, every chart is counted before and after; on decks with tables, every table's cells are compared. An export is read back with a second, independent tool.
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **The app's "ok" is never trusted.** App-driven writes are re-read from disk, and a write that "succeeded" but didn't land is rolled back.
 - **Undo is one call**: `iwork_list_backups` → `iwork_restore_backup`. The restore backs up the current version first, so undo can be undone too.
@@ -136,12 +149,12 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 58 tools
+## All 64 tools
 
 Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview.
 
 <details open>
-<summary><b>Any file</b> (14)</summary>
+<summary><b>Any file</b> (17)</summary>
 
 | Tool | What it does |
 |---|---|
@@ -151,7 +164,9 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `iwork_metadata` · `iwork_thumbnail` | Template, app builds, format version, slide count · the stored preview image |
 | `iwork_create` · `iwork_create_from_template` | New file from Apple's built-in templates · copy of your own file |
 | `iwork_list_templates` | Built-in templates (Numbers, Pages) and themes (Keynote) |
-| `iwork_list_design_kits` | Design kits: fonts, palettes, type scale |
+| `iwork_list_design_kits` | Design kits: fonts, palettes, type scale — presets and your saved kits |
+| `iwork_extract_design_kit` | A kit from your own deck or table: its fonts and colours; save it by name |
+| `iwork_save_design_kit` · `iwork_delete_design_kit` | Keep your brand kit by name · remove one |
 | `iwork_export` | PDF, Excel, CSV, Word, EPUB, text, RTF, PowerPoint, slide images, movie; optional password |
 | `iwork_verify_render` · `iwork_verify_format` | Rendered PDF shows this text · with this font, size, colour, page size |
 | `iwork_list_backups` · `iwork_restore_backup` | Undo |
@@ -179,11 +194,13 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 <details>
-<summary><b>Keynote</b> (20)</summary>
+<summary><b>Keynote</b> (23)</summary>
 
 | Tool | What it does |
 |---|---|
-| `keynote_build_deck` | A new deck from an outline: titles, bullets, notes, images, transition, design kit |
+| `keynote_build_deck` | A new deck from an outline: titles, bullets, notes, images, chart and table slides, transition, design kit |
+| `keynote_review_deck` | Design review of the rendered deck: off-slide and overflowing text, overlaps, small text, crowded slides |
+| `keynote_slide_image` | One slide as an image, to look at |
 | `keynote_set_slide_text` | Fill a slide's title and body |
 | `keynote_apply_design` | Restyle every slide from a design kit |
 | `keynote_replace_text` | Find/replace on every slide, formatting untouched |
@@ -195,6 +212,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `keynote_set_transition` | Effect, duration, delay, auto-advance |
 | `keynote_add_image` | Place an image on a slide |
 | `keynote_add_chart` | Add a bar, line, area, pie or scatter chart from data |
+| `keynote_add_table` | Add a table, styled from a design kit; every cell is read back |
 | `keynote_slideshow` | Start, stop, next, previous |
 
 </details>
@@ -212,6 +230,8 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 </details>
 
 Keynote slide, theme, transition and image tools refuse a deck that's open in Keynote (they never close a window that may hold unsaved work). To hide them all: `IWORK_STUDIO_DISABLE_SLIDE_OPS=1`.
+
+**Prompts.** Clients that show MCP prompts get four ready-made workflows: *Pitch deck from an outline*, *Report deck from a Numbers table*, *Restyle with my brand* and *Make this table look designed*. Each writes to the design rules, builds in one call, previews before restyling, and runs the design review before it calls the job done.
 
 ## For AI agents
 
@@ -231,10 +251,14 @@ pip install iwork-studio      # Python 3.12
 ```python
 from iwork_studio import numbers_structure, numbers_format, numbers_io, keynote_io, keynote_slides, exporter, backups
 
-from iwork_studio import keynote_deck, design
+from iwork_studio import keynote_deck, design, review
 
 keynote_deck.build_deck("pitch.key", [{"title": "رسال", "body": "Programmable value"},
-                                      {"title": "Why now", "body": ["Trust", "Access"]}], kit="midnight")  # macOS + Keynote
+                                      {"title": "Why now", "body": ["Trust", "Access"]},
+                                      {"title": "Riyadh leads growth", "chart": {"type": "bar", "from": "sales.numbers"}}],
+                        kit="midnight")                                  # macOS + Keynote
+review.review_deck("pitch.key")["findings"]                              # macOS + Keynote
+design.extract_kit("brand.numbers", name="Resal", save=True)
 numbers_structure.import_csv("sales.csv", "sales.numbers")
 design.apply_to_numbers("sales.numbers", "banking")
 numbers_format.set_cell_style("sales.numbers", "A1:D1", bold=True, fill_color="#1A7F79", font_color="#FFFFFF")
@@ -269,6 +293,7 @@ backups.restore_backup("sales.numbers", backups.list_backups("sales.numbers")[0]
 18. **Numbers doesn't recalculate formulas when it opens a file changed without it**: a total keeps its old result. Edits made without the app say so, and `numbers_recalculate` has Numbers recompute every formula.
 19. **A rounding library used by numbers-parser wipes every warning filter in the process** on each save. It's wrapped so it stays quiet without touching anyone else's settings.
 20. **Don't keep the repo in iCloud Drive.** Sync creates "main 2" copies inside `.git`.
+21. **Keynote creates tables only one way**: `tell slide n to make new table` works, while `make new table at end of tables of slide n` and deleting a table fail with `-10000`. A failed table add is undone by restoring the backup.
 
 More, each with its status: [`jxa-traps.md`](https://github.com/Arkanji/iwork-studio/blob/main/skill-pack/references/jxa-traps.md) (including traps borrowed from [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp)).
 
@@ -285,8 +310,8 @@ MCP server · CLI scripts · skill                     →  thin wrappers over t
 
 ```
 src/iwork_studio/   numbers_io · numbers_format · numbers_structure · keynote_io · keynote_slides · keynote_theme
-                    keynote_deck · design · preview · pages_io · app_ops · exporter · helpers · format_check
-                    render_verify · backups · apps · mcp_server
+                    keynote_deck · keynote_table · design · review · preview · pages_io · app_ops · exporter
+                    helpers · format_check · render_verify · pdf · backups · apps · mcp_server
 mcpb/               Claude Desktop extension manifest (scripts/build_mcpb.sh builds the .mcpb)
 skill-pack/         SKILL.md · CLI scripts · references (capabilities, traps, pins)
 tests/              headless suite (CI) · `pytest -m aqua` = live suite for a Mac with iWork

@@ -43,10 +43,12 @@ Use it whenever a request touches one of those.
 | Edit / format `.numbers` (cells, style, number format, borders, sizes, headers, merge) | `numbers_edit_cell`, `numbers_inspect_format`, `numbers_set_*`, `numbers_merge_cells` | Python only |
 | Formulas · recalculate · sort | `numbers_set_formula`, `numbers_recalculate`, `numbers_sort` | macOS + Numbers + GUI session |
 | Find/replace `.key` text | `keynote_replace_text` | Python only |
-| Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_set_transition` | macOS + Keynote + GUI session |
-| Build a deck from an outline · slide titles/bullets | `keynote_build_deck`, `keynote_set_slide_text` | macOS + Keynote + GUI session |
+| Keynote slides: add, duplicate, delete, move, hide, notes, images, charts, tables, transitions | `keynote_list_slides`, `keynote_*_slide`, `keynote_set_presenter_notes`, `keynote_add_image`, `keynote_add_chart`, `keynote_add_table`, `keynote_set_transition` | macOS + Keynote + GUI session |
+| Build a deck from an outline (with chart and table slides, from data or a Numbers table) · slide titles/bullets | `keynote_build_deck`, `keynote_set_slide_text` | macOS + Keynote + GUI session |
+| Check a deck's design as rendered · look at a slide | `keynote_review_deck`, `keynote_slide_image` | macOS + Keynote + GUI session |
 | Keynote theming: theme, layout, text font/size/colour | `keynote_list_themes`, `keynote_inspect_style`, `keynote_set_theme`, `keynote_set_slide_layout`, `keynote_format_text` | macOS + Keynote + GUI session |
 | Design kits: designed decks and tables | `iwork_list_design_kits`, `keynote_apply_design`, `numbers_apply_design` | Keynote: macOS + Keynote · Numbers: Python only |
+| The user's brand kit: from their own file, saved by name | `iwork_extract_design_kit`, `iwork_save_design_kit`, `iwork_delete_design_kit` | from `.numbers` or saving: Python only · from `.key`: macOS + Keynote |
 | Present | `keynote_slideshow` | macOS + Keynote + GUI session |
 | Pages text and tables | `pages_preflight`, `pages_replace_all`, `pages_set_body`, `pages_list_placeholders`, `pages_fill_placeholders`, `pages_read_tables`, `pages_set_table_cells` | macOS + Pages + GUI session |
 | New file from Apple's templates · from the user's own file | `iwork_list_templates`, `iwork_create` · `iwork_create_from_template` | the app · Python only |
@@ -74,9 +76,13 @@ Use it whenever a request touches one of those.
 - **Preview broad changes**: every write on an existing file takes `dry_run=true`
   (real change on a throwaway copy, returns what would change). Use it before
   restyling, deleting or replacing widely, and show the user.
-- **Make it look designed**: use a design kit and follow
+- **Make it look designed**: use a design kit (the user's saved brand kit if they have one) and follow
   [`skill-pack/references/design-guide.md`](skill-pack/references/design-guide.md)
-  (one idea per slide, titles state the takeaway, right-aligned numbers).
+  (one idea per slide, titles state the takeaway, right-aligned numbers; numbers go in
+  chart or table slides, not bullets).
+- **Check before you say done**: after building or restyling a deck, run
+  `keynote_review_deck`, fix every error (shorten text or split the slide), and look at a
+  slide with `keynote_slide_image`.
 - **New files never overwrite.** Pick a new name if the tool says it exists.
 - **Stale totals**: Numbers doesn't recalculate on open. When a no-app edit
   returns `formulas_need_recalc`, run `numbers_recalculate` (Mac) or tell the user.
@@ -84,7 +90,8 @@ Use it whenever a request touches one of those.
   (`StructureError` otherwise); suggest doing mid-table inserts in Numbers.
 - **Keynote slide/theme/image/transition ops** refuse a deck open in Keynote (`DocumentOpenError`): ask
   the user to save and close it. Slide numbers are 1-based. The last slide can't
-  be deleted.
+  be deleted. Keynote tables can be added but not deleted (Keynote refuses);
+  a failed add is undone from the backup.
 - **Arabic/RTL**: text round-trips exactly. For `iwork_verify_render`, assert ONE
   Arabic word — multi-word RTL extracts reordered and fails falsely.
 - **Never** convert to docx/pptx/xlsx and back (lossy), and never AppleScript
