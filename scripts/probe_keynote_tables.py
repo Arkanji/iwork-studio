@@ -132,6 +132,26 @@ end run"""
     r = subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=120)
     results["steps"]["make_table_jxa"] = ({"status": "ok", "detail": r.stdout.strip()[:300]} if r.returncode == 0
                                           else {"status": "error", "detail": r.stderr.strip()[:300]})
+    # Can JXA read tables back (values and styles)? Verification depends on it.
+    js = ("const a = Application(" + json.dumps(app) + "); const d = a.documents().find(x => { try { "
+          "return x.file().toString() === " + json.dumps(str(deck)) + "; } catch (e) { return false; } }); "
+          "const out = []; d.slides[0].tables().forEach(t => { const o = {}; "
+          "try { o.rows = t.rowCount(); o.cols = t.columnCount(); o.header = t.headerRowCount(); } catch (e) { o.err1 = String(e); } "
+          "try { o.values = t.rows().map(r => r.cells().map(c => c.value())); } catch (e) { o.err2 = String(e); } "
+          "try { const c = t.rows()[0].cells()[0]; o.a1 = {font: c.fontName(), size: c.fontSize(), color: c.textColor(), "
+          "fill: c.backgroundColor(), align: c.alignment(), fmt: c.format(), shown: c.formattedValue()}; } catch (e) { o.err3 = String(e); } "
+          "try { o.pos = t.position(); o.w = t.width(); o.h = t.height(); } catch (e) { o.err4 = String(e); } "
+          "out.push(o); }); JSON.stringify(out);")
+    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=120)
+    results["jxa_read"] = (r.stdout or r.stderr).strip()[:3000]
+    # One-step creation with header settings, on a fresh slide:
+    one = """set s to make new slide at end of slides
+tell s to set t to make new table with properties {row count:3, column count:2, header row count:1, header column count:0}
+set value of cell 1 of row 1 of t to "Region"
+return ((row count of t) as text) & "x" & ((column count of t) as text) & " h" & ((header row count of t) as text) & " hc" & ((header column count of t) as text)"""
+    r = subprocess.run(["osascript", "-e", step_script(one), str(deck)], capture_output=True, text=True, timeout=120)
+    results["steps"]["make_table_with_headers"] = ({"status": "ok", "detail": r.stdout.strip()[:300]} if r.returncode == 0
+                                                   else {"status": "error", "detail": r.stderr.strip()[:300]})
     save = f"""on run argv
   tell application "{app}"
 {find}
