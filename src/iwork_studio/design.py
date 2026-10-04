@@ -4,7 +4,9 @@ A kit is a small, opinionated system: a heading + body font pair (Latin and
 Arabic, all bundled with macOS — nothing to install), a restrained colour palette
 (neutrals + one accent) checked for WCAG contrast, and a type scale.
 
-  list_kits()                          names + a one-line description
+  list_kits()                          names + a one-line description (presets and saved kits)
+  extract_kit(path)                    a kit from your own deck or table: its fonts and colours
+  save_kit(name, kit) / delete_kit()   keep a brand kit by name, reuse it anywhere
   apply_to_keynote(path, kit)          theme, fonts, sizes and colours on every slide
   apply_to_numbers(path, kit, …)       header band, body font, row banding,
                                        right-aligned number columns
@@ -19,11 +21,15 @@ never changed; only fonts, sizes, colours, fills and alignment.
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import uuid
+from collections import Counter
 from pathlib import Path
 
-__all__ = ["KITS", "list_kits", "get_kit", "contrast", "apply_to_keynote", "apply_to_numbers", "DesignError"]
+__all__ = ["KITS", "list_kits", "get_kit", "contrast", "extract_kit", "save_kit", "delete_kit",
+           "apply_to_keynote", "apply_to_numbers", "DesignError"]
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _ARABIC = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]")
@@ -113,23 +119,91 @@ def contrast(a: str, b: str) -> float:
 
 
 def list_kits() -> list[dict]:
-    return [{"name": k, "about": v["about"], "theme": v["theme"], "fonts": v["fonts"], "colors": v["colors"]}
-            for k, v in KITS.items()]
+    """Presets, then the kits you saved (marked saved: true)."""
+    out = [{"name": k, "about": v["about"], "theme": v["theme"], "fonts": v["fonts"], "colors": v["colors"]}
+           for k, v in KITS.items()]
+    for name, v in sorted(_saved_kits().items()):
+        out.append({"name": name, "about": v.get("about", "saved kit"), "theme": v.get("theme"),
+                    "fonts": v.get("fonts", {}), "colors": v.get("colors", {}), "saved": True})
+    return out
+
+
+# ── Saved kits: one JSON file per kit in ~/.iwork-studio/kits (IWORK_STUDIO_KITS_DIR) ──
+
+_KIT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$")
+
+
+def _kits_dir() -> Path:
+    return Path(os.environ.get("IWORK_STUDIO_KITS_DIR") or Path.home() / ".iwork-studio" / "kits")
+
+
+def _kit_file(name: str) -> Path:
+    if not isinstance(name, str) or not _KIT_NAME.match(name):
+        raise DesignError(f"kit name {name!r}: use letters, digits, spaces, '-' or '_' (up to 40)")
+    return _kits_dir() / f"{name.lower().replace(' ', '-')}.json"
+
+
+def _saved_kits() -> dict[str, dict]:
+    out = {}
+    d = _kits_dir()
+    if d.is_dir():
+        for f in d.glob("*.json"):
+            try:
+                v = json.loads(f.read_text(encoding="utf-8"))
+                out[v["name"]] = v
+            except (OSError, ValueError, KeyError, TypeError):
+                continue  # a damaged file is skipped, never fatal
+    return out
+
+
+def save_kit(name: str, kit, *, overwrite: bool = False) -> dict:
+    """Save a kit by name (contrast is checked first). Never replaces a saved kit unless
+    overwrite=True; never shadows a preset."""
+    if isinstance(name, str) and name.lower() in {k.lower() for k in KITS}:
+        raise DesignError(f"{name!r} is a preset kit; pick another name")
+    f = _kit_file(name)
+    k = get_kit({**kit, "name": name} if isinstance(kit, dict) else kit)
+    if f.exists() and not overwrite:
+        raise DesignError(f"a kit named {name!r} is already saved; pass overwrite=true to replace it")
+    record = {"name": name, "about": k.get("about") if k.get("about") != "custom kit" else "saved kit",
+              "theme": k["theme"], "background": k["background"], "fonts": k["fonts"], "colors": k["colors"]}
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(f".{uuid.uuid4().hex[:8]}.tmp")
+    tmp.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, f)
+    return {"saved": name, "file": str(f), "kit": record}
+
+
+def delete_kit(name: str) -> dict:
+    """Delete a saved kit. Returns its contents, so it can be saved again."""
+    f = _kit_file(name)
+    saved = _saved_kits()
+    if name not in saved or not f.exists():
+        raise DesignError(f"no saved kit named {name!r}; saved kits: {sorted(saved)}")
+    f.unlink()
+    return {"deleted": name, "kit": saved[name]}
 
 
 def get_kit(kit) -> dict:
-    """A kit by name, or a custom one: {"fonts": {...}, "colors": {...}, "theme": "...",
-    "background": "#FFFFFF"} — missing keys fall back to "executive". Contrast is checked:
+    """A kit by name (preset or saved), or a custom one: {"fonts": {...}, "colors": {...},
+    "theme": "...", "background": "#FFFFFF", "base": "executive"} — missing keys fall back to
+    the base preset (default "executive"). Contrast is checked:
     titles and body text need 4.5:1 against the background, table text 4.5:1 on its fill."""
     if isinstance(kit, str):
-        if kit not in KITS:
-            raise DesignError(f"unknown kit {kit!r}; kits: {sorted(KITS)} (or pass your own colours and fonts)")
-        k = KITS[kit]
-        return {**k, "name": kit}
+        if kit in KITS:
+            return {**KITS[kit], "name": kit}
+        saved = _saved_kits()
+        if kit not in saved:
+            raise DesignError(f"unknown kit {kit!r}; kits: {sorted(KITS)}, saved: {sorted(saved)} "
+                              "(or pass your own colours and fonts)")
+        kit = saved[kit]
     if not isinstance(kit, dict):
         raise DesignError("kit must be a kit name or a dict of fonts/colors")
-    base = KITS["executive"]
-    k = {"name": kit.get("name", "custom"), "about": "custom kit", "theme": kit.get("theme", base["theme"]),
+    base_name = kit.get("base", "executive")
+    if base_name not in KITS:
+        raise DesignError(f"base kit {base_name!r} must be a preset: {sorted(KITS)}")
+    base = KITS[base_name]
+    k = {"name": kit.get("name", "custom"), "about": kit.get("about", "custom kit"), "theme": kit.get("theme", base["theme"]),
          "background": kit.get("background", base["background"]),
          "fonts": {**base["fonts"], **(kit.get("fonts") or {})},
          "colors": {**base["colors"], **(kit.get("colors") or {})}}
@@ -153,6 +227,215 @@ def _font(kit: dict, role: str, text: str) -> str:
 def _family(kit: dict, text: str) -> str:
     """Numbers styles take a font family plus a bold flag."""
     return kit["fonts"]["family_ar" if _ARABIC.search(text or "") else "family"]
+
+
+# ── Extract a kit from your own file ──────────────────────────────────────────
+
+
+def _mix(hexcolor: str, other: str, t: float) -> str:
+    """Blend hexcolor toward other by t (0..1)."""
+    a = [int(hexcolor[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(other[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(a, b))
+
+
+def _top(counter: Counter):
+    return counter.most_common(1)[0][0] if counter else None
+
+
+def _norm_hex(c) -> str | None:
+    c = str(c or "")
+    return c.upper() if _HEX.match(c) else None
+
+
+def _ps_names(family: str) -> tuple[str | None, str | None]:
+    """(regular, bold) PostScript names for a font family, from Numbers' font list."""
+    from numbers_parser.model import FONT_FAMILY_TO_NAME, FONT_NAME_TO_FAMILY
+
+    regular = FONT_FAMILY_TO_NAME.get(family)
+    names = [n for n, f in FONT_NAME_TO_FAMILY.items() if f == family]
+    bold = next((n for suffix in ("-Bold", "Bold", "-DemiBold", "-SemiBold", "SemiBold")
+                 for n in names if n.endswith(suffix)), None)
+    return regular, bold or regular
+
+
+def _family_of(ps: str | None) -> str | None:
+    from numbers_parser.model import FONT_NAME_TO_FAMILY
+
+    return FONT_NAME_TO_FAMILY.get(ps) if ps else None
+
+
+def _assemble(found: dict, notes: list[str]) -> dict:
+    """found: title_color/body_color/brand/accent, background, fonts by role and script
+    (heading, body, heading_ar, body_ar, family, family_ar), theme. Missing parts
+    come from the nearest preset; the table colours are derived from the brand colour."""
+    bg = found.get("background") or "#FFFFFF"
+    dark = _lum(bg) < 0.4
+    base = KITS["midnight" if dark else "executive"]
+    title = found.get("title_color") or base["colors"]["title"]
+    body = found.get("body_color") or base["colors"]["body"]
+    brand = found.get("brand") or title
+    # Table header: the brand colour if white text reads on it, else the darker of title/body.
+    fill = brand if contrast("#FFFFFF", brand) >= 4.5 else min((title, body, brand), key=_lum)
+    header_text = "#FFFFFF" if contrast("#FFFFFF", fill) >= contrast("#000000", fill) else "#000000"
+    fonts = dict(base["fonts"])
+    for key in ("heading", "body", "heading_ar", "body_ar", "family", "family_ar"):
+        if found.get(key):
+            fonts[key] = found[key]
+        else:
+            notes.append(f"{key} font not found in the file; kept {fonts[key]!r} from the {('midnight' if dark else 'executive')} preset")
+    colors = {"title": title, "body": body, "accent": found.get("accent") or brand,
+              "header_fill": fill, "header_text": header_text, "band": _mix(fill, "#FFFFFF", 0.92)}
+    if dark:
+        colors["table_text"] = "#0F172A"
+    kit = {"base": "midnight" if dark else "executive", "about": found.get("about", "extracted kit"),
+           "theme": found.get("theme") or base["theme"], "background": bg, "fonts": fonts, "colors": colors}
+    return kit
+
+
+def _problems(kit: dict) -> list[str]:
+    c, bg = kit["colors"], kit["background"]
+    out = []
+    for role in ("title", "body"):
+        r = contrast(c[role], bg)
+        if r < 4.5:
+            out.append(f"{role} colour {c[role]} on {bg} is {r}:1; needs 4.5:1")
+    return out
+
+
+def _from_numbers(path, sheet, table) -> tuple[dict, dict]:
+    from iwork_studio.numbers_format import read_layout
+
+    lay = read_layout(path, sheet=sheet, table=table)
+    h = lay.get("header_rows", 1)
+    stats = {k: Counter() for k in ("head_font", "head_color", "head_fill", "body_font", "body_font_ar",
+                                    "head_font_ar", "body_color", "fills")}
+    for c in lay["cells"]:
+        st = c.get("style") or {}
+        text = str(c.get("value") or "")
+        ar = "_ar" if _ARABIC.search(text) else ""
+        header = c["row"] < h if "row" in c else int(re.sub(r"\D", "", c["ref"])) <= h
+        if header:
+            if st.get("font_name"):
+                stats["head_font" + ar][st["font_name"]] += 1
+            if _norm_hex(st.get("font_color")):
+                stats["head_color"][_norm_hex(st["font_color"])] += 1
+            if _norm_hex(st.get("bg_color")):
+                stats["head_fill"][_norm_hex(st["bg_color"])] += 1
+        else:
+            if st.get("font_name"):
+                stats["body_font" + ar][st["font_name"]] += 1
+            if _norm_hex(st.get("font_color")):
+                stats["body_color"][_norm_hex(st["font_color"])] += 1
+            if _norm_hex(st.get("bg_color")):
+                stats["fills"][_norm_hex(st["bg_color"])] += 1
+    found: dict = {"background": "#FFFFFF", "about": f"from {Path(path).name}"}
+    fill = _top(stats["head_fill"])
+    body_color = _top(stats["body_color"])
+    if fill:
+        found["brand"] = fill
+        found["title_color"] = fill if contrast(fill, "#FFFFFF") >= 4.5 else body_color
+    if body_color:
+        found["body_color"] = body_color
+    for role, key in (("heading", "head_font"), ("body", "body_font")):
+        fam = _top(stats[key])
+        if fam:
+            regular, bold = _ps_names(fam)
+            found[role] = bold if role == "heading" else regular
+            if role == "body":
+                found["family"] = fam
+        fam_ar = _top(stats[key + "_ar"])
+        if fam_ar:
+            regular, bold = _ps_names(fam_ar)
+            found[f"{role}_ar"] = bold if role == "heading" else regular
+            if role == "body":
+                found["family_ar"] = fam_ar
+    if not found.get("family") and found.get("heading"):
+        found["family"] = _family_of(found["heading"])
+    source = {"table": lay.get("table"), "sheet": lay.get("sheet"), "cells_read": len(lay["cells"])}
+    return found, source
+
+
+def _from_keynote(path) -> tuple[dict, dict]:
+    from iwork_studio import keynote_theme as kt
+    from iwork_studio.keynote_deck import pick_roles
+
+    st = kt.read_style(path)
+    stats = {k: Counter() for k in ("title_font", "title_font_ar", "title_color", "body_font", "body_font_ar",
+                                    "body_color", "other_color")}
+    for s in st["slides"]:
+        boxes = {"title": s.get("title_box"), "body": s.get("body_box")}
+        if boxes["title"] is None and boxes["body"] is None and s.get("items"):
+            roles = pick_roles(s["items"])
+            by_index = {it["index"]: it for it in s["items"]}
+            boxes = {r: by_index.get(roles.get(r)) for r in ("title", "body")}
+        for role, b in boxes.items():
+            if not b or not str(b.get("text") or "").strip():
+                continue
+            ar = "_ar" if _ARABIC.search(b["text"]) else ""
+            if b.get("font"):
+                stats[f"{role}_font{ar}"][b["font"]] += 1
+            if _norm_hex(b.get("color")):
+                stats[f"{role}_color"][_norm_hex(b["color"])] += 1
+        skip = {str((b or {}).get("text")) for b in boxes.values()}
+        for it in s.get("items", []):
+            if it.get("text", "").strip() and it["text"] not in skip and _norm_hex(it.get("color")):
+                stats["other_color"][_norm_hex(it["color"])] += 1
+    found: dict = {"theme": st.get("theme"), "about": f"from {Path(path).name}"}
+    title, body = _top(stats["title_color"]), _top(stats["body_color"])
+    if title:
+        found["title_color"] = title
+    if body:
+        found["body_color"] = body
+    accents = [c for c, _ in stats["other_color"].most_common() if c not in (title, body)]
+    if accents:
+        found["accent"] = accents[0]
+    # Keynote doesn't script slide backgrounds: judge it from the text colour.
+    ref = title or body
+    found["background"] = "#000000" if ref and _lum(ref) > 0.5 else "#FFFFFF"
+    for role, key in (("heading", "title_font"), ("body", "body_font")):
+        if _top(stats[key]):
+            found[role] = _top(stats[key])
+        if _top(stats[key + "_ar"]):
+            found[f"{role}_ar"] = _top(stats[key + "_ar"])
+    for k, src in (("family", "body"), ("family_ar", "body_ar")):
+        fam = _family_of(found.get(src)) or _family_of(found.get("heading" + src[4:]))
+        if fam:
+            found[k] = fam
+    source = {"theme": st.get("theme"), "slides_read": len(st["slides"])}
+    return found, source
+
+
+def extract_kit(path, *, name: str | None = None, save: bool = False, overwrite: bool = False,
+                sheet: str | None = None, table: str | None = None) -> dict:
+    """A design kit from your own file: heading/body fonts (Latin and Arabic) and the title,
+    body and brand colours. .numbers reads the table's header and body styles (no app);
+    .key reads every slide's title and body boxes (needs Keynote). What the file doesn't
+    show comes from the nearest preset and is listed in `notes`. save=True stores it under
+    `name` (contrast must pass)."""
+    p = Path(path)
+    ext = p.suffix.lower()
+    if ext == ".numbers":
+        found, source = _from_numbers(p, sheet, table)
+    elif ext == ".key":
+        found, source = _from_keynote(p)
+    else:
+        raise DesignError(f"can extract a kit from .key or .numbers, not {ext or 'this file'}")
+    notes: list[str] = []
+    if ext == ".key":
+        notes.append(f"background judged {found['background']} from the text colour (Keynote doesn't expose slide backgrounds)")
+    kit = _assemble(found, notes)
+    if name:
+        kit["name"] = name
+    problems = _problems(kit)
+    out = {"kit": kit, "source": source, "notes": notes, "contrast_ok": not problems, "problems": problems}
+    if save:
+        if not name:
+            raise DesignError("pass a name to save the kit")
+        if problems:
+            raise DesignError("can't save: " + "; ".join(problems) + ". Adjust the colours and save with iwork_save_design_kit")
+        out["saved"] = save_kit(name, kit, overwrite=overwrite)["file"]
+    return out
 
 
 # ── Keynote ───────────────────────────────────────────────────────────────────

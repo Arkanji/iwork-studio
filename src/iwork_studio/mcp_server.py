@@ -86,6 +86,7 @@ mcp = MCPServer(
 READ = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
 WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 APP_READ = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False, idempotent_hint=True)
+KIT = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False, idempotent_hint=True)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -576,10 +577,36 @@ def iwork_find(folder: str | None = None, kind: str | None = None, name: str | N
 
 @mcp.tool(annotations=READ)
 def iwork_list_design_kits() -> dict[str, Any]:
-    """Design kits for good-looking decks and tables: font pairs (Latin + Arabic, bundled with macOS), contrast-checked palettes and a type scale. Use with keynote_build_deck(kit=…), keynote_apply_design, numbers_apply_design. Custom kits: pass {"fonts": {...}, "colors": {...}}."""
+    """Design kits for good-looking decks and tables: font pairs (Latin + Arabic, bundled with macOS), contrast-checked palettes and a type scale. Lists the presets and the kits you saved (saved: true). Use with keynote_build_deck(kit=…), keynote_apply_design, numbers_apply_design. Custom kits: pass {"fonts": {...}, "colors": {...}}."""
     from iwork_studio import design
 
     return _call(lambda: {"kits": design.list_kits()})
+
+
+@mcp.tool(annotations=KIT)
+def iwork_extract_design_kit(path: str, name: str | None = None, save: bool = False, overwrite: bool = False,
+                             sheet: str | None = None, table: str | None = None) -> dict[str, Any]:
+    """Make a design kit from the user's own deck or table: heading and body fonts (Latin and Arabic) and the title, body and brand colours. .numbers reads the table's header and body styles (no app); .key reads every slide's title and body (needs macOS + Keynote). Parts the file doesn't show come from the nearest preset and are listed in notes. save=true with a name keeps it for reuse by name (contrast must pass). The file is never changed."""
+    from iwork_studio import design
+
+    return _call(design.extract_kit, _path(path, ".key", ".numbers"), name=name, save=save, overwrite=overwrite,
+                 sheet=sheet, table=table)
+
+
+@mcp.tool(annotations=KIT)
+def iwork_save_design_kit(name: str, kit: Any, overwrite: bool = False) -> dict[str, Any]:
+    """Save a design kit by name for reuse anywhere a kit is accepted. kit = {"fonts": {...}, "colors": {...}, "theme": "...", "background": "#RRGGBB"} (missing parts come from the "executive" preset, or from "base": "<preset>"), or a preset name to copy. Contrast is checked (4.5:1). Never replaces a saved kit unless overwrite=true; can't reuse a preset's name."""
+    from iwork_studio import design
+
+    return _call(design.save_kit, name, kit, overwrite=overwrite)
+
+
+@mcp.tool(annotations=WRITE)
+def iwork_delete_design_kit(name: str) -> dict[str, Any]:
+    """Delete a saved design kit (presets can't be deleted). Returns the kit's contents, so it can be saved again with iwork_save_design_kit."""
+    from iwork_studio import design
+
+    return _call(design.delete_kit, name)
 
 
 @mcp.tool(annotations=WRITE)

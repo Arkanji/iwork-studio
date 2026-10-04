@@ -85,7 +85,8 @@ def test_mcp_tools_take_dry_run(numbers_file):
     with_dry = {n for n, t in tools.items() if "dry_run" in schema(t)["properties"]}
     writes = {n for n, t in tools.items() if t.annotations and t.annotations.destructive_hint}
     no_preview = {"iwork_restore_backup", "iwork_export", "numbers_create", "numbers_import_csv",
-                  "iwork_create", "iwork_create_from_template", "keynote_build_deck"}  # undo / new files
+                  "iwork_create", "iwork_create_from_template", "keynote_build_deck",
+                  "iwork_delete_design_kit"}  # undo / new files / a saved kit, not a document
     assert writes - no_preview <= with_dry
     before = _sha(numbers_file)
     out = m._write(True, numbers_io.edit_cell, numbers_file, "B2", 7)
