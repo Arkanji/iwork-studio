@@ -317,3 +317,30 @@ def test_extract_kit_rejects_other_files(tmp_path):
     p.write_bytes(b"")
     with pytest.raises(design.DesignError, match=".key or .numbers"):
         design.extract_kit(p)
+
+
+def test_keynote_design_scales_type_to_deck_width(deck):
+    d, state = deck
+    narrow = copy.deepcopy(STYLE)
+    narrow["width"], narrow["height"] = 1024, 768
+    k = design.get_kit("executive")
+    after = _designed()
+    for sl in after["slides"]:
+        for it in sl["items"]:
+            it["size"] = float(round(it["size"] * 1024 / 1920))
+    after["width"], after["height"] = 1024, 768
+    reads = {"n": 0}
+
+    def read(path):
+        reads["n"] += 1
+        return copy.deepcopy(narrow if reads["n"] == 1 else after)
+
+    import iwork_studio.keynote_theme as ktm
+    ktm_read = ktm.read_style
+    ktm.read_style = read
+    try:
+        design.apply_to_keynote(d, "executive", set_theme=False)
+    finally:
+        ktm.read_style = ktm_read
+    sizes = {sp["title_lat"]["size"] for sp in state["params"]["specs"]}
+    assert sizes == {47, 28} and k  # 88 → 47 on the title slide, 52 → 28 on content slides
