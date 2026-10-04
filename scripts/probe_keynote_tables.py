@@ -27,6 +27,13 @@ sys.path.insert(0, str(REPO / "src"))
 FIXTURE = REPO / "tests" / "fixtures" / "arabic.key"
 OUT = Path.home() / ".iwork-studio" / "probes" / "keynote_tables.json"
 
+# Keynote's sandbox refuses AppleScript `open` on a temp path ("can't be opened right
+# now. Operation not permitted"), so the deck is opened with JXA, then found by path.
+def _jxa_open(app: str, path: Path) -> None:
+    js = f"Application({json.dumps(app)}).open(Path({json.dumps(str(path))}));"
+    subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=180, check=True)
+
+
 # Each step: (name, AppleScript run inside `tell d`, value returned as text).
 STEPS = [
     ("make_table", 'set t to make new table at end of tables of slide 1 with properties '
@@ -95,7 +102,19 @@ def main() -> int:
 
 on run argv
   tell application "{app}"
-    set d to open (POSIX file (item 1 of argv))
+    set d to missing value
+    repeat with x in documents
+      set fp to ""
+      try
+        set fp to POSIX path of ((file of x) as alias)
+      end try
+      if fp ends with "/" then set fp to text 1 thru -2 of fp
+      if fp is (item 1 of argv) then
+        set d to contents of x
+        exit repeat
+      end if
+    end repeat
+    if d is missing value then error "the probe deck isn't open in Keynote" number -10000
   end tell
   set out to ""
 {chr(10).join(calls)}
@@ -107,19 +126,39 @@ on run argv
 end run"""
     reread = f"""on run argv
   tell application "{app}"
-    set d to open (POSIX file (item 1 of argv))
+    set d to missing value
+    repeat with x in documents
+      set fp to ""
+      try
+        set fp to POSIX path of ((file of x) as alias)
+      end try
+      if fp ends with "/" then set fp to text 1 thru -2 of fp
+      if fp is (item 1 of argv) then
+        set d to contents of x
+        exit repeat
+      end if
+    end repeat
+    if d is missing value then error "the probe deck isn't open in Keynote" number -10000
     try
-      tell d
-{REREAD}
-      end tell
+      set r to my reread(d)
     on error m number n
-      close d saving no
-      return "error " & (n as text) & " " & m
+      set r to "error " & (n as text) & " " & m
     end try
+    close d saving no
+    return r
   end tell
-end run"""
-    # REREAD returns from inside the tell, so close happens on the next open; close explicitly after.
+end run
+
+on reread(d)
+  tell application "{app}"
+    tell d
+{REREAD}
+    end tell
+  end tell
+end reread"""
     results: dict = {"app": app, "steps": {}}
+    deck = deck.resolve()
+    _jxa_open(app, deck)
     r = subprocess.run(["osascript", "-e", script, str(deck)], capture_output=True, text=True, timeout=300)
     results["rc"] = r.returncode
     results["stderr"] = r.stderr.strip()[:800]
@@ -127,8 +166,13 @@ end run"""
         parts = line.split("\t", 2)
         if len(parts) == 3:
             results["steps"][parts[0]] = {"status": parts[1], "detail": parts[2]}
+    _jxa_open(app, deck)
     r2 = subprocess.run(["osascript", "-e", reread, str(deck)], capture_output=True, text=True, timeout=120)
     results["reopen"] = (r2.stdout or r2.stderr).strip()[:500]
+    # Best effort: never leave the probe deck open (only this path; never the user's documents).
+    js = ("const a = Application(" + json.dumps(app) + "); a.documents().forEach(d => { try { "
+          "if (d.file().toString() === " + json.dumps(str(deck)) + ") a.close(d, {saving: 'no'}); } catch (e) {} });")
+    subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=60)
     try:
         from iwork_studio import keynote_io
         results["parser_read"] = json.dumps(keynote_io.read_key(deck), ensure_ascii=False, default=str)[:800]
