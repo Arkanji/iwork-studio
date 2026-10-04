@@ -138,6 +138,7 @@ _HINTS = {
     "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body, pages_fill_placeholders and pages_set_table_cells only",
     "StructureError": "fix the request (positions are 1-based; new files must not exist yet)",
     "AppOpError": "fix the request; the message lists the valid choices",
+    "SortBreaksFormulasError": "call numbers_sort again with to_new_table=true for a sorted copy; the table is untouched",
     "WriteVerificationError": "the result didn't match the request, so nothing was changed",
     "EditVerificationError": "the result didn't match the request; the backup was restored",
     "SlideOpVerificationError": "Keynote did something other than asked; the backup was restored",
@@ -743,12 +744,13 @@ def numbers_recalculate(path: str, dry_run: bool = False) -> dict[str, Any]:
 
 @mcp.tool(annotations=WRITE)
 def numbers_sort(path: str, column: str, descending: bool = False, sheet: str | None = None,
-                 table: str | None = None, dry_run: bool = False) -> dict[str, Any]:
-    """Sort a table's body rows by a column letter (header rows stay on top). Verified as a pure reorder. Needs macOS + Numbers, file closed. dry_run=true previews the change on a copy without touching the file."""
+                 table: str | None = None, to_new_table: bool = False, new_table_name: str | None = None,
+                 dry_run: bool = False) -> dict[str, Any]:
+    """Sort a table's body rows by a column letter (header rows stay on top). Verified as a pure reorder. A table whose formulas read other rows (e.g. =B2*0.1 below a base-figure row) is refused, because Numbers' sort would break them; for it, to_new_table=true leaves the table, its formulas and its charts as they are and puts a sorted copy of its values (no formulas) in a new table on the same sheet (named new_table_name, default "<table> sorted"). Chart the copy with keynote_build_deck. Needs macOS + Numbers, file closed. dry_run=true previews the change on a copy without touching the file."""
     from iwork_studio import app_ops
 
     return _write(dry_run, app_ops.sort_table, _path(path, ".numbers"), column, descending=descending, sheet=sheet,
-                 table=table)
+                  table=table, to_new_table=to_new_table, new_table_name=new_table_name)
 
 
 @mcp.tool(annotations=APP_READ)

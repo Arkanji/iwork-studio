@@ -7,12 +7,12 @@
     "url": "https://github.com/Arkanji/iwork-studio",
     "source": "github"
   },
-  "version": "2.5.0",
+  "version": "2.6.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "iwork-studio",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

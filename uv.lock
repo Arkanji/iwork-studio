@@ -568,7 +568,7 @@ wheels = [
 
 [[package]]
 name = "iwork-studio"
-version = "2.5.0"
+version = "2.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "keynote-parser" },

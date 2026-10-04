@@ -88,6 +88,9 @@ Use it whenever a request touches one of those.
 - **New files never overwrite.** Pick a new name if the tool says it exists.
 - **Stale totals**: Numbers doesn't recalculate on open. When a no-app edit
   returns `formulas_need_recalc`, run `numbers_recalculate` (Mac) or tell the user.
+- **Sorting**: `numbers_sort` refuses a table whose formulas read other rows
+  (`SortBreaksFormulasError`). Offer `to_new_table=true` (a sorted values-only copy);
+  never rewrite the user's formulas to force a sort.
 - **Formula tables**: rows/columns can only be appended headlessly
   (`StructureError` otherwise); suggest doing mid-table inserts in Numbers.
 - **Keynote slide/theme/image/transition ops** refuse a deck open in Keynote (`DocumentOpenError`): ask

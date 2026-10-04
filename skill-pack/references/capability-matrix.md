@@ -23,7 +23,7 @@ iWork and the Creator Studio apps. Arabic/RTL content is supported throughout.
 | Column widths, row heights, header rows/columns | Supported |
 | Merge a range (refused if it would hide data or cross the header edge) | Supported |
 | Formula in a cell (Numbers computes it; every other input checked unchanged) | Supported — needs Numbers + GUI session |
-| Sort body rows by a column (checked to be a pure reorder) | Supported — needs Numbers + GUI session |
+| Sort body rows by a column (checked to be a pure reorder) | Supported — needs Numbers + GUI session. Tables whose formulas read other rows are refused (Numbers' sort breaks them); `to_new_table` puts a sorted values-only copy in a new table instead |
 | Apply a design kit to a table (header band, fonts incl. Arabic, banding, right-aligned numbers) | Supported — no app needed |
 | Recalculate every formula (Numbers doesn't on open after no-app edits; formulas and inputs checked unchanged) | Supported — needs Numbers + GUI session |
 | Table styles (named table themes) | Not exposed — neither AppleScript nor the parser |

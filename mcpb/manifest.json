@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "iwork-studio",
   "display_name": "iWork Studio",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Create, edit, design and export Apple Numbers, Keynote and Pages files. Verified, undoable, Arabic-safe.",
   "long_description": "Give Claude the keys to Apple iWork: build designed Keynote decks from an outline, create and format Numbers tables, fill Pages templates and tables, export to PDF, Excel, Word or PowerPoint. Every write is backed up, checked and swapped in atomically, and can be undone. Arabic and right-to-left text round-trips exactly.",
   "author": {

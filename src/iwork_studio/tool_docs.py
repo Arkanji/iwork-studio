@@ -114,7 +114,11 @@ PARAMS: dict[str, dict[str, str]] = {
         "numbers": "true = plain numbers become numbers; false = keep every cell as text.",
     },
     "numbers_set_formula": {"formula": 'The formula, starting with "=", e.g. "=SUM(B2:B9)".'},
-    "numbers_sort": {"column": 'Column letter to sort by, e.g. "C".', "descending": "true = largest/last first."},
+    "numbers_sort": {"column": 'Column letter to sort by, e.g. "C".', "descending": "true = largest/last first.",
+                     "to_new_table": "true = leave the table as it is and put a sorted copy of its values (no "
+                                     "formulas) in a new table on the same sheet. Use it when the table's formulas "
+                                     "read other rows.",
+                     "new_table_name": 'Name for the new table (with to_new_table); default "<table> sorted".'},
     "keynote_replace_text": {"find": "Text to find (literal unless regex=true).", "replace": "Replacement text.",
                              "regex": "true = treat find as a regular expression."},
     "pages_replace_all": {"find": "Text to find, exactly.", "replace": "Replacement text."},
@@ -276,7 +280,9 @@ USAGE = {
                       "in tables with formulas or merges; undo with iwork_restore_backup.",
     "numbers_add_table": "Use for a new, separate table on a sheet or a new sheet. To grow an existing table use "
                          "numbers_insert.",
-    "numbers_sort": "Use to reorder body rows by one column; header rows stay on top. Needs the Numbers app.",
+    "numbers_sort": "Use to reorder body rows by one column; header rows stay on top. If it refuses because formulas "
+                    "read other rows, call it again with to_new_table=true for a sorted copy; never rewrite the "
+                    "formulas to force it. Needs the Numbers app.",
     "numbers_inspect_format": "Use before formatting to see current styles, number formats, sizes, headers and merges. "
                               "For values use iwork_read.",
     "numbers_set_cell_style": "Use for fonts, colours, fill or alignment on a few cells. For a whole table that should "

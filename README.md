@@ -100,7 +100,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 On purpose, so it never breaks a file:
 
 - **Files with charts** are refused by the tools that work without the app: their rewrite can silently break a chart's link to its data. The app-driven tools (Keynote slides, theming, transitions, images; Numbers formulas and sort) work on them and check every chart is still there.
-- **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added.
+- **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added. To chart sorted data without touching a Numbers chart, sort into a new table (`numbers_sort` with `to_new_table`) and build a Keynote chart slide from it.
 - **Pages** is limited to text and existing tables: replace, set body, placeholders and table cells. New tables can't be created (Pages 15 doesn't script it), and page-layout documents, like most letter templates, have no body text. There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, deleting a Keynote table, editing a theme's master slides. Page margins and page setup are planned.
@@ -136,7 +136,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 ```
 
 - **Backup first**, versioned, next to the file in `<file>.backups/`.
-- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder. On files with charts, every chart is counted before and after; on decks with tables, every table's cells are compared. An export is read back with a second, independent tool.
+- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder, and refuses up front when the table's formulas read other rows (Numbers' own sort would break them). On files with charts, every chart is counted before and after; on decks with tables, every table's cells are compared. An export is read back with a second, independent tool.
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **The app's "ok" is never trusted.** App-driven writes are re-read from disk, and a write that "succeeded" but didn't land is rolled back.
 - **Undo is one call**: `iwork_list_backups` → `iwork_restore_backup`. The restore backs up the current version first, so undo can be undone too.
@@ -186,7 +186,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `numbers_recalculate` | Have Numbers recompute every formula after edits made without it |
 | `numbers_insert` · `numbers_delete` | Rows or columns, anywhere |
 | `numbers_add_table` | New table on a sheet, or on a new sheet |
-| `numbers_sort` | Sort body rows by a column |
+| `numbers_sort` | Sort body rows by a column. A table whose formulas read other rows is refused, since Numbers' sort would break them; `to_new_table` puts a sorted copy of its values in a new table and leaves the original, its formulas and its charts alone |
 | `numbers_inspect_format` | Widths, heights, headers, merges, and every cell's style, number format and borders |
 | `numbers_set_cell_style` | Font, size, bold/italic/underline/strike, colours, fill, alignment, wrap |
 | `numbers_set_number_format` | Number, currency (any ISO code), %, scientific, fraction, date, text; decimals, separators, negatives |
