@@ -196,10 +196,10 @@ class _Table:
 
 
 def test_cross_row_formulas_found():
-    # a row's own cells, a locked cell in another table and a header-only formula are safe
-    safe = {(1, 1): "A2×2", (2, 1): "Inputs::$B$2×0.1", (0, 1): "SUM(B2:B5)"}
+    # a row's own cells, other tables and a header-only formula are safe (Numbers keeps those)
+    safe = {(1, 1): "A2×2", (2, 1): "Inputs::B2×0.1", (3, 1): "Inputs::$B$2×0.1", (0, 1): "SUM(B2:B5)"}
     assert app_ops._cross_row_formulas(_Table(safe)) == []
-    for f in ("B2×0.1", "$B$2×0.1", "Inputs::B2×0.1", "SUM(B2:B5)", "B$1×A3"):
+    for f in ("B2×0.1", "$B$2×0.1", "T::B2×0.1", "SUM(B2:B5)", "B$1×A3"):
         assert app_ops._cross_row_formulas(_Table({(2, 1): f})) == [(2, 1, f)], f
 
 
