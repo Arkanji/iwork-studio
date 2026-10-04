@@ -34,6 +34,9 @@ def test_release_versions_agree():
     assert plugin["mcpServers"]["iwork-studio"]["args"] == ["--from", f"iwork-studio=={v}", "iwork-studio-mcp"]
     market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text())
     assert market["plugins"][0]["source"] == "./skill-pack"
+    skill = (REPO / "skill-pack" / "SKILL.md").read_text()
+    assert re.search(r"^  version: (\S+)$", skill, re.M).group(1) == v
+    assert re.search(r"Version (\d+\.\d+\.\d+)\.", (REPO / "llms.txt").read_text()).group(1) == v
     from iwork_studio import __version__
 
     assert __version__ == v
@@ -65,3 +68,10 @@ def test_serve_accepts_roots(monkeypatch):
     monkeypatch.delenv("IWORK_STUDIO_ROOTS")
     mcp_server.main()
     assert "IWORK_STUDIO_ROOTS" not in os.environ
+
+
+def test_readme_has_no_hardcoded_version():
+    """The README's version badge reads PyPI, so it can't go stale after a release."""
+    readme = (REPO / "README.md").read_text()
+    assert "img.shields.io/badge/version-" not in readme
+    assert "img.shields.io/pypi/v/iwork-studio" in readme
