@@ -38,6 +38,13 @@ def _jxa_open(app: str, path: Path) -> None:
 STEPS = [
     ("make_table", 'set t to make new table at end of tables of slide 1 with properties '
                    '{row count:4, column count:3}\nreturn (count of tables of slide 1) as text'),
+    # Variants, in case only one form works on this Keynote:
+    ("make_table_at_slide", 'tell slide 1 to make new table with properties {row count:4, column count:3}\n'
+                            'return (count of tables of slide 1) as text'),
+    ("make_table_plain", 'tell slide 1 to make new table\nreturn (count of tables of slide 1) as text'),
+    ("make_table_new_slide", 'set s to make new slide at end of slides\n'
+                             'tell s to make new table with properties {row count:4, column count:3}\n'
+                             'return (count of tables of s) as text'),
     ("table_props", 'set t to last table of slide 1\nreturn (row count of t as text) & "x" & '
                     '(column count of t as text) & " header rows " & (header row count of t as text)'),
     ("set_text", 'set t to last table of slide 1\nset value of cell 1 of row 1 of t to "Revenue"\n'
@@ -118,6 +125,13 @@ end run"""
                            timeout=120)
         results["steps"][name] = ({"status": "ok", "detail": r.stdout.strip()[:300]} if r.returncode == 0
                                   else {"status": "error", "detail": r.stderr.strip()[:300]})
+    js = ("const a = Application(" + json.dumps(app) + "); const d = a.documents().find(x => { try { "
+          "return x.file().toString() === " + json.dumps(str(deck)) + "; } catch (e) { return false; } }); "
+          "const s = d.slides[0]; const t = a.Table({rowCount: 4, columnCount: 3}); s.tables.push(t); "
+          "s.tables().length;")
+    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", js], capture_output=True, text=True, timeout=120)
+    results["steps"]["make_table_jxa"] = ({"status": "ok", "detail": r.stdout.strip()[:300]} if r.returncode == 0
+                                          else {"status": "error", "detail": r.stderr.strip()[:300]})
     save = f"""on run argv
   tell application "{app}"
 {find}
