@@ -104,7 +104,7 @@ Use it whenever a request touches one of those.
 ## Working on it: change this codebase
 
 - Python 3.12. `uv run --extra test pytest -m "not aqua"` = the headless suite
-  (what CI runs). `pytest -m aqua` (or `scripts/live.sh`, unattended: logs and quits
+  (what CI runs, with `ruff check src tests scripts`). `pytest -m aqua` (or `scripts/live.sh`, unattended: logs and quits
   the apps it opened) + `scripts/probe_keynote_slides.py` = the live lane;
   needs a Mac with iWork (classic or Creator Studio). Clone
   outside iCloud-synced folders.

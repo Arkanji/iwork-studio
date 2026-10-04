@@ -43,7 +43,6 @@ def _assert_aqua() -> None:
         pass
     if not os.path.exists("/System/Library/LaunchDaemons/com.apple.launchd.plist"):
         pass  # non-macOS guard; kept harmless
-    session = os.environ.get("SECURE_SERVER_SESSION")  # unused, informational
     # Authoritative check: Aqua session exists iff /System/Library/Session
     # has a console owner or `launchctl managername` says "Aqua".
     try:
