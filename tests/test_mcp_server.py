@@ -235,3 +235,16 @@ def test_readonly_helpers_over_mcp(tmp_path):
     assert Path(thumb["thumbnail"]).exists() and thumb["width"] > 0
     assert found["files"] == [str(deck.resolve())]
     assert fenced.is_error and "outside IWORK_STUDIO_ROOTS" in fenced.content[0].text
+
+
+def test_prompts_listed_and_rendered():
+    async def steps(c):
+        names = {p.name for p in (await c.list_prompts()).prompts}
+        got = await c.get_prompt("report_from_numbers", {"numbers_file": "/r/تقرير.numbers", "path": "/r/deck.key"})
+        brand = await c.get_prompt("restyle_with_brand", {"path": "/r/t.numbers", "brand_file": "/r/brand.key"})
+        return names, got.messages[0].content.text, brand.messages[0].content.text
+
+    names, text, brand = _session(steps)
+    assert names == {"pitch_deck", "report_from_numbers", "restyle_with_brand", "style_table"}
+    assert '"from": "/r/تقرير.numbers"' in text and "keynote_review_deck" in text
+    assert "numbers_apply_design(dry_run=true)" in brand and "iwork_extract_design_kit" in brand
