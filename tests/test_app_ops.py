@@ -119,6 +119,13 @@ def test_formula_body_targets_the_named_cell(book, monkeypatch):
     assert "byName(params.ref)" in seen["body"]
 
 
+
+@pytest.mark.parametrize("typed,read_back", [("=B2*0.1", "B2×0.1"), ("=B2/4", "B2÷4"), ("=IF(B2<>0,1,0)", "IF(B2≠0,1,0)"),
+                                             ("=IF(B2<=C2,1,0)", "IF(B2≤C2,1,0)"), ("=SUM($B$2:B9)", "SUM($B$2:B9)")])
+def test_formula_read_back_in_numbers_symbols(typed, read_back):
+    assert app_ops._fnorm(typed) == app_ops._fnorm(read_back)
+    assert app_ops._fnorm("=B2*0.1") != app_ops._fnorm("B3×0.1")
+
 # ── Numbers: sort ────────────────────────────────────────────────────────────
 
 def _sorted_rows(t, desc=False):

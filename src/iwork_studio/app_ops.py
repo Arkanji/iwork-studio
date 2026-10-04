@@ -120,8 +120,12 @@ def _values(doc) -> dict:
     return out
 
 
+# Numbers reads operators back in its own symbols (=B2*0.1 → B2×0.1).
+_FOPS = str.maketrans({"×": "*", "÷": "/", "≠": "<>", "≤": "<=", "≥": ">=", "−": "-"})
+
+
 def _fnorm(f: str | None) -> str:
-    return re.sub(r"[\s$]", "", (f or "").lstrip("=")).upper()
+    return re.sub(r"[\s$]", "", (f or "").lstrip("=").translate(_FOPS)).upper()
 
 
 def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect, summary: dict,
