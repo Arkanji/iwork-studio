@@ -66,5 +66,6 @@
     "https://github.com/Arkanji/iwork-studio/blob/main/PRIVACY.md"
   ],
   "documentation": "https://github.com/Arkanji/iwork-studio#readme",
-  "support": "https://github.com/Arkanji/iwork-studio/issues"
+  "support": "https://github.com/Arkanji/iwork-studio/issues",
+  "icon": "icon.png"
 }

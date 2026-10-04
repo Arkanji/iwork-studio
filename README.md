@@ -37,7 +37,8 @@ Every write is backed up, checked and swapped in atomically, and any change can 
 |---|---|
 | **Claude desktop app, one click** (Mac) | Download `iwork-studio-<version>.mcpb` from the [latest release](https://github.com/Arkanji/iwork-studio/releases/latest), double-click it, pick the folders it may use |
 | **Claude desktop app** (Mac, from Terminal) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then quit Claude (Cmd-Q) and reopen |
-| **Claude Code** | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
+| **Claude Code, as a plugin** (tools + skill) | `/plugin marketplace add Arkanji/iwork-studio`, then `/plugin install iwork-studio@iwork-studio` |
+| **Claude Code, tools only** | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
 | **Cursor, VS Code, Codex, any MCP client** | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings. Also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Arkanji/iwork-studio` |
 
 That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, and uv brings its own Python.
@@ -313,7 +314,8 @@ src/iwork_studio/   numbers_io · numbers_format · numbers_structure · keynote
                     keynote_deck · keynote_table · design · review · preview · pages_io · app_ops · exporter
                     helpers · format_check · render_verify · pdf · backups · apps · mcp_server
 mcpb/               Claude Desktop extension manifest (scripts/build_mcpb.sh builds the .mcpb)
-skill-pack/         SKILL.md · CLI scripts · references (capabilities, traps, pins)
+skill-pack/         SKILL.md · CLI scripts · references (capabilities, traps, pins); also the Claude Code plugin
+.claude-plugin/     plugin marketplace (one plugin: skill-pack/)
 tests/              headless suite (CI) · `pytest -m aqua` = live suite for a Mac with iWork
 install.sh          one-line setup for the Claude desktop app
 ```

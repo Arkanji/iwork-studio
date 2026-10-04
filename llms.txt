@@ -37,7 +37,7 @@
 ## Install (setting this up for a user)
 
 - Claude desktop app (Mac): `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh`, then quit Claude (Cmd-Q) and reopen. Optional folder fence: `| sh -s -- --roots ~/Documents`.
-- Claude Code: `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`
+- Claude Code: plugin (tools + skill) `claude plugin marketplace add Arkanji/iwork-studio` then `claude plugin install iwork-studio@iwork-studio`; or tools only `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`
 - Any other MCP client: `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` prints the JSON entry (absolute uvx path — GUI apps don't inherit PATH).
 - No Python install needed (uv brings its own). Remove: `… iwork-studio-mcp uninstall`.
 - First run: approve the one-time "Claude wants to control Keynote/Pages/Numbers" prompt; then call `iwork_capabilities`.

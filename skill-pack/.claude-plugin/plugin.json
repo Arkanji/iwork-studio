@@ -1,0 +1,41 @@
+{
+  "name": "iwork-studio",
+  "version": "2.4.0",
+  "description": "Create, edit, design and export Apple Numbers, Keynote and Pages files: designed decks with charts and tables, your brand kit, a design review of what Keynote draws. Every write is backed up, verified and undoable; Arabic-safe.",
+  "author": {
+    "name": "Arkanji",
+    "url": "https://github.com/Arkanji"
+  },
+  "homepage": "https://github.com/Arkanji/iwork-studio",
+  "repository": "https://github.com/Arkanji/iwork-studio",
+  "license": "MIT",
+  "keywords": [
+    "iwork",
+    "numbers",
+    "keynote",
+    "pages",
+    "slides",
+    "spreadsheet",
+    "arabic",
+    "rtl",
+    "design"
+  ],
+  "mcpServers": {
+    "iwork-studio": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "iwork-studio==2.4.0",
+        "iwork-studio-mcp"
+      ]
+    }
+  },
+  "skills": [
+    "./"
+  ],
+  "displayName": "iWork Studio",
+  "documentationUrl": "https://github.com/Arkanji/iwork-studio#readme",
+  "supportUrl": "https://github.com/Arkanji/iwork-studio/issues",
+  "privacyPolicyUrl": "https://github.com/Arkanji/iwork-studio/blob/main/PRIVACY.md",
+  "icon": "./icon.png"
+}

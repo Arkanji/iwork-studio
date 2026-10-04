@@ -1,0 +1,15 @@
+{
+  "name": "iwork-studio",
+  "owner": {
+    "name": "Arkanji",
+    "url": "https://github.com/Arkanji"
+  },
+  "description": "iWork Studio: Apple Numbers, Keynote and Pages for Claude.",
+  "plugins": [
+    {
+      "name": "iwork-studio",
+      "source": "./skill-pack",
+      "description": "Create, edit, design and export Apple Numbers, Keynote and Pages files."
+    }
+  ]
+}

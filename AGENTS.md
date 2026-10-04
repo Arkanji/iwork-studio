@@ -8,7 +8,8 @@ working **with** or **on** this repo.
 | User's app | Command |
 |---|---|
 | Claude desktop app (Mac) | `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then the user quits Claude (Cmd-Q) and reopens |
-| Claude Code | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
+| Claude Code (plugin: tools + skill) | `claude plugin marketplace add Arkanji/iwork-studio` then `claude plugin install iwork-studio@iwork-studio` |
+| Claude Code (tools only) | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
 | Any other MCP client | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` → paste the printed JSON into the client's MCP config |
 
 - The installer installs `uv` if missing; uv brings its own Python. **Don't tell the user to install Python.**
