@@ -50,6 +50,7 @@ class ThemeError(ValueError):
 _STYLE_INVENTORY = """
   const inv = {theme: null, slides: []};
   try { inv.theme = doc.documentTheme().name(); } catch (e) {}
+  try { inv.width = doc.width(); inv.height = doc.height(); } catch (e) {}
   const slides = doc.slides();
   for (let s = 0; s < slides.length; s++) {
     const items = [];
@@ -60,9 +61,9 @@ _STYLE_INVENTORY = """
       try { font = ot.font(); } catch (e) {}
       try { size = ot.size(); } catch (e) {}
       try { color = ot.color(); } catch (e) {}
-      let x = null, y = null, area = null;
-      try { const p = tis[i].position(); x = p.x; y = p.y; area = tis[i].width() * tis[i].height(); } catch (e) {}
-      items.push({index: i, text: ot().toString(), font: font, size: size, color: color, x: x, y: y, area: area});
+      let x = null, y = null, area = null, w = null, h = null;
+      try { const p = tis[i].position(); x = p.x; y = p.y; w = tis[i].width(); h = tis[i].height(); area = w * h; } catch (e) {}
+      items.push({index: i, text: ot().toString(), font: font, size: size, color: color, x: x, y: y, area: area, w: w, h: h});
     }
     let transition = null, images = null;
     try {

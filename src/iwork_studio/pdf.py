@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__all__ = ["page_count", "page_sizes", "page_texts", "needs_password", "opens_with", "spans", "PdfError"]
+__all__ = ["page_count", "page_sizes", "page_texts", "needs_password", "opens_with", "spans", "lines", "PdfError"]
 
 
 class PdfError(RuntimeError):
@@ -149,4 +149,29 @@ def spans(path: str | os.PathLike, password: str = "") -> list[dict]:
             r["bold"] = "bold" in r["font"].lower()
         w, h = sizes[n - 1] if n - 1 < len(sizes) else (None, None)
         out.append({"page": n, "width_pt": w, "height_pt": h, "spans": [r for r in runs if r["text"].strip()]})
+    return out
+
+
+def lines(path: str | os.PathLike, password: str = "") -> list[dict]:
+    """Per page: size and every text line with its box, measured from the top-left
+    (x0, top, x1, bottom in points) and its largest character size."""
+    from pdfminer.layout import LTChar, LTTextContainer, LTTextLine
+
+    sizes = page_sizes(path, password)
+    out = []
+    for n, page in enumerate(_layouts(path, password), start=1):
+        h = page.height
+        found = []
+        for el in page:
+            if not isinstance(el, LTTextContainer):
+                continue
+            for line in el:
+                if not isinstance(line, LTTextLine) or not line.get_text().strip():
+                    continue
+                chars = [c for c in line if isinstance(c, LTChar)]
+                found.append({"text": line.get_text().strip(), "x0": round(line.x0, 1), "x1": round(line.x1, 1),
+                              "top": round(h - line.y1, 1), "bottom": round(h - line.y0, 1),
+                              "size": round(max((c.size for c in chars), default=0), 1)})
+        w, hh = sizes[n - 1] if n - 1 < len(sizes) else (page.width, page.height)
+        out.append({"page": n, "width": w, "height": hh, "lines": found})
     return out
