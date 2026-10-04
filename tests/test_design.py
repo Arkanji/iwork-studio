@@ -181,6 +181,11 @@ def test_live_designed_deck(tmp_path):
         {"title": "Why now", "body": ["Programmable value", "Trust by design", "Access for everyone"]},
     ], kit="midnight")
     assert out["ok"] and out["kit"] == "midnight"
+    # The kit comes back out of the deck it designed.
+    got = design.extract_kit(tmp_path / "designed.key")["kit"]
+    want = design.get_kit("midnight")
+    assert got["background"] == "#000000" and got["colors"]["title"] == want["colors"]["title"].upper()
+    assert got["fonts"]["heading"] == want["fonts"]["heading"] and got["fonts"]["heading_ar"] == want["fonts"]["heading_ar"]
 
 
 @pytest.mark.aqua

@@ -867,7 +867,7 @@ if keynote_slides.slide_ops_enabled():
         transition: str | None = None,
         kit: Any = None,
     ) -> dict[str, Any]:
-        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Needs macOS + Keynote."""
+        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Chart slides: add "chart": {"type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2"], "data": [[1, 2], [3, 4]]} or {"type": "line", "from": "/path/report.numbers", "columns": ["Q1", "Q2"]} (header row → column names, first column → row names); chart slides default to Title Only. Needs macOS + Keynote."""
         from iwork_studio import keynote_deck
 
         return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition, kit=kit)
