@@ -223,72 +223,131 @@ def param_doc(tool: str, name: str) -> str | None:
     return COMMON.get(name)
 
 
-# When to use each tool, and what to use instead.
+# When to use each tool, when not to, and what to use instead.
 USAGE = {
-    "iwork_capabilities": "Call first when unsure what this machine can do (Mac apps, GUI session, which routes work).",
-    "iwork_read": "Use to see a file's content before editing it. For Numbers formatting use numbers_inspect_format; "
-                  "for Keynote styling, keynote_inspect_style.",
-    "iwork_find": "Use when the user names a file loosely (\"my sales deck\"); then read it with iwork_read.",
-    "iwork_metadata": "Use for file facts (template, app build, slide count) without reading content; use iwork_read for content.",
-    "iwork_thumbnail": "Use for a quick look at the stored preview with no app; for the real rendering of a slide use keynote_slide_image.",
-    "iwork_list_templates": "Use before iwork_create to pick a template or theme name.",
-    "iwork_create": "Use for a new file from Apple's templates; for a copy of the user's own file use iwork_create_from_template; "
-                    "for a Numbers file from data use numbers_create; for a designed deck use keynote_build_deck.",
-    "iwork_create_from_template": "Use when the user has their own template file; use iwork_create for Apple's built-in ones.",
-    "iwork_export": "Use to hand the result over as PDF, Excel, Word or PowerPoint; never convert back into iWork.",
-    "iwork_verify_render": "Use after an important write to confirm the text really shows; use iwork_verify_format to check font, size or colour.",
-    "iwork_verify_format": "Use to confirm how text is drawn (font, size, colour); use iwork_verify_render to check text is present.",
-    "iwork_list_backups": "Use to find a version to undo to, then restore it with iwork_restore_backup.",
-    "iwork_restore_backup": "Use to undo a change: pick the backup with iwork_list_backups first.",
-    "iwork_list_design_kits": "Use before styling to pick a kit (presets and the user's saved kits).",
-    "iwork_extract_design_kit": "Use when the user has a deck or table with their brand look; use iwork_save_design_kit when they give colours and fonts directly.",
-    "iwork_save_design_kit": "Use when the user gives brand colours and fonts; use iwork_extract_design_kit to take them from a file.",
-    "iwork_delete_design_kit": "Use only when the user asks to remove a saved kit.",
-    "numbers_create": "Use to make a new Numbers file from data; use numbers_import_csv for a CSV file.",
-    "numbers_import_csv": "Use for a CSV/TSV file; use numbers_create when you already have the rows.",
-    "numbers_edit_cell": "Use for one value; for a formula use numbers_set_formula, for many rows numbers_insert with values.",
-    "numbers_set_formula": "Use for a formula cell (Numbers computes it); use numbers_edit_cell for plain values.",
-    "numbers_recalculate": "Use when a no-app edit returned formulas_need_recalc, so totals are current.",
-    "numbers_insert": "Use to add rows or columns (optionally with values); use numbers_add_table for a separate table.",
-    "numbers_delete": "Use to remove rows or columns; undo with iwork_restore_backup.",
-    "numbers_add_table": "Use for a new, separate table; use numbers_insert to grow an existing one.",
-    "numbers_sort": "Use to reorder body rows by a column.",
-    "numbers_inspect_format": "Use before formatting to see current styles, formats, sizes and merges.",
-    "numbers_set_cell_style": "Use for fonts, colours, fill and alignment of a range; for a whole designed table use numbers_apply_design.",
-    "numbers_set_number_format": "Use for how numbers display (currency, %, dates); values don't change.",
-    "numbers_set_borders": "Use for cell borders on a range.",
-    "numbers_set_dimensions": "Use for column widths and row heights.",
-    "numbers_set_headers": "Use to change how many header rows/columns a table has.",
-    "numbers_merge_cells": "Use to merge a range, e.g. a title across columns.",
-    "numbers_apply_design": "Use to make a whole table look designed in one call; use numbers_set_cell_style for a few cells.",
-    "keynote_build_deck": "Use for a new deck from an outline; then run keynote_review_deck. To change an existing deck use the slide tools.",
-    "keynote_set_slide_text": "Use to fill or rewrite a slide's title and body; use keynote_replace_text for find/replace across the deck.",
-    "keynote_replace_text": "Use to change the same text everywhere; use keynote_set_slide_text for one slide's title or body.",
-    "keynote_list_slides": "Use to see slides, notes and hidden state before slide operations.",
-    "keynote_add_slide": "Use for a blank slide; use keynote_duplicate_slide to copy one; use keynote_build_deck for a whole deck.",
-    "keynote_duplicate_slide": "Use to copy an existing slide; use keynote_add_slide for a blank one.",
-    "keynote_delete_slide": "Use to remove a slide (the last one can't be deleted); to hide it instead use keynote_skip_slide.",
-    "keynote_move_slide": "Use to reorder slides.",
-    "keynote_skip_slide": "Use to hide or show a slide in the slideshow without deleting it.",
-    "keynote_set_presenter_notes": "Use for speaker notes on an existing slide (keynote_build_deck sets notes for new decks).",
-    "keynote_list_themes": "Use before keynote_set_theme or keynote_build_deck to pick a theme name.",
-    "keynote_inspect_style": "Use before formatting: theme, layouts, and each text item's font, size and colour.",
-    "keynote_set_theme": "Use to switch the deck's theme; for a full designed look use keynote_apply_design.",
-    "keynote_set_slide_layout": "Use to change one slide's layout (names from keynote_inspect_style).",
-    "keynote_format_text": "Use for one text item; to restyle the whole deck use keynote_apply_design.",
-    "keynote_set_transition": "Use for one slide's transition (keynote_build_deck can set one for every slide).",
-    "keynote_add_image": "Use to place a picture or logo on a slide.",
-    "keynote_add_chart": "Use for a chart on an existing slide; in a new deck put it in keynote_build_deck's outline.",
-    "keynote_add_table": "Use for a table on an existing slide; in a new deck put it in keynote_build_deck's outline.",
-    "keynote_apply_design": "Use to restyle a whole deck from a kit; preview with dry_run, then run keynote_review_deck.",
-    "keynote_review_deck": "Use after building or restyling a deck, before saying it's done; fix errors, then look with keynote_slide_image.",
-    "keynote_slide_image": "Use to look at a slide's real design (e.g. one keynote_review_deck flagged).",
-    "keynote_slideshow": "Use to present the deck; it doesn't change the file.",
-    "pages_preflight": "Call once before other Pages tools; a -1712 error means a dialog needs a human.",
-    "pages_replace_all": "Use to change text everywhere and keep formatting; pages_set_body replaces the whole body.",
-    "pages_set_body": "Use only to replace the whole body (resets its formatting); prefer pages_replace_all or pages_fill_placeholders.",
-    "pages_list_placeholders": "Use before pages_fill_placeholders to see the template's fields.",
-    "pages_fill_placeholders": "Use for template fields (Name, Date); the only write for page-layout documents like letters.",
-    "pages_read_tables": "Use before pages_set_table_cells to see tables and cell references.",
-    "pages_set_table_cells": "Use to write into an existing Pages table (new tables can't be created).",
+    "iwork_capabilities": "Call first when unsure what this machine can do: which apps exist, whether a GUI session is "
+                          "available, which toolsets are loaded. Not needed before plain reads of .numbers or .key files.",
+    "iwork_read": "Use to see a file's content before editing it. Not for formatting details: use numbers_inspect_format "
+                  "(Numbers) or keynote_inspect_style (Keynote). For file facts only, iwork_metadata is cheaper.",
+    "iwork_find": "Use when the user names a file loosely (\"my sales deck\") or you don't know its path; then read it with "
+                  "iwork_read. Not needed when you already have the path.",
+    "iwork_metadata": "Use for file facts (template, app build, slide count) without reading content. For the content "
+                      "itself use iwork_read.",
+    "iwork_thumbnail": "Use for a quick look at the stored first-page preview with no app. It reflects the last save in the "
+                       "app, not your latest edits: to see a slide as it renders now, use keynote_slide_image.",
+    "iwork_list_templates": "Use before iwork_create to get valid template or theme names. Not needed for "
+                            "iwork_create_from_template, which copies the user's own file.",
+    "iwork_create": "Use for a new, empty file from Apple's templates. Instead: iwork_create_from_template to copy the "
+                    "user's own file, numbers_create to make a Numbers file from data, keynote_build_deck for a "
+                    "finished deck from an outline.",
+    "iwork_create_from_template": "Use when the user has their own template or past file to start from. For Apple's "
+                                  "built-in templates use iwork_create.",
+    "iwork_export": "Use to hand the result over in another format (PDF, Excel, Word, PowerPoint, images). Never export to "
+                    "docx/pptx/xlsx to edit and convert back: edit the iWork file directly.",
+    "iwork_verify_render": "Use after an important write to prove the text really shows when rendered. To check font, size "
+                           "or colour use iwork_verify_format; to check a deck's whole design use keynote_review_deck.",
+    "iwork_verify_format": "Use to prove how a piece of text is drawn (font, size, colour, page size). To check text is "
+                           "merely present use iwork_verify_render.",
+    "iwork_list_backups": "Use when the user wants to undo or compare versions: it lists the backups, then "
+                          "iwork_restore_backup restores one. Not needed after a failed tool call: failed writes never "
+                          "change the file.",
+    "iwork_restore_backup": "Use to undo a change, with a backup name from iwork_list_backups. The current version is "
+                            "backed up first, so a restore can itself be undone.",
+    "iwork_list_design_kits": "Use before any styling to pick a kit, and to see the user's saved brand kits. Pass the "
+                              "name as kit= to keynote_build_deck, keynote_apply_design or numbers_apply_design.",
+    "iwork_extract_design_kit": "Use when the user has a deck or table that already has their brand look. If they give "
+                                "colours and fonts directly use iwork_save_design_kit instead.",
+    "iwork_save_design_kit": "Use when the user gives brand colours and fonts directly. To capture them from an existing "
+                             "file use iwork_extract_design_kit.",
+    "iwork_delete_design_kit": "Use only when the user asks to remove a saved kit. To change a kit, save it again with "
+                               "overwrite=true instead.",
+    "numbers_create": "Use to make a new Numbers file when you have the rows. From a CSV file use numbers_import_csv; to "
+                      "add a table to an existing file use numbers_add_table.",
+    "numbers_import_csv": "Use when the data is in a CSV/TSV file. When you already have the rows use numbers_create.",
+    "numbers_edit_cell": "Use to set one value. For a formula use numbers_set_formula; to add whole rows use numbers_insert "
+                         "with values; for how a number displays use numbers_set_number_format.",
+    "numbers_set_formula": "Use for a cell that calculates (=SUM…); Numbers computes the result. For a plain value use "
+                           "numbers_edit_cell. Needs the Numbers app.",
+    "numbers_recalculate": "Use only after a no-app edit returned formulas_need_recalc, so totals are current. Not needed "
+                           "after numbers_set_formula, which recalculates itself.",
+    "numbers_insert": "Use to add rows or columns to an existing table (optionally filled). For a separate table use "
+                      "numbers_add_table. In tables with formulas only appending works; do mid-table inserts in Numbers.",
+    "numbers_delete": "Use to remove rows or columns. Not for clearing values (use numbers_edit_cell with null). Refused "
+                      "in tables with formulas or merges; undo with iwork_restore_backup.",
+    "numbers_add_table": "Use for a new, separate table on a sheet or a new sheet. To grow an existing table use "
+                         "numbers_insert.",
+    "numbers_sort": "Use to reorder body rows by one column; header rows stay on top. Needs the Numbers app.",
+    "numbers_inspect_format": "Use before formatting to see current styles, number formats, sizes, headers and merges. "
+                              "For values use iwork_read.",
+    "numbers_set_cell_style": "Use for fonts, colours, fill or alignment on a few cells. For a whole table that should "
+                              "look designed use numbers_apply_design; for how numbers display use "
+                              "numbers_set_number_format.",
+    "numbers_set_number_format": "Use for how numbers display (currency, %, dates, decimals); the values don't change. For "
+                                 "fonts and colours use numbers_set_cell_style.",
+    "numbers_set_borders": "Use for lines around or inside a range. For fills and fonts use numbers_set_cell_style.",
+    "numbers_set_dimensions": "Use for column widths and row heights. To change which rows count as headers use "
+                              "numbers_set_headers.",
+    "numbers_set_headers": "Use when the user wants a different number of header rows or columns, e.g. to freeze a title "
+                           "row on top for sorting and styling. Not for sizes (numbers_set_dimensions) or header "
+                           "colours (numbers_set_cell_style or numbers_apply_design).",
+    "numbers_merge_cells": "Use to merge a range, e.g. a title across columns. Refused if it would hide values; avoid "
+                           "merging inside data you will sort.",
+    "numbers_apply_design": "Use to make a whole table look designed in one call (header band, fonts, banding, aligned "
+                            "numbers). For a few cells use numbers_set_cell_style. Preview with dry_run.",
+    "keynote_build_deck": "Use for a new deck from an outline, including chart and table slides; then run "
+                          "keynote_review_deck. To change an existing deck use the slide and text tools instead.",
+    "keynote_set_slide_text": "Use to fill or rewrite one slide's title and body. To change the same words across the "
+                              "deck use keynote_replace_text; for speaker notes use keynote_set_presenter_notes.",
+    "keynote_replace_text": "Use to change the same text everywhere in a deck (names, dates, numbers). To rewrite one "
+                            "slide's title or body use keynote_set_slide_text.",
+    "keynote_list_slides": "Use before slide operations to see slide numbers, text, notes and hidden state. For fonts and "
+                           "layouts use keynote_inspect_style.",
+    "keynote_add_slide": "Use for a new blank slide in an existing deck. To copy a slide use keynote_duplicate_slide; for a "
+                         "whole new deck use keynote_build_deck.",
+    "keynote_duplicate_slide": "Use to copy an existing slide (layout and content). For a blank slide use "
+                               "keynote_add_slide.",
+    "keynote_delete_slide": "Use to remove a slide for good (the last slide can't be deleted). To keep it but hide it "
+                            "in the slideshow use keynote_skip_slide.",
+    "keynote_move_slide": "Use to reorder slides. To copy a slide to a new position, duplicate it first with "
+                          "keynote_duplicate_slide.",
+    "keynote_skip_slide": "Use to hide or show a slide in the slideshow without deleting it. To remove it use "
+                          "keynote_delete_slide.",
+    "keynote_set_presenter_notes": "Use for speaker notes on an existing slide. For a new deck, put notes in "
+                                   "keynote_build_deck's outline instead.",
+    "keynote_list_themes": "Use before keynote_set_theme or keynote_build_deck to get valid theme names.",
+    "keynote_inspect_style": "Use before formatting: theme, layouts, and each text item's font, size and colour. For "
+                             "slide text and notes use keynote_list_slides.",
+    "keynote_set_theme": "Use to switch the deck's theme only. For a full designed look (fonts, sizes, colours) use "
+                         "keynote_apply_design, which can set the theme too.",
+    "keynote_set_slide_layout": "Use to change one slide's layout (names from keynote_inspect_style). Not for text styling: "
+                                "use keynote_format_text.",
+    "keynote_format_text": "Use for one text item's font, size or colour. To restyle the whole deck consistently use "
+                           "keynote_apply_design.",
+    "keynote_set_transition": "Use for one slide's transition. For the same transition on every slide of a new deck, pass "
+                              "transition= to keynote_build_deck.",
+    "keynote_add_image": "Use to place a picture or logo on a slide. For data, use keynote_add_chart or keynote_add_table "
+                         "rather than a picture of a chart.",
+    "keynote_add_chart": "Use for a chart on an existing slide. In a new deck, put the chart in keynote_build_deck's "
+                         "outline instead; for exact numbers use keynote_add_table.",
+    "keynote_add_table": "Use for a table on an existing slide. In a new deck, put it in keynote_build_deck's outline; to "
+                         "show a trend use keynote_add_chart.",
+    "keynote_apply_design": "Use to restyle a whole deck from a kit. For one text item use keynote_format_text. Preview "
+                            "with dry_run, then run keynote_review_deck.",
+    "keynote_review_deck": "Use after building or restyling a deck, before saying it's done; fix every error. To look at "
+                           "a flagged slide use keynote_slide_image; to check one word renders use iwork_verify_render.",
+    "keynote_slide_image": "Use to look at a slide's real rendering, e.g. one keynote_review_deck flagged. For a quick "
+                           "preview without Keynote use iwork_thumbnail (first slide, last saved state).",
+    "keynote_slideshow": "Use to present the deck live; it doesn't change the file. To share it instead use iwork_export.",
+    "pages_preflight": "Call once before other Pages tools. A -1712 error means a dialog in Pages needs a human; don't "
+                       "retry until it's dismissed.",
+    "pages_replace_all": "Use to change text everywhere while keeping formatting. To replace the whole body use "
+                         "pages_set_body; for template fields use pages_fill_placeholders.",
+    "pages_set_body": "Use only to replace the entire body text; it resets body formatting, so warn the user. Prefer "
+                      "pages_replace_all or pages_fill_placeholders.",
+    "pages_list_placeholders": "Use before pages_fill_placeholders to see the template's field tags.",
+    "pages_fill_placeholders": "Use for template fields (Name, Date). It's the only write for page-layout documents like "
+                               "letters and flyers, which have no body text.",
+    "pages_read_tables": "Use before pages_set_table_cells to see the tables, their names and cell references.",
+    "pages_set_table_cells": "Use to write into an existing Pages table. New tables can't be created in Pages; for text "
+                             "outside tables use pages_replace_all.",
 }

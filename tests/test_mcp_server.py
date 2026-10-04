@@ -257,3 +257,38 @@ def test_prompts_listed_and_rendered():
     assert names == {"pitch_deck", "report_from_numbers", "restyle_with_brand", "style_table"}
     assert '"from": "/r/تقرير.numbers"' in text and "keynote_review_deck" in text
     assert "numbers_apply_design(dry_run=true)" in brand and "iwork_extract_design_kit" in brand
+
+
+def test_toolsets_load_only_what_is_asked():
+    from iwork_studio import toolsets
+
+    async def steps(c):
+        tools = {t.name for t in (await c.list_tools()).tools}
+        prompts = {p.name for p in (await c.list_prompts()).prompts}
+        caps = _payload(await c.call_tool("iwork_capabilities", {}))
+        return tools, prompts, caps
+
+    tools, prompts, caps = _session(steps, IWORK_STUDIO_TOOLSETS="keynote, Bogus")
+    assert toolsets.CORE <= tools
+    assert {t for t in tools if not t.startswith("keynote_")} == toolsets.CORE
+    assert {t for t in CORE_TOOLS | SLIDE_TOOLS if t.startswith("keynote_")} <= tools
+    assert prompts == {"pitch_deck", "report_from_numbers"}  # restyle/style_table need other toolsets
+    assert caps["toolsets"]["active"] == ["keynote"] and caps["toolsets"]["unknown_ignored"] == ["bogus"]
+    assert caps["toolsets"]["tools_loaded"] == len(tools)
+
+
+def test_toolsets_default_is_everything():
+    async def steps(c):
+        return {t.name for t in (await c.list_tools()).tools}, _payload(await c.call_tool("iwork_capabilities", {}))
+
+    tools, caps = _session(steps, IWORK_STUDIO_TOOLSETS="all")
+    assert tools == CORE_TOOLS | SLIDE_TOOLS and caps["toolsets"]["active"] == "all"
+
+
+def test_serve_flags_parse_toolsets_and_roots():
+    from iwork_studio import mcp_server as m
+
+    argv = ["iwork-studio-mcp", "serve", "--toolsets", "numbers,design", "--roots", "~/Documents", "${user_config.x}"]
+    assert m._flag_values(argv, "--toolsets") == ["numbers,design"]
+    assert m._flag_values(argv, "--roots") == ["~/Documents"]
+    assert m._flag_values(["x", "serve", "--toolsets", "${user_config.toolsets}"], "--toolsets") == []

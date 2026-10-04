@@ -13,6 +13,8 @@ Environment:
     IWORK_STUDIO_ROOTS              os.pathsep-separated folders the server may
                                     touch (unset = any path the user can reach)
     IWORK_STUDIO_DISABLE_SLIDE_OPS  "1" hides and refuses the Keynote slide ops
+    IWORK_STUDIO_TOOLSETS           load only some tools, e.g. "keynote,design" (files, numbers, keynote,
+                                    pages, design); default all
 """
 
 from __future__ import annotations
@@ -217,6 +219,7 @@ def iwork_capabilities() -> dict[str, Any]:
                              "export; render and format checks",
         },
         "keynote_slide_ops": {"enabled": keynote_slides.slide_ops_enabled()},
+        "toolsets": _TOOLSET_STATE,
         "refused_by_design": [
             "no-app writes to files containing charts (app-driven tools work on them)",
             "Pages edits beyond replace / set body / placeholders / table cells; creating Pages tables",
@@ -1059,13 +1062,58 @@ def style_table(numbers_file: str, kit: str = "executive") -> str:
             "(numbers_set_number_format: currency, percentages) where a column needs one.")
 
 
+# ── Toolsets: load only what the client needs (IWORK_STUDIO_TOOLSETS) ───────
+
+_TOOLSET_STATE: dict[str, Any] = {}
+
+
+def _apply_toolsets(value: str | None) -> None:
+    from iwork_studio import toolsets
+
+    sets, unknown = toolsets.parse(value)
+    if unknown:  # stderr only: stdout is the MCP wire
+        print(f"iwork-studio: unknown toolsets ignored: {', '.join(unknown)} "
+              f"(available: {', '.join(toolsets.TOOLSETS)})", file=sys.stderr)
+    loaded = set()
+    for tool in mcp._tool_manager.list_tools():
+        if toolsets.selected(tool.name, sets):
+            loaded.add(tool.name)
+        else:
+            mcp.remove_tool(tool.name)
+    for prompt, needs in toolsets.PROMPT_NEEDS.items():
+        if not needs <= loaded:
+            with contextlib.suppress(Exception):
+                mcp.remove_prompt(prompt)
+    _TOOLSET_STATE.clear()
+    _TOOLSET_STATE.update(toolsets.describe(sets, unknown, len(loaded)))
+
+
+_apply_toolsets(os.environ.get("IWORK_STUDIO_TOOLSETS"))
+
+
+def _flag_values(argv: list[str], flag: str) -> list[str]:
+    """Values after `flag` up to the next --flag (unfilled ${…} extension placeholders dropped)."""
+    if flag not in argv:
+        return []
+    out = []
+    for a in argv[argv.index(flag) + 1:]:
+        if a.startswith("--"):
+            break
+        if a and not a.startswith("${"):
+            out.append(a)
+    return out
+
+
 def main() -> None:
     # no args / `serve [--roots DIR…]` = serve; `install|uninstall|config` = set-up helpers.
     if len(sys.argv) > 1 and sys.argv[1] == "serve":
-        roots = sys.argv[sys.argv.index("--roots") + 1:] if "--roots" in sys.argv else []
-        roots = [r for r in roots if r and not r.startswith("${")]  # unfilled extension placeholders
+        roots = _flag_values(sys.argv, "--roots")
         if roots:
             os.environ["IWORK_STUDIO_ROOTS"] = os.pathsep.join(os.path.expanduser(r) for r in roots)
+        sets = _flag_values(sys.argv, "--toolsets")
+        if sets:
+            os.environ["IWORK_STUDIO_TOOLSETS"] = ",".join(sets)
+            _apply_toolsets(os.environ["IWORK_STUDIO_TOOLSETS"])
         mcp.run("stdio")
         return
     if len(sys.argv) > 1:

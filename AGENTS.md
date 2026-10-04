@@ -14,6 +14,7 @@ working **with** or **on** this repo.
 
 - The installer installs `uv` if missing; uv brings its own Python. **Don't tell the user to install Python.**
 - Recommend a folder fence: `… | sh -s -- --roots ~/Documents ~/Desktop` (or env `IWORK_STUDIO_ROOTS`, `:`-separated).
+- If the user only needs some apps, load fewer tools: env `IWORK_STUDIO_TOOLSETS` = any of `files`, `numbers`, `keynote`, `pages`, `design` (comma-separated; default all). `iwork_capabilities` shows what's loaded.
 - The desktop app needs the **absolute** uvx path in its config; the installer and `config` handle that. Never hand-write a bare `"command": "uvx"` for the desktop app.
 - `.mcp.json` in this repo is for contributors working inside a clone; don't copy it elsewhere.
 - First run: macOS asks once to let Claude control Keynote/Pages/Numbers → user clicks OK (fix later in System Settings → Privacy & Security → Automation). Logs: `~/Library/Logs/Claude/mcp-server-iwork-studio.log`.

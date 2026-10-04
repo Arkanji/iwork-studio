@@ -1,6 +1,6 @@
 # iWork Studio
 
-> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (64 tools, 4 prompts) + Python library + drop-in agent skill. Version 2.4.1. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
+> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (64 tools, 4 prompts) + Python library + drop-in agent skill. Version 2.5.0. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
 
 ## Core routes (classic iWork and Creator Studio apps)
 
@@ -9,6 +9,7 @@
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, placeholders. Read tables too. Write: `replace_all`, `set_body`, `fill_placeholders`, `set_table_cells` (existing tables) ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
 - **Keynote via the app** — slide ops (add/duplicate/delete/move/skip/notes), theming (theme, layout, text font/size/colour), transitions, images, charts (add from data), tables (add, styled from a kit, every cell read back; can't be deleted), slideshow control — chart decks allowed with per-slide chart counts checked, tables compared on every op; each write re-read and rolled back on any mismatch.
 - **Decks and design** — build a designed Keynote deck from an outline (keynote_build_deck) with chart and table slides from data or straight from a Numbers table; six WCAG-checked design kits with macOS Arabic+Latin fonts (keynote_apply_design, numbers_apply_design); the user's own brand kit extracted from a deck or table and saved by name (iwork_extract_design_kit, iwork_save_design_kit); design review of the rendered deck — off-slide/overflowing text, overlaps, small text, crowded slides (keynote_review_deck) and slide images (keynote_slide_image); prompts: pitch_deck, report_from_numbers, restyle_with_brand, style_table. Design guide at skill-pack/references/design-guide.md. Every write takes dry_run=true for a preview.
+- **Toolsets** — IWORK_STUDIO_TOOLSETS=files,numbers,keynote,pages,design (comma-separated; default all) loads only those tools; capabilities, read, find, undo and the kit list always load.
 - **Every format via the app** — export (PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie; optional password), checked by a second tool; new documents from built-in templates.
 
 ## Safety contracts agents can rely on
