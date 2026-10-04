@@ -149,6 +149,7 @@ _HINTS = {
     "ExportError": "the export was refused or didn't match the source; nothing was written",
     "DesignError": "check the kit name with iwork_list_design_kits, or fix the custom colours/fonts",
     "DeckError": "fix the outline: layout names come from keynote_inspect_style",
+    "ReviewError": "check the slide number; the deck must open in Keynote",
     "TableError": "fix the table data: a list of rows of text, numbers or null, at most 50 × 15",
 }
 
@@ -882,6 +883,23 @@ if keynote_slides.slide_ops_enabled():
 
         return _write(dry_run, keynote_table.add_table, _path(path, ".key"), slide, rows, header_rows=header_rows,
                       kit=kit, x=x, y=y, width=width)
+
+    @mcp.tool(annotations=APP_READ)
+    def keynote_review_deck(path: str) -> dict[str, Any]:
+        """Design review of a deck as Keynote actually draws it: renders to PDF and reports, per slide, text drawn off the slide or past the bottom of its box (errors), text boxes drawn on top of each other, text under 18 pt, and slides that are too dense (warnings). Run it after building or restyling a deck, fix the errors, then look at a flagged slide with keynote_slide_image. The file isn't changed. Needs macOS + Keynote."""
+        from iwork_studio import review
+
+        return _call(review.review_deck, _path(path, ".key"))
+
+    @mcp.tool(annotations=APP_READ)
+    def keynote_slide_image(path: str, slide: int, width: int = 1280):
+        """One slide as an image (JPEG, `width` px wide), exported by Keynote, so you can look at the design yourself. Skipped slides aren't exported. The file isn't changed. Needs macOS + Keynote."""
+        from mcp.server.mcpserver import Image
+
+        from iwork_studio import review
+
+        data = _call(review.slide_image, _path(path, ".key"), slide, width=width)["result"]
+        return Image(data=data, format="jpeg")
 
     @mcp.tool(annotations=WRITE)
     def keynote_apply_design(path: str, kit: Any = "executive", set_theme: bool = True,
