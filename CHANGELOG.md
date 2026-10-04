@@ -14,6 +14,7 @@ Data to deck, on brand.
 - **Design review:** `keynote_review_deck` renders the deck through Keynote and compares every drawn line with its text box. Errors: text off the slide or past the bottom of its box. Warnings: text Keynote had to shrink to fit, overlapping boxes, text under 18 pt, crowded slides, long titles. `keynote_slide_image` returns a slide as an image so an agent can look at it.
 - **Prompts:** *Pitch deck from an outline*, *Report deck from a Numbers table*, *Restyle with my brand*, *Make this table look designed* — ready-made workflows in clients that show MCP prompts.
 - **Claude Code plugin:** the repo is a plugin marketplace (`/plugin marketplace add Arkanji/iwork-studio`); the plugin brings the MCP server and the skill together. Every tool now has a title, the extension and plugin carry an icon, and there's a privacy policy (`PRIVACY.md`: everything stays on your Mac).
+- **Fixed:** design kits sized type for a 1920-wide slide, so on 1024-wide decks (most of Apple's themes) text came out nearly twice as large as intended; sizes now follow the deck's width.
 - **Fixed:** `iwork_export` slide images with `image_format` failed in Keynote (`-1700`); slides now export in Keynote's format and are converted with macOS `sips`.
 - **Live runs:** `scripts/live.sh` runs the Mac suite unattended, so it can run on a schedule; `scripts/probe_keynote_tables.py` maps what Keynote's table scripting can do.
 

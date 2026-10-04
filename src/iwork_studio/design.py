@@ -98,7 +98,7 @@ KITS: dict[str, dict] = {
     },
 }
 
-# Type scale (pt on Keynote's 1920×1080 canvas). Big jumps for decks, as the
+# Type scale (pt on a 1920-wide slide; scaled to the deck's width). Big jumps for decks, as the
 # slide-typography data suggests: a title slide states one thing, large.
 _SCALE = {"title_slide": {"title": 88, "body": 32}, "content": {"title": 52, "body": 28}}
 
@@ -462,8 +462,12 @@ def apply_to_keynote(path, kit="executive", *, set_theme: bool = True, **kw) -> 
 
     def plan(before):
         specs = []
+        # The scale is set for a 1920-wide slide; new decks from Apple's themes are often
+        # 1024 wide, so sizes follow the deck's own width.
+        factor = float(before.get("width") or 1920) / 1920.0
         for s in before["slides"]:
-            scale = _SCALE["title_slide" if (s["slide"] == 1 or s.get("layout") in _TITLE_LAYOUTS) else "content"]
+            base = _SCALE["title_slide" if (s["slide"] == 1 or s.get("layout") in _TITLE_LAYOUTS) else "content"]
+            scale = {k: round(v * factor) for k, v in base.items()}
             specs.append({"n": s["slide"], **{f"{role}_{lang}": fmt(role, scale, lang == "ar")
                                               for role in ("title", "body", "other") for lang in ("lat", "ar")}})
 
