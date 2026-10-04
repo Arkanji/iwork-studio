@@ -18,6 +18,7 @@ Environment:
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import platform
 import sys
@@ -940,6 +941,73 @@ if keynote_slides.slide_ops_enabled():
         from iwork_studio import app_ops
 
         return _write(dry_run, app_ops.add_image, _path(path, ".key"), slide, _path(image), x=x, y=y, width=width)
+
+
+# ── Prompts: ready-made workflows, shown in the client's prompt menu ──────────
+
+_DESIGN_RULES = (
+    "Design rules: one idea per slide; every title states the takeaway as a sentence (not a label); "
+    "at most 6 bullets of a few words; numbers go in charts or tables, not bullets. "
+    "If the content is Arabic, write it in Arabic: fonts switch to the kit's Arabic pair automatically."
+)
+_CHECK = (
+    "Then run keynote_review_deck on the deck. Fix every error (shorten text with keynote_set_slide_text, "
+    "or split the slide) and re-run until it reports none. Look at one or two slides with keynote_slide_image "
+    "and fix anything that looks off. Finish with a short summary and offer to export (iwork_export: pdf or pptx)."
+)
+
+
+@mcp.prompt(title="Pitch deck from an outline")
+def pitch_deck(topic: str, path: str, slides: str = "6", kit: str = "executive") -> str:
+    """A designed Keynote pitch deck on a topic, built, reviewed and fixed."""
+    return (f"Build a {slides}-slide Keynote pitch deck about: {topic}\n\n"
+            f"Save it as {path} (a new file; pick another name if it exists). Write the outline first: a title "
+            "slide, then problem, solution, how it works, proof (a chart slide if there are numbers), and the ask. "
+            "Add short speaker notes to every slide. "
+            f"{_DESIGN_RULES}\n\nCreate it in one call with keynote_build_deck(kit={kit!r}); list kits with "
+            f"iwork_list_design_kits if {kit!r} isn't one. {_CHECK}")
+
+
+@mcp.prompt(title="Report deck from a Numbers table")
+def report_from_numbers(numbers_file: str, path: str, kit: str = "analytics") -> str:
+    """Turn a Numbers table into a short report deck: insights, a chart and a table, reviewed."""
+    return (f"Read {numbers_file} with iwork_read and find the 3–5 things that matter most "
+            "(biggest change, top and bottom performers, the trend). "
+            f"Build a report deck at {path} with keynote_build_deck(kit={kit!r}): a title slide that states the "
+            "headline finding; one chart slide per key trend using \"chart\": {\"type\": …, \"from\": "
+            f"{json.dumps(numbers_file, ensure_ascii=False)}, \"columns\": [only the columns that tell the story]}}; one table slide with "
+            f"the key rows (\"table\": {{\"from\": {json.dumps(numbers_file, ensure_ascii=False)}, \"max_rows\": 8}}); and a closing slide with "
+            "what to do next. If the table has stale formulas (formulas_need_recalc), run numbers_recalculate first. "
+            f"{_DESIGN_RULES}\n\n{_CHECK}")
+
+
+@mcp.prompt(title="Restyle with my brand")
+def restyle_with_brand(path: str, brand_file: str = "", kit: str = "") -> str:
+    """Apply a brand to a deck or table: from a saved kit, or extracted from a file that already has the look."""
+    if kit:
+        source = f"Use the design kit {kit!r} (iwork_list_design_kits lists presets and saved kits)."
+    elif brand_file:
+        source = (f"Extract the brand from {brand_file} with iwork_extract_design_kit. Show the user the fonts and "
+                  "colours it found and any notes, and ask for a name; then save it with "
+                  "iwork_extract_design_kit(save=true, name=…) so it can be reused.")
+    else:
+        source = ("Ask the user for their brand: a file that already has the look (a deck or a table), or their "
+                  "colours (#RRGGBB) and fonts; save it with iwork_save_design_kit or iwork_extract_design_kit.")
+    tool = "numbers_apply_design" if path.lower().endswith(".numbers") else "keynote_apply_design"
+    after = ("" if tool == "numbers_apply_design" else
+             " Then run keynote_review_deck and fix any errors it reports.")
+    return (f"Restyle {path} with the user's brand. {source}\n\n"
+            f"Preview first: {tool}(dry_run=true) and show the user what would change. Apply it only after they "
+            f"agree.{after} Every change is backed up: offer iwork_restore_backup if they don't like it.")
+
+
+@mcp.prompt(title="Make this table look designed")
+def style_table(numbers_file: str, kit: str = "executive") -> str:
+    """Style a Numbers table with a design kit: header band, fonts, banding, aligned numbers."""
+    return (f"Make the table in {numbers_file} look designed with numbers_apply_design(kit={kit!r}). "
+            "If the file has several sheets or tables, ask which one (iwork_read lists them). Preview with "
+            "dry_run=true first and summarise what will change, then apply. Offer number formats next "
+            "(numbers_set_number_format: currency, percentages) where a column needs one.")
 
 
 def main() -> None:
