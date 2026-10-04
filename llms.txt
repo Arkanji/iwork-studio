@@ -1,14 +1,14 @@
 # iWork Studio
 
-> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (58 tools) + Python library + drop-in agent skill. Version 2.3.0. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
+> Create, read, edit, format, theme and export Apple iWork files (.numbers/.key/.pages) from any AI agent — verified writes, versioned backups, one-call undo, Arabic/RTL fidelity. MCP server (64 tools, 4 prompts) + Python library + drop-in agent skill. Version 2.4.0. Install: pip install iwork-studio, or the Claude Desktop extension (.mcpb) from GitHub releases, or MCP Registry io.github.Arkanji/iwork-studio.
 
 ## Core routes (classic iWork and Creator Studio apps)
 
 - **.numbers** — numbers-parser 4.19.0, pure Python headless. Full semantic model (sheets→tables→cells with formulas/styles/formats). Create from data or CSV; insert/delete rows and columns; add tables/sheets; cell edits, cell styles, number formats (currency/%/dates), borders, widths/heights, headers, merges — atomic, only the requested cells change. Via the Numbers app: formulas, recalculate (Numbers doesn't recalculate on open after no-app edits), sort (allowed on files with charts; chart count checked). Parser writes refuse chart files. Numbers charts can't be created (not scriptable). Arabic exact.
 - **.key** — keynote-parser 1.14.5.0, pure Python. IWA→YAML slide/text-item tree. Writes: deck-wide find/replace (\\u06xx escape-aware), atomic swap. Parser writes refuse decks with charts. AppleScript fallback inside live app.
 - **.pages** — AppleScript via live Pages (requires GUI/Aqua session + one-time TCC approval). Read: body text, placeholders. Read tables too. Write: `replace_all`, `set_body`, `fill_placeholders`, `set_table_cells` (existing tables) ONLY — richer ops raise `PagesOutOfScopeError`. There is NO pure-Python .pages parser; this is an honest boundary, not a gap.
-- **Keynote via the app** — slide ops (add/duplicate/delete/move/skip/notes), theming (theme, layout, text font/size/colour), transitions, images, charts (add from data), slideshow control — chart decks allowed with per-slide chart counts checked; each write re-read and rolled back on any mismatch.
-- **Decks and design** — build a designed Keynote deck from an outline (keynote_build_deck), six WCAG-checked design kits with macOS Arabic+Latin fonts (keynote_apply_design, numbers_apply_design), design guide at skill-pack/references/design-guide.md. Every write takes dry_run=true for a preview.
+- **Keynote via the app** — slide ops (add/duplicate/delete/move/skip/notes), theming (theme, layout, text font/size/colour), transitions, images, charts (add from data), tables (add, styled from a kit, every cell read back; can't be deleted), slideshow control — chart decks allowed with per-slide chart counts checked, tables compared on every op; each write re-read and rolled back on any mismatch.
+- **Decks and design** — build a designed Keynote deck from an outline (keynote_build_deck) with chart and table slides from data or straight from a Numbers table; six WCAG-checked design kits with macOS Arabic+Latin fonts (keynote_apply_design, numbers_apply_design); the user's own brand kit extracted from a deck or table and saved by name (iwork_extract_design_kit, iwork_save_design_kit); design review of the rendered deck — off-slide/overflowing text, overlaps, small text, crowded slides (keynote_review_deck) and slide images (keynote_slide_image); prompts: pitch_deck, report_from_numbers, restyle_with_brand, style_table. Design guide at skill-pack/references/design-guide.md. Every write takes dry_run=true for a preview.
 - **Every format via the app** — export (PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie; optional password), checked by a second tool; new documents from built-in templates.
 
 ## Safety contracts agents can rely on
@@ -30,6 +30,7 @@
 - Numbers Creator Studio: AppleScript `front document` export hangs; JXA `export(doc, {as:'PDF'})` works.
 - Never trust a scripting bridge's "ok": every app-driven write is re-read from disk and rolled back if nothing (or the wrong thing) changed.
 - Keep clones out of iCloud-synced folders (conflict copies corrupt .git).
+- Keynote tables: only `tell slide n to make new table` works; `make new table at end of tables of slide n` and deleting a table fail (-10000).
 - numbers-parser encodes 12 as 12.000000000000002 and doesn't rewrite formula references when rows shift; iWork Studio encodes decimals exactly and refuses mid-table shifts in formula tables.
 - ~25 more scripting traps (imported from reichenbach/iwork_mcp, each status-marked): skill-pack/references/jxa-traps.md
 

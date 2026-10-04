@@ -141,6 +141,24 @@ def _norm(s: str) -> str:
     return " ".join(s.replace("\r", "\n").split())
 
 
+_IMAGE_EXT = {"jpeg": ".jpeg", "png": ".png", "tiff": ".tiff"}
+_IMAGE_SUFFIXES = {".jpg": "jpeg", ".jpeg": "jpeg", ".png": "png", ".tif": "tiff", ".tiff": "tiff"}
+
+
+def _convert_images(folder: Path, fmt: str) -> None:
+    """Convert exported slide images to `fmt` with macOS `sips` (images already in it stay)."""
+    for f in sorted(folder.rglob("*")):
+        have = _IMAGE_SUFFIXES.get(f.suffix.lower())
+        if not have or have == fmt:
+            continue
+        dest = f.with_suffix(_IMAGE_EXT[fmt])
+        r = subprocess.run(["sips", "-s", "format", fmt, str(f), "--out", str(dest)],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode != 0 or not dest.exists():
+            raise ExportError(f"couldn't convert {f.name} to {fmt}: {r.stderr.strip()[:200]}")
+        f.unlink()
+
+
 def _verify(out: Path, fmt: str, kind: str, src: Path, password: str | None) -> dict:
     if fmt == "pdf":
         from iwork_studio import pdf as _pdf
@@ -246,7 +264,8 @@ def export(path, fmt: str, out=None, *, password: str | None = None, password_hi
         f = _IMAGE_FMT.get(image_format.lower())
         if not f:
             raise ExportError("image_format must be jpeg, png or tiff")
-        props["imageFormat"] = f
+        # Keynote's JXA export rejects the imageFormat option (-1700 "Can't convert
+        # types"), so slides export in Keynote's default format and are converted here.
 
     dest = Path(out).expanduser().resolve() if out else src.with_name(src.stem + (ext or " slides"))
     if dest == src:
@@ -261,6 +280,8 @@ def export(path, fmt: str, out=None, *, password: str | None = None, password_hi
         _jxa_export(src, tmp_out, kind, as_name, props)
         if not tmp_out.exists():
             raise ExportError(f"{kind} reported success but produced no {fmt} file")
+        if fmt == "images" and image_format:
+            _convert_images(tmp_out, image_format.lower())
         checks = _verify(tmp_out, fmt, kind, src, password)
         if _sha(src) != before:
             raise ExportError(f"{src.name} changed during export — export discarded, source left as the app saved it")

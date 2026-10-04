@@ -10,6 +10,7 @@ with the text box it belongs to.
 Findings:
   off_slide   (error)    text drawn past the slide's edge
   overflow    (error)    text runs past the bottom of its box
+  shrunk      (warning)  Keynote shrank text to fit its box (too much text for the box)
   overlap     (warning)  two text boxes draw on top of each other
   small_text  (warning)  text under 18 pt on a 1920-wide slide — hard to read in a room
   dense       (warning)  more than 6 bullets or 45 words on a slide, or a title over 12 words
@@ -138,6 +139,10 @@ def analyse(style: dict, pages: list[dict]) -> list[dict]:
                     add(n, "overflow", "error",
                         f"text runs {round(over)} pt past the bottom of its box; cut words, split the slide, or use a smaller size",
                         it["text"])
+                elif it.get("size") and size < 0.85 * float(it["size"]) * sx:
+                    add(n, "shrunk", "warning",
+                        f"Keynote shrank this text to fit its box (set at {float(it['size']):g} pt, drawn at "
+                        f"{size / sx:.0f} pt); cut words or split the slide", it["text"])
 
         rects = {i: _union(v) for i, v in drawn.items() if v}
         keys = sorted(rects)
@@ -229,9 +234,10 @@ def slide_image(path, slide: int, *, width: int = 1280) -> bytes:
     work = Path(tempfile.mkdtemp(prefix="iwork-slide-"))
     try:
         out = work / "slides"
-        exporter.export(target, "images", out, image_format="jpeg")
-        natural = lambda f: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", f.name)]  # noqa: E731
-        imgs = sorted((f for f in out.rglob("*") if f.suffix.lower() in (".jpg", ".jpeg")), key=natural)
+        exporter.export(target, "images", out)  # Keynote's default format; sips makes the JPEG below
+        natural = lambda f: [(0, int(t), "") if t.isdigit() else (1, 0, t) for t in re.split(r"(\d+)", f.name)]  # noqa: E731
+        imgs = sorted((f for f in out.rglob("*") if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".tif", ".tiff")),
+                      key=natural)
         if slide > len(imgs):
             raise ReviewError(f"slide {slide} out of range: {len(imgs)} slide images (skipped slides aren't exported)")
         small = work / "slide.jpg"
