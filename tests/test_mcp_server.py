@@ -122,6 +122,13 @@ def test_tools_listed_with_safety_annotations():
     assert tools["iwork_read"].annotations.read_only_hint is True
     assert all(t.title and t.annotations and t.annotations.title == t.title for t in tools.values())  # directories require titles
     assert tools["keynote_add_table"].title == "Keynote: add table"
+    # every parameter is described, and every tool says when to use it (directories grade both)
+    from iwork_studio.tool_docs import USAGE
+
+    undocumented = [(n, p) for n, t in tools.items() for p, v in t.input_schema["properties"].items()
+                    if not v.get("description")]
+    assert undocumented == []
+    assert all(USAGE[n] in t.description for n, t in tools.items())
     assert tools["numbers_edit_cell"].annotations.destructive_hint is True
 
 

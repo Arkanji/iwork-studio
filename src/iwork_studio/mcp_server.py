@@ -973,11 +973,20 @@ def _title(name: str) -> str:
 
 
 def _apply_titles() -> None:
+    """Title, parameter descriptions and when-to-use guidance on every tool (tool_docs)."""
+    from iwork_studio.tool_docs import USAGE, param_doc
+
     for tool in mcp._tool_manager.list_tools():
         title = _title(tool.name)
         tool.title = title
         if tool.annotations is not None:
             tool.annotations = tool.annotations.model_copy(update={"title": title})
+        for name, prop in (tool.parameters.get("properties") or {}).items():
+            doc = param_doc(tool.name, name)
+            if doc and not prop.get("description"):
+                prop["description"] = doc
+        if tool.name in USAGE and USAGE[tool.name] not in (tool.description or ""):
+            tool.description = f"{tool.description} {USAGE[tool.name]}".strip()
 
 
 _apply_titles()

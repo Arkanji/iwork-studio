@@ -152,7 +152,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 
 ## All 64 tools
 
-Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview.
+Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview. Every tool has a title, every parameter a description, and every tool says when to use it instead of its siblings.
 
 <details open>
 <summary><b>Any file</b> (17)</summary>

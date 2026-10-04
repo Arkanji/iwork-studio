@@ -4,6 +4,14 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.4.1
+
+Clearer tools for the AI that calls them.
+
+- **Every parameter is described** (all 64 tools): what it takes, its format and its default, e.g. `cells` in A1 notation, `kit` as a preset, saved or custom kit.
+- **Every tool says when to use it**, and which sibling to use instead (`iwork_list_backups` → `iwork_restore_backup`, `keynote_add_slide` vs `keynote_duplicate_slide`, `pages_replace_all` vs `pages_set_body`…). A test keeps both complete.
+- A `Dockerfile` for MCP directories that check a server in a container.
+
 ## 2.4.0
 
 Data to deck, on brand.
