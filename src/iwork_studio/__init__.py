@@ -1,3 +1,3 @@
 """iWork Studio — verified read/write for Apple Numbers, Keynote and Pages."""
 
-__version__ = "2.4.0"
+__version__ = "2.4.1"
