@@ -75,6 +75,7 @@ SLIDE_TOOLS = {
     "keynote_set_transition",
     "keynote_add_image",
     "keynote_add_chart",
+    "keynote_add_table",
     "keynote_build_deck",
     "keynote_set_slide_text",
     "keynote_apply_design",

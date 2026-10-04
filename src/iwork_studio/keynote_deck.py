@@ -261,13 +261,36 @@ def _numbers_series(chart: dict, where: str):
     return rows, columns, data
 
 
+def _table_spec(table, where: str) -> dict:
+    """{"rows": [[…], …], "header_rows": 1} or {"from": "report.numbers", "sheet": …,
+    "table": …, "columns": [subset], "max_rows": n} → {"rows", "header_rows"} (validated)."""
+    from iwork_studio import keynote_table as ktab
+
+    if not isinstance(table, dict):
+        raise DeckError(f"{where}: table must be an object with rows (or from: a .numbers file)")
+    try:
+        if table.get("from"):
+            rows, h = ktab.table_rows_from_numbers(table["from"], sheet=table.get("sheet"), table=table.get("table"),
+                                                   columns=table.get("columns"), max_rows=table.get("max_rows"))
+        else:
+            rows, h = table.get("rows"), table.get("header_rows", 1)
+        rows = ktab._normalise(rows)
+    except ktab.TableError as exc:
+        raise DeckError(f"{where}: {exc}") from exc
+    if not isinstance(h, int) or not 0 <= h < max(len(rows), 2):
+        raise DeckError(f"{where}: header_rows must be between 0 and {max(len(rows) - 1, 1)}")
+    return {"rows": rows, "header_rows": h}
+
+
 def build_deck(path, slides: list[dict], *, theme: str | None = None, transition: str | None = None,
                kit=None) -> dict:
     """slides = [{"title": "…", "body": ["point", "point"], "layout": "Title & Bullets",
     "notes": "…", "image": "/path/logo.png", "chart": {…}}, …]. The first slide defaults to a
-    title layout, chart slides to Title Only, the rest to Title & Bullets. A chart is
+    title layout, chart and table slides to Title Only, the rest to Title & Bullets. A chart is
     {"type": "bar", "rows": […], "columns": […], "data": [[…]]} or {"type": "line", "from":
-    "report.numbers"} (header row → column names, first column → row names). `kit` (a design
+    "report.numbers"} (header row → column names, first column → row names). A table is
+    {"rows": [[header…], [row…]], "header_rows": 1} or {"from": "report.numbers", "columns":
+    […], "max_rows": 8}; the kit styles it. `kit` (a design
     kit name or dict) sets the theme and styles every slide. Creates a new deck (never overwrites)."""
     from iwork_studio import app_ops
 
@@ -279,14 +302,17 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
     if not slides or len(slides) > _MAX_SLIDES:
         raise DeckError(f"give 1–{_MAX_SLIDES} slides")
     for i, sp in enumerate(slides, start=1):
-        if not isinstance(sp, dict) or not any(sp.get(k) for k in ("title", "body", "image", "notes", "chart")):
-            raise DeckError(f"slide {i}: give at least a title, body, notes, image or chart")
+        if not isinstance(sp, dict) or not any(sp.get(k) for k in ("title", "body", "image", "notes", "chart", "table")):
+            raise DeckError(f"slide {i}: give at least a title, body, notes, image, chart or table")
+        if sp.get("chart") and sp.get("table"):
+            raise DeckError(f"slide {i}: a chart or a table, not both (one idea per slide)")
         if sp.get("image") and not Path(str(sp["image"])).expanduser().is_file():
             raise DeckError(f"slide {i}: image {sp['image']!r} not found")
     if transition:
         if transition.strip().lower() not in app_ops.TRANSITIONS + ("none", "no transition"):
             raise DeckError(f"unknown transition {transition!r}")
     charts = {i: _chart_spec(sp["chart"], f"slide {i}") for i, sp in enumerate(slides, start=1) if sp.get("chart")}
+    tables = {i: _table_spec(sp["table"], f"slide {i}") for i, sp in enumerate(slides, start=1) if sp.get("table")}
 
     design_kit = None
     if kit is not None:
@@ -297,7 +323,7 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
     created = app_ops.create_document(target, theme)
     try:
         available = kt.read_style(target)["layouts"]
-        layouts = [_pick_layout(available, sp.get("layout"), i == 0, chart=bool(sp.get("chart")))
+        layouts = [_pick_layout(available, sp.get("layout"), i == 0, chart=bool(sp.get("chart") or sp.get("table")))
                    for i, sp in enumerate(slides)]
         body = """        set n to (item 2 of argv) as integer
         set base slide of slide 1 to master slide (item 3 of argv)
@@ -333,6 +359,11 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
                 c = charts[i]
                 app_ops.add_chart(target, i, c["rows"], c["columns"], c["data"], type=c["type"], group_by=c["group_by"],
                                   backup_dir=target.parent / f".{target.name}.build")
+            if i in tables:
+                from iwork_studio import keynote_table as ktab
+
+                ktab.add_table(target, i, tables[i]["rows"], header_rows=tables[i]["header_rows"], kit=design_kit,
+                               backup_dir=target.parent / f".{target.name}.build")
             if transition:
                 app_ops.set_transition(target, i, transition, backup_dir=target.parent / f".{target.name}.build")
         if design_kit is not None:
@@ -346,7 +377,8 @@ def build_deck(path, slides: list[dict], *, theme: str | None = None, transition
     _cleanup(target)
     return {"ok": True, "file": str(target), "theme": created["template"], "slides": len(slides),
             "layouts": layouts, "transition": transition, "kit": design_kit["name"] if design_kit else None,
-            "charts": {i: {"type": c["type"], "rows": len(c["rows"]), "columns": len(c["columns"])} for i, c in charts.items()}}
+            "charts": {i: {"type": c["type"], "rows": len(c["rows"]), "columns": len(c["columns"])} for i, c in charts.items()},
+            "tables": {i: {"rows": len(t["rows"]), "columns": len(t["rows"][0])} for i, t in tables.items()}}
 
 
 def _cleanup(target: Path) -> None:
