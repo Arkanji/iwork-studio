@@ -120,6 +120,8 @@ def test_tools_listed_with_safety_annotations():
     tools = {t.name: t for t in _session(steps)}
     assert set(tools) == CORE_TOOLS | SLIDE_TOOLS  # slide ops on by default
     assert tools["iwork_read"].annotations.read_only_hint is True
+    assert all(t.title and t.annotations and t.annotations.title == t.title for t in tools.values())  # directories require titles
+    assert tools["keynote_add_table"].title == "Keynote: add table"
     assert tools["numbers_edit_cell"].annotations.destructive_hint is True
 
 

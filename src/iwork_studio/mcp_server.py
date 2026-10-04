@@ -943,6 +943,46 @@ if keynote_slides.slide_ops_enabled():
         return _write(dry_run, app_ops.add_image, _path(path, ".key"), slide, _path(image), x=x, y=y, width=width)
 
 
+# ── Tool titles (shown by clients and required by directories) ──────────────
+
+_APPS = {"numbers": "Numbers", "keynote": "Keynote", "pages": "Pages"}
+_TITLE_OVERRIDES = {
+    "iwork_capabilities": "What this Mac can do",
+    "iwork_read": "Read an iWork file",
+    "iwork_find": "Find iWork files",
+    "iwork_metadata": "File details",
+    "iwork_thumbnail": "Preview image",
+    "iwork_export": "Export (PDF, Excel, Word, PowerPoint…)",
+    "iwork_verify_render": "Check text is rendered",
+    "iwork_verify_format": "Check rendered formatting",
+    "iwork_list_backups": "List backups",
+    "iwork_restore_backup": "Undo: restore a backup",
+    "iwork_create": "New file from a built-in template",
+    "iwork_create_from_template": "New file from your own file",
+    "pages_preflight": "Pages: check it can answer",
+}
+
+
+def _title(name: str) -> str:
+    if name in _TITLE_OVERRIDES:
+        return _TITLE_OVERRIDES[name]
+    prefix, _, rest = name.partition("_")
+    words = rest.replace("_", " ")
+    words = words[:1].upper() + words[1:]
+    return f"{_APPS[prefix]}: {words.lower()}" if prefix in _APPS else words
+
+
+def _apply_titles() -> None:
+    for tool in mcp._tool_manager.list_tools():
+        title = _title(tool.name)
+        tool.title = title
+        if tool.annotations is not None:
+            tool.annotations = tool.annotations.model_copy(update={"title": title})
+
+
+_apply_titles()
+
+
 # ── Prompts: ready-made workflows, shown in the client's prompt menu ──────────
 
 _DESIGN_RULES = (

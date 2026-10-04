@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 version=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-cp mcpb/manifest.json pyproject.toml uv.lock README.md LICENSE THIRD_PARTY_NOTICES.md .python-version "$stage/"
+cp mcpb/manifest.json pyproject.toml uv.lock README.md LICENSE THIRD_PARTY_NOTICES.md PRIVACY.md .python-version "$stage/"
 mkdir -p "$stage/src" && cp -R src/iwork_studio "$stage/src/"
 find "$stage" -name "__pycache__" -type d -prune -exec rm -rf {} +
 [ -f mcpb/icon.png ] && cp mcpb/icon.png "$stage/"
