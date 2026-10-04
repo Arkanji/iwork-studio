@@ -246,10 +246,59 @@ def recalculate(path, **kw) -> dict:
     return out
 
 
+# Numbers' sort moves a formula with its row but keeps its references relative, so a
+# formula that reads another row (=B2*0.1 below a base figure) ends up reading the
+# wrong row or #REF!. Those tables are refused, or sorted as a values-only copy.
+_REF = re.compile(
+    r"(?:((?:'(?:[^']|'')+'|[^\s()=+\-*/×÷^&<>,:\"']+)(?:\s[^\s()=+\-*/×÷^&<>,:\"']+)*)::)?"
+    r"(?<![\w$.])\$?[A-Z]{1,3}(\$?)(\d+)(?::\$?[A-Z]{1,3}(\$?)(\d+))?(?![\w(])")
+
+
+def _refs(formula: str):
+    """(table or None, first row, last row, row is locked) per cell/range reference; rows 0-based."""
+    text = re.sub(r'"(?:[^"]|"")*"', '""', formula or "")
+    for m in _REF.finditer(text):
+        tname = m.group(1)
+        if tname:
+            tname = tname.strip()
+            if tname.startswith("'") and tname.endswith("'"):
+                tname = tname[1:-1].replace("''", "'")
+        r1 = int(m.group(3)) - 1
+        r2 = int(m.group(5)) - 1 if m.group(5) else r1
+        yield tname, min(r1, r2), max(r1, r2), bool(m.group(2)) and (not m.group(5) or bool(m.group(4)))
+
+
+def _cross_row_formulas(tb) -> list[tuple[int, int, str]]:
+    """Body-row formulas that read a row other than their own (in this table, or a
+    relative row in another table): a sort would break them."""
+    out = []
+    for r in range(tb.num_header_rows, tb.num_rows):
+        for c in range(tb.num_cols):
+            cell = tb.cell(r, c)
+            if not cell.is_formula:
+                continue
+            for tname, r1, r2, locked in _refs(cell.formula):
+                own = tname is None or tname.split("::")[-1] == tb.name
+                if (own and (r1, r2) != (r, r)) or (not own and not locked):
+                    out.append((r, c, cell.formula))
+                    break
+    return out
+
+
+class SortBreaksFormulasError(AppOpError):
+    """The table's formulas read other rows; sorting it in place would break them."""
+
+
 def sort_table(path, column: str, *, descending: bool = False, sheet: str | None = None,
-               table: str | None = None, **kw) -> dict:
-    """Sort the table's body rows (header rows stay put) by a column letter."""
+               table: str | None = None, to_new_table: bool = False, new_table_name: str | None = None,
+               **kw) -> dict:
+    """Sort the table's body rows (header rows stay put) by a column letter.
+
+    to_new_table=True leaves the table as it is and puts a sorted copy of its values
+    (no formulas) in a new table on the same sheet; use it when the table's formulas
+    read other rows, which an in-place sort would break."""
     from iwork_studio import numbers_io as nio
+    from iwork_studio.numbers_format import _col_letters
 
     target, doc, sh, tb = _numbers_target(path, sheet, table)
     _, c = nio._parse_ref(f"{column}1")
@@ -260,9 +309,84 @@ def sort_table(path, column: str, *, descending: bool = False, sheet: str | None
         raise AppOpError("nothing to sort (fewer than two body rows)")
     if list(tb.merge_ranges):
         raise AppOpError("this table has merged cells; Numbers can't sort it")
+    order = "descending" if descending else "ascending"
+    if new_table_name is not None and not to_new_table:
+        raise AppOpError("new_table_name goes with to_new_table=true")
+    if not to_new_table:
+        risky = _cross_row_formulas(tb)
+        if risky:
+            r, cc, f = risky[0]
+            raise SortBreaksFormulasError(
+                f"{len(risky)} formula(s) in {tb.name!r} read other rows (e.g. {_col_letters(cc)}{r + 1}: ={f}); "
+                "sorting the table would break them (#REF! or the wrong rows). Use to_new_table=true for a "
+                "sorted copy of the values in a new table, leaving this table, its formulas and charts as they are")
 
     def rows(vals, name):
         return [tuple(vals[(sh.name, name, r, cc)][0] for cc in range(tb.num_cols)) for r in range(tb.num_rows)]
+
+    def check_sorted(body):
+        nums = [row[c] for row in body if isinstance(row[c], (int, float)) and not isinstance(row[c], bool)]
+        if nums != sorted(nums, reverse=descending):
+            raise nio.WriteVerificationError(f"column {column} is not in {order} order")
+
+    summary = {"column": column.upper(), "order": order, "rows_sorted": tb.num_rows - h}
+    if to_new_table:
+        if tb.num_cols < 2:
+            raise AppOpError("Numbers can't make a one-column table; sort this one in Numbers")
+        names = {t.name for s in doc.sheets for t in s.tables}
+        if new_table_name is not None:
+            name = str(new_table_name).strip()
+            if not name or "::" in name:
+                raise AppOpError("new_table_name must be a plain table name")
+            if name in names:
+                raise AppOpError(f"a table named {name!r} already exists; pick another name")
+        else:
+            name, n = f"{tb.name} sorted", 2
+            while name in names:
+                name, n = f"{tb.name} sorted {n}", n + 1
+
+        def expect_copy(before, after, after_doc):
+            new = {k: v for k, v in after.items() if k[:2] == (sh.name, name)}
+            if set(after) - set(new) != set(before):
+                raise nio.WriteVerificationError("tables other than the new one changed shape — rolled back")
+            for k, (v, f) in before.items():
+                if (f is None) != (after[k][1] is None) or (f is None and not _same(after[k][0], v)) \
+                        or (f is not None and _fnorm(after[k][1]) != _fnorm(f)):
+                    raise nio.WriteVerificationError(f"{k[1]}!R{k[2] + 1}C{k[3] + 1} changed — rolled back")
+            t2 = nio._resolve_cell(after_doc, sh.name, name)[1]
+            if (t2.num_rows, t2.num_cols) != (tb.num_rows, tb.num_cols) or t2.num_header_rows != h:
+                raise nio.WriteVerificationError("the new table's size or header rows don't match — rolled back")
+            if any(f for (v, f) in new.values()):
+                raise nio.WriteVerificationError("the new table has formulas; it should hold values only — rolled back")
+            # a formula's result becomes a plain number in the copy: compare to 12 digits
+            def norm(rs):
+                return [tuple(float(f"{v:.12g}") if isinstance(v, float) else v for v in r) for r in rs]
+
+            src, cp = norm(rows(after, tb.name)), norm(rows(after, name))
+            if cp[:h] != src[:h]:
+                raise nio.WriteVerificationError("the new table's header rows don't match — rolled back")
+            if Counter(cp[h:]) != Counter(src[h:]):
+                raise nio.WriteVerificationError("the new table's rows don't match the table's values — rolled back")
+            check_sorted(cp[h:])
+
+        body = _NUM_TABLE + """    if (sh.tables().some(t => t.name() === params.name)) throw new Error('table exists: ' + params.name);
+    const nr = tb.rowCount(), nc = tb.columnCount();
+    const vals = tb.cells.value();  // row by row
+    sh.tables.push(app.Table({name: params.name, rowCount: nr, columnCount: nc}));
+    const nt = sh.tables.byName(params.name);
+    nt.headerRowCount = params.h;
+    try { nt.headerColumnCount = tb.headerColumnCount(); } catch (e) {}
+    try { nt.footerRowCount = 0; } catch (e) {}
+    const cells = nt.cells();
+    vals.forEach((v, i) => { if (v !== null && v !== undefined && v !== '') cells[i].value = v; });
+    nt.sort({by: nt.columns[params.col], direction: params.dir});
+    try { const p = tb.position(); nt.position = {x: p.x, y: p.y + tb.height() + 40}; } catch (e) {}
+"""
+        out = _numbers_write(path, sheet, table, "sort", body, {"col": c, "dir": order, "name": name, "h": h},
+                             expect_copy, {**summary, "new_table": name, "values_only": True}, **kw)
+        out["next"] = (f"{tb.name!r} is unchanged; the sorted values are in {name!r}. To chart them, build a Keynote "
+                       f"chart slide from it (keynote_build_deck, chart from this file, table {name!r}).")
+        return out
 
     def expect(before, after, after_doc):
         if set(after) != set(before):
@@ -274,16 +398,13 @@ def sort_table(path, column: str, *, descending: bool = False, sheet: str | None
         if ra[:h] != rb[:h]:
             raise nio.WriteVerificationError("header rows changed — rolled back")
         if Counter(ra[h:]) != Counter(rb[h:]):
-            raise nio.WriteVerificationError("rows were altered, not just reordered — rolled back")
-        nums = [row[c] for row in ra[h:] if isinstance(row[c], (int, float)) and not isinstance(row[c], bool)]
-        if nums != sorted(nums, reverse=descending):
-            raise nio.WriteVerificationError(f"column {column} is not in {'descending' if descending else 'ascending'} order")
+            raise nio.WriteVerificationError("rows were altered, not just reordered — rolled back (formulas that "
+                                             "read other rows break when Numbers sorts; to_new_table=true sorts a "
+                                             "copy of the values instead)")
+        check_sorted(ra[h:])
 
     body = _NUM_TABLE + ("    tb.sort({by: tb.columns[params.col], direction: params.dir});\n")
-    return _numbers_write(path, sheet, table, "sort", body,
-                          {"col": c, "dir": "descending" if descending else "ascending"}, expect,
-                          {"column": column.upper(), "order": "descending" if descending else "ascending",
-                           "rows_sorted": tb.num_rows - h}, **kw)
+    return _numbers_write(path, sheet, table, "sort", body, {"col": c, "dir": order}, expect, summary, **kw)
 
 
 # ── Pages placeholders (template fields like "Name", "Date") ─────────────────

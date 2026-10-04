@@ -158,6 +158,105 @@ def test_sort_bad_column(book):
         app_ops.sort_table(book, "Q")
 
 
+
+@pytest.mark.parametrize("formula,refs", [
+    ("B2×0.1", [(None, 1, 1, False)]),
+    ("$B$2×0.1", [(None, 1, 1, True)]),
+    ("Inputs::B2×0.1", [("Inputs", 1, 1, False)]),
+    ("Sales Plan::$B$2×4", [("Sales Plan", 1, 1, True)]),
+    ("SUM(B2:B9)", [(None, 1, 8, False)]),
+    ("Sheet 1::Inputs::B2", [("Inputs", 1, 1, False)]),
+    ("LOG10(B2)+C3", [(None, 1, 1, False), (None, 2, 2, False)]),
+    ('"B2 الإيرادات"&D4', [(None, 3, 3, False)]),
+])
+def test_formula_refs(formula, refs):
+    assert list(app_ops._refs(formula)) == refs
+
+
+class _Cell:
+    def __init__(self, f=None):
+        self.is_formula, self.formula = f is not None, f
+
+
+class _Table:
+    name, num_header_rows, num_cols = "T", 1, 2
+
+    def __init__(self, formulas):
+        self.f, self.num_rows = formulas, 5
+
+    def cell(self, r, c):
+        return _Cell(self.f.get((r, c)))
+
+
+def test_cross_row_formulas_found():
+    # a row's own cells, a locked cell in another table and a header-only formula are safe
+    safe = {(1, 1): "A2×2", (2, 1): "Inputs::$B$2×0.1", (0, 1): "SUM(B2:B5)"}
+    assert app_ops._cross_row_formulas(_Table(safe)) == []
+    for f in ("B2×0.1", "$B$2×0.1", "Inputs::B2×0.1", "SUM(B2:B5)", "B$1×A3"):
+        assert app_ops._cross_row_formulas(_Table({(2, 1): f})) == [(2, 1, f)], f
+
+
+def test_sort_refuses_formulas_that_read_other_rows(book, monkeypatch):
+    before = _sha(book)
+    monkeypatch.setattr(app_ops, "_cross_row_formulas", lambda tb: [(2, 1, "B2×0.1")])
+    monkeypatch.setattr(app_ops, "_edit_in_app", lambda *a: pytest.fail("the app must not run"))
+    with pytest.raises(app_ops.SortBreaksFormulasError, match="to_new_table"):
+        app_ops.sort_table(book, "B")
+    assert _sha(book) == before
+
+
+def _copy_sorted(name="T sorted", tamper=None):
+    def edit(kind, path, body, params):
+        assert params["name"] == name and params["h"] == 1
+        doc = Document(str(path))
+        src = doc.sheets[0].tables[0]
+        rows = [[src.cell(r, c).value for c in range(src.num_cols)] for r in range(src.num_rows)]
+        rows = rows[:1] + sorted(rows[1:], key=lambda x: x[1])
+        t = doc.sheets[0].add_table(table_name=name, num_rows=len(rows), num_cols=2, num_header_rows=1,
+                                    num_header_cols=0)
+        for r, row in enumerate(rows):
+            for c, v in enumerate(row):
+                t.write(r, c, v)
+        if tamper:
+            tamper(doc)
+        doc.save(str(path))
+    return edit
+
+
+def test_sort_to_new_table(book, monkeypatch):
+    monkeypatch.setattr(app_ops, "_cross_row_formulas", lambda tb: pytest.fail("no check needed for a copy"))
+    monkeypatch.setattr(app_ops, "_edit_in_app", _copy_sorted())
+    out = app_ops.sort_table(book, "B", to_new_table=True)
+    assert out["new_table"] == "T sorted" and out["values_only"] and "unchanged" in out["next"]
+    src, cp = Document(str(book)).sheets[0].tables
+    assert [src.cell(r, 1).value for r in range(4)] == ["Amount", 30, 10, 20]
+    assert [cp.cell(r, 1).value for r in range(4)] == ["Amount", 10, 20, 30]
+    assert [cp.cell(r, 0).value for r in range(1, 4)] == ["أ", "ج", "ب"]
+
+
+@pytest.mark.parametrize("tamper", [
+    lambda doc: doc.sheets[0].tables[1].write(2, 1, 99),        # a value lost in the copy
+    lambda doc: doc.sheets[0].tables[0].write(1, 0, "X"),       # the original table touched
+    lambda doc: doc.sheets[0].tables[1].write(1, 1, 25),        # copy not in order
+])
+def test_sort_to_new_table_mismatch_rolls_back(book, monkeypatch, tamper):
+    before = _sha(book)
+    monkeypatch.setattr(app_ops, "_edit_in_app", _copy_sorted(tamper=tamper))
+    with pytest.raises(WriteVerificationError):
+        app_ops.sort_table(book, "B", to_new_table=True)
+    assert _sha(book) == before
+
+
+def test_sort_to_new_table_names(book, monkeypatch):
+    monkeypatch.setattr(app_ops, "_edit_in_app", _copy_sorted())
+    app_ops.sort_table(book, "B", to_new_table=True)
+    with pytest.raises(app_ops.AppOpError, match="already exists"):
+        app_ops.sort_table(book, "B", table="T", to_new_table=True, new_table_name="T sorted")
+    monkeypatch.setattr(app_ops, "_edit_in_app", _copy_sorted("T sorted 2"))
+    assert app_ops.sort_table(book, "B", table="T", to_new_table=True)["new_table"] == "T sorted 2"
+    with pytest.raises(app_ops.AppOpError, match="to_new_table"):
+        app_ops.sort_table(book, "B", table="T", new_table_name="X")
+
 # ── Pages placeholders ───────────────────────────────────────────────────────
 
 @pytest.fixture()
@@ -739,6 +838,25 @@ def test_live_numbers_sort_then_formula(book):
     out = app_ops.set_formula(book, "B5", "=SUM(B2:B4)")
     assert out["ok"] and out["result"] == 60
 
+
+@pytest.mark.aqua
+def test_live_sort_formulas_that_read_other_rows(tmp_path):
+    p = tmp_path / "plan.numbers"
+    ns.create(p, [{"name": "S", "tables": [{"name": "T", "rows": [
+        ["Item", "Amount"], ["Base", 1000], ["Small", None], ["Half", None], ["Double", None]]}]}])
+    for ref, f in (("B3", "=B2*0.1"), ("B4", "=B2*0.5"), ("B5", "=B2*2")):
+        app_ops.set_formula(p, ref, f)
+    before = _sha(p)
+    with pytest.raises(app_ops.SortBreaksFormulasError):
+        app_ops.sort_table(p, "B")
+    assert _sha(p) == before
+    out = app_ops.sort_table(p, "B", descending=True, to_new_table=True)
+    src, cp = Document(str(p)).sheets[0].tables
+    assert out["new_table"] == cp.name == "T sorted"
+    assert [src.cell(r, 1).value for r in range(1, 5)] == [1000, 100, 500, 2000]
+    assert [cp.cell(r, 1).value for r in range(1, 5)] == [2000, 1000, 500, 100]
+    assert [cp.cell(r, 0).value for r in range(1, 5)] == ["Double", "Base", "Half", "Small"]
+    assert not any(cp.cell(r, c).is_formula for r in range(5) for c in range(2))
 
 @pytest.mark.aqua
 @pytest.mark.parametrize("ext", [".numbers", ".key", ".pages"])

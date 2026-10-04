@@ -4,6 +4,13 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.6.0
+
+Sorting that can't break your formulas.
+
+- **Safe sorting:** Numbers' own sort keeps each formula's references relative, so a formula that reads another row (say `=B2*0.1` under a base-figure row) ends up reading the wrong row or `#REF!`. `numbers_sort` now spots those formulas and refuses before Numbers touches the file, naming the first one.
+- **Sort into a new table:** `numbers_sort` with `to_new_table` leaves the table, its formulas and its charts exactly as they are and puts a sorted copy of its values in a new table on the same sheet (`new_table_name`, default "<table> sorted"). The copy is checked against the table row by row, and the original against itself. Chart the copy with a Keynote chart slide (`keynote_build_deck`).
+
 ## 2.5.0
 
 Load only what you need.

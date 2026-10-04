@@ -3,7 +3,7 @@ name: iwork-studio
 description: Create, read, edit, design and export Apple iWork files safely — build designed Keynote decks from an outline (with charts and tables from Numbers data), apply the user's brand kit, review a deck's design, style tables with design kits, in Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text, template placeholders or tables; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 2.5.0
+  version: 2.6.0
   author: iWork Studio
   homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
@@ -40,7 +40,7 @@ you get a typed error. Arabic/RTL text round-trips exactly.
 | New file from Apple's templates / from the user's own file | `iwork_list_templates` + `iwork_create` · `iwork_create_from_template` | Mac + the app · anywhere |
 | Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere |
 | Insert/delete rows or columns · add a table or sheet | `numbers_insert` · `numbers_delete` · `numbers_add_table` | anywhere |
-| Formula in a cell · recalculate formulas · sort a table | `numbers_set_formula` · `numbers_recalculate` · `numbers_sort` | Mac + Numbers, file closed |
+| Formula in a cell · recalculate formulas · sort a table (or a sorted copy in a new table: `to_new_table`) | `numbers_set_formula` · `numbers_recalculate` · `numbers_sort` | Mac + Numbers, file closed |
 | See / set Numbers formatting: style · number format · borders · widths/heights · headers · merge | `numbers_inspect_format` · `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere |
 | Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere |
 | Build a designed deck from an outline (chart / table slides from data or a Numbers table) · fill a slide's title/bullets | `keynote_build_deck` (with `kit=`) · `keynote_set_slide_text` | Mac + Keynote |
