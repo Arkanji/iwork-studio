@@ -35,6 +35,7 @@ jobs:
               "pyproject": tomllib.load(open("pyproject.toml", "rb"))["project"]["version"],
               "server.json": json.load(open("server.json"))["version"],
               "mcpb manifest": json.load(open("mcpb/manifest.json"))["version"],
+              "claude plugin": json.load(open("skill-pack/.claude-plugin/plugin.json"))["version"],
           }
           bad = {k: v for k, v in versions.items() if v != tag}
           assert not bad, f"tag v{tag} but {bad}"

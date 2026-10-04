@@ -29,6 +29,11 @@ def test_release_versions_agree():
     server = json.load(open(REPO / "server.json"))
     manifest = json.load(open(REPO / "mcpb" / "manifest.json"))
     assert server["version"] == server["packages"][0]["version"] == manifest["version"] == v
+    plugin = json.loads((REPO / "skill-pack" / ".claude-plugin" / "plugin.json").read_text())
+    assert plugin["version"] == v
+    assert plugin["mcpServers"]["iwork-studio"]["args"] == ["--from", f"iwork-studio=={v}", "iwork-studio-mcp"]
+    market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text())
+    assert market["plugins"][0]["source"] == "./skill-pack"
     from iwork_studio import __version__
 
     assert __version__ == v
