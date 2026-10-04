@@ -73,6 +73,22 @@ _STYLE_INVENTORY = """
     try { images = slides[s].images().length; } catch (e) {}
     let charts = null;
     try { charts = slides[s].charts().length; } catch (e) {}
+    // Tables: shape and cell values (null when this Keynote doesn't report them).
+    let tables = null;
+    try {
+      tables = slides[s].tables().map(t => {
+        const o = {rows: t.rowCount(), cols: t.columnCount(), header_rows: t.headerRowCount(), values: null};
+        try {
+          if (o.rows * o.cols <= 2000) {
+            o.values = t.rows().map(r => r.cells().map(c => {
+              const v = c.value();
+              return (v instanceof Date) ? v.toISOString() : (v === undefined ? null : v);
+            }));
+          }
+        } catch (e) {}
+        return o;
+      });
+    } catch (e) {}
     // Keynote's own title/body placeholders (text items list them twice, so these are
     // the reliable way to find the title and body boxes).
     const box = (get) => {
@@ -83,7 +99,7 @@ _STYLE_INVENTORY = """
         return {text: ot().toString(), font: ot.font(), size: ot.size(), color: c};
       } catch (e) { return null; }
     };
-    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images, charts: charts,
+    inv.slides.push({slide: s + 1, items: items, transition: transition, images: images, charts: charts, tables: tables,
                      title_box: box(() => slides[s].defaultTitleItem()),
                      body_box: box(() => slides[s].defaultBodyItem())});
   }
@@ -233,6 +249,9 @@ def _run(path, op: str, plan, *, backup_dir=None, max_backups: int = 10) -> dict
         expect(before, after)
         if op != "add_chart" and [x.get("charts") for x in before["slides"]] != [x.get("charts") for x in after["slides"]]:
             raise ks.SlideOpVerificationError("a chart was added, lost or moved — rolled back")
+        tb, ta = [x.get("tables") for x in before["slides"]], [x.get("tables") for x in after["slides"]]
+        if op != "add_table" and None not in tb and None not in ta and tb != ta:
+            raise ks.SlideOpVerificationError("a table was added, lost or changed — rolled back")
         keynote_io.read_key(target)  # parser re-parse gate
     except Exception:
         ks._restore(target, backup)

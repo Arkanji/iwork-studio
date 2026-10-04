@@ -149,6 +149,7 @@ _HINTS = {
     "ExportError": "the export was refused or didn't match the source; nothing was written",
     "DesignError": "check the kit name with iwork_list_design_kits, or fix the custom colours/fonts",
     "DeckError": "fix the outline: layout names come from keynote_inspect_style",
+    "TableError": "fix the table data: a list of rows of text, numbers or null, at most 50 × 15",
 }
 
 
@@ -867,10 +868,20 @@ if keynote_slides.slide_ops_enabled():
         transition: str | None = None,
         kit: Any = None,
     ) -> dict[str, Any]:
-        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Chart slides: add "chart": {"type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2"], "data": [[1, 2], [3, 4]]} or {"type": "line", "from": "/path/report.numbers", "columns": ["Q1", "Q2"]} (header row → column names, first column → row names); chart slides default to Title Only. Needs macOS + Keynote."""
+        """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Chart slides: add "chart": {"type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2"], "data": [[1, 2], [3, 4]]} or {"type": "line", "from": "/path/report.numbers", "columns": ["Q1", "Q2"]} (header row → column names, first column → row names); chart slides default to Title Only. Table slides: "table": {"rows": [["Region", "Q1"], ["Riyadh", 1200]]} or {"from": "/path/report.numbers", "columns": ["Q1"], "max_rows": 8}; with a kit the table is styled too. Needs macOS + Keynote."""
         from iwork_studio import keynote_deck
 
         return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition, kit=kit)
+
+    @mcp.tool(annotations=WRITE)
+    def keynote_add_table(path: str, slide: int, rows: list[list[Any]], header_rows: int = 1, kit: Any = None,
+                          x: float | None = None, y: float | None = None, width: float | None = None,
+                          dry_run: bool = False) -> dict[str, Any]:
+        """Add a table to a slide (1-based). rows = [["Region", "Q1"], ["Riyadh", 1200], …]: text, numbers, or null; text starting with "=" is a formula. kit (iwork_list_design_kits name or your own) styles it: header band, fonts (Arabic-aware), banding, numbers right-aligned. Optional x, y (points from top-left) and width. Every cell, font and colour is read back; other slides and tables are checked untouched. At most 50 rows × 15 columns. dry_run=true previews the change on a copy without touching the file. Needs macOS + Keynote."""
+        from iwork_studio import keynote_table
+
+        return _write(dry_run, keynote_table.add_table, _path(path, ".key"), slide, rows, header_rows=header_rows,
+                      kit=kit, x=x, y=y, width=width)
 
     @mcp.tool(annotations=WRITE)
     def keynote_apply_design(path: str, kit: Any = "executive", set_theme: bool = True,
