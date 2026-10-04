@@ -36,7 +36,6 @@ All writes follow the AtomicSwap protocol.
 
 from __future__ import annotations
 
-import copy
 import datetime as _dt
 import hashlib
 import json

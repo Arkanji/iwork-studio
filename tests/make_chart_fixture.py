@@ -13,10 +13,8 @@ Run:    ~/.hermes/iwork-venv/.venv/bin/python tests/make_chart_fixture.py
 """
 import shutil
 import sys
-import warnings
 from pathlib import Path
 
-from numbers_parser import Document
 
 REPO = Path(__file__).resolve().parents[1]
 SRC = Path(

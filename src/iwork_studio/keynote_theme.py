@@ -26,7 +26,6 @@ JXA `masterSlides()` throws -1700, so layouts go through AppleScript.
 
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 from collections import Counter

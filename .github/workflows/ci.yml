@@ -27,5 +27,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install (pins from pyproject.toml == pins.txt)
         run: pip install -e ".[test]"
+      - name: Lint
+        run: pip install ruff==0.15.20 && ruff check src tests scripts
       - name: Headless tests
         run: python -m pytest -m "not aqua" -q

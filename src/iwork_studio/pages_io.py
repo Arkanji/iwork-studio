@@ -514,7 +514,6 @@ def _prune_backups(backup_dir: Path, max_backups: int) -> None:
             ),
             key=lambda p: p.name,
         )
-        stamp_marker = tuple(".0123456789-")
         backups = [
             b
             for b in backups

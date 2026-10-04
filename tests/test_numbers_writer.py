@@ -133,7 +133,6 @@ class TestGate1SemanticRoundTrip:
     """GATE-1: unmodified parse → write must preserve ALL observable content."""
 
     def test_unmodified_save_semantic_equality(self, numbers_file, tmp_path):
-        import shutil
 
         from numbers_parser import Document
 

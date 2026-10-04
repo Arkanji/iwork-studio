@@ -83,7 +83,7 @@ class TestD2ScopeGate:
 
     def test_set_body_rejects_find(self):
         # per-fragment surgery is not one of the two ops
-        with pytest.raises(PagesOutOfScopeError) as ei:
+        with pytest.raises(PagesOutOfScopeError):
             pages_io.edit_pages_body(
                 "/nonexistent.pages", find="a", replace="b", mode="set_body",
                 new_body="c",

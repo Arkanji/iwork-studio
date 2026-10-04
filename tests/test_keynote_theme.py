@@ -189,6 +189,6 @@ def test_live_theme_layout_format(deck, monkeypatch):
     other = next(t for t in kt.list_themes() if t != style["theme"])
     assert kt.set_theme(deck, other)["ok"]
     style = kt.read_style(deck)
-    target = next(l for l in style["layouts"] if l != style["slides"][0]["layout"])
+    target = next(name for name in style["layouts"] if name != style["slides"][0]["layout"])
     assert kt.set_slide_layout(deck, 1, target)["ok"]
     assert kt.format_text(deck, 1, item=0, color="#1A7F79", size=40)["ok"]

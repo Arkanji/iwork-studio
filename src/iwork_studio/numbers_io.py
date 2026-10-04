@@ -36,8 +36,8 @@ import warnings
 warnings.filterwarnings("ignore", message="unsupported version", category=RuntimeWarning)
 
 from numbers_parser import Document  # noqa: E402
-import numbers_parser.cell as _np_cell
-from numbers_parser.constants import DECIMAL128_BIAS as _D128_BIAS
+import numbers_parser.cell as _np_cell  # noqa: E402
+from numbers_parser.constants import DECIMAL128_BIAS as _D128_BIAS  # noqa: E402
 
 
 def _exact_pack_decimal128(value) -> bytearray:
@@ -564,7 +564,6 @@ def _prune_backups(backup_dir: Path, max_backups: int) -> None:
             key=lambda p: p.name,
         )
         # only files with a version stamp (….<YYYYMMDD-HHMMSS>[.N].numbers)
-        stamp_marker = tuple(".0123456789-")
         backups = [
             b
             for b in backups
