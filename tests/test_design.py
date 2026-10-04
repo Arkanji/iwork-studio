@@ -210,3 +210,105 @@ def test_keynote_design_title_box_wrong_rolls_back(deck):
     with pytest.raises(ks.SlideOpVerificationError, match="title"):
         design.apply_to_keynote(d, "executive", set_theme=False)
     assert _sha(d) == before
+
+
+# ── Brand kits: extract from your own file, save by name ──────────────────────
+
+
+@pytest.fixture()
+def kits_dir(tmp_path, monkeypatch):
+    d = tmp_path / "kits"
+    monkeypatch.setenv("IWORK_STUDIO_KITS_DIR", str(d))
+    return d
+
+
+def test_extract_kit_from_styled_table(table, kits_dir):
+    design.apply_to_numbers(table, "banking")
+    before = _sha(table)
+    out = design.extract_kit(table, name="Brand")
+    k = out["kit"]
+    assert _sha(table) == before  # the file is never changed
+    assert k["colors"]["header_fill"] == "#1E3A8A" and k["colors"]["title"] == "#1E3A8A"
+    assert k["fonts"]["family"] == "Avenir Next" and k["fonts"]["family_ar"] == "Damascus"
+    assert k["fonts"]["heading"].startswith("AvenirNext") and "Bold" in k["fonts"]["heading"]
+    assert out["contrast_ok"] and not out["notes"]
+    assert design.contrast(k["colors"]["header_text"], k["colors"]["header_fill"]) >= 4.5
+
+
+def test_extracted_kit_saves_and_applies_by_name(table, kits_dir):
+    design.apply_to_numbers(table, "teal")
+    out = design.extract_kit(table, name="Resal", save=True)
+    assert Path(out["saved"]).parent == kits_dir
+    assert "Resal" in [k["name"] for k in design.list_kits() if k.get("saved")]
+    applied = design.apply_to_numbers(table, "Resal")
+    assert applied["kit"] == "Resal"
+
+
+def test_save_kit_never_overwrites_or_shadows_presets(kits_dir):
+    kit = {"colors": {"title": "#0B1F3A", "accent": "#2DD4BF"}}
+    design.save_kit("Brand", kit)
+    with pytest.raises(design.DesignError, match="already saved"):
+        design.save_kit("Brand", kit)
+    design.save_kit("Brand", {"colors": {"title": "#1E3A8A"}}, overwrite=True)
+    assert design.get_kit("Brand")["colors"]["title"] == "#1E3A8A"
+    with pytest.raises(design.DesignError, match="preset"):
+        design.save_kit("Banking", kit)
+    with pytest.raises(design.DesignError, match="kit name"):
+        design.save_kit("../evil", kit)
+
+
+def test_save_kit_checks_contrast(kits_dir):
+    with pytest.raises(design.DesignError, match="contrast"):
+        design.save_kit("Pale", {"colors": {"title": "#EEEEEE"}})
+    assert not list(kits_dir.glob("*.json")) if kits_dir.exists() else True
+
+
+def test_delete_kit_returns_contents(kits_dir):
+    design.save_kit("Brand", {"colors": {"title": "#0B1F3A"}})
+    out = design.delete_kit("Brand")
+    assert out["kit"]["colors"]["title"] == "#0B1F3A"
+    with pytest.raises(design.DesignError, match="unknown kit"):
+        design.get_kit("Brand")
+    with pytest.raises(design.DesignError, match="no saved kit"):
+        design.delete_kit("Brand")
+
+
+def test_damaged_saved_kit_is_skipped(kits_dir):
+    kits_dir.mkdir()
+    (kits_dir / "broken.json").write_text("{not json")
+    assert [k["name"] for k in design.list_kits()] == sorted(design.KITS, key=list(design.KITS).index)
+
+
+def test_custom_kit_base_preset():
+    k = design.get_kit({"base": "midnight", "colors": {"accent": "#22D3EE"}})
+    assert k["background"] == "#000000" and k["colors"]["title"] == "#F8FAFC"
+    with pytest.raises(design.DesignError, match="base kit"):
+        design.get_kit({"base": "neon"})
+
+
+def test_extract_kit_from_deck(monkeypatch, tmp_path, kits_dir):
+    d = tmp_path / "d.key"
+    d.write_bytes(b"deck")
+    style = {"theme": "Basic Black", "slides": [
+        {"slide": 1, "items": [], "title_box": {"text": "Resal", "font": "AvenirNext-Bold", "size": 80, "color": "#ffffff"},
+         "body_box": {"text": "Programmable value", "font": "AvenirNext-Regular", "size": 30, "color": "#cbd5e1"}},
+        {"slide": 2, "items": [_item(3, "Note", 900, 100, font="AvenirNext-Regular", color="#34d399")],
+         "title_box": {"text": "رسال", "font": "DamascusBold", "size": 52, "color": "#ffffff"},
+         "body_box": {"text": "قيمة قابلة للبرمجة", "font": "Damascus", "size": 28, "color": "#cbd5e1"}},
+    ]}
+    monkeypatch.setattr(kt, "read_style", lambda p: copy.deepcopy(style))
+    out = design.extract_kit(d)
+    k = out["kit"]
+    assert k["background"] == "#000000" and k["base"] == "midnight" and k["theme"] == "Basic Black"
+    assert k["colors"]["title"] == "#FFFFFF" and k["colors"]["accent"] == "#34D399"
+    assert k["fonts"]["heading"] == "AvenirNext-Bold" and k["fonts"]["heading_ar"] == "DamascusBold"
+    assert k["fonts"]["family"] == "Avenir Next" and k["fonts"]["family_ar"] == "Damascus"
+    assert any("background judged" in n for n in out["notes"]) and out["contrast_ok"]
+    assert design.contrast(k["colors"]["header_text"], k["colors"]["header_fill"]) >= 4.5
+
+
+def test_extract_kit_rejects_other_files(tmp_path):
+    p = tmp_path / "x.pages"
+    p.write_bytes(b"")
+    with pytest.raises(design.DesignError, match=".key or .numbers"):
+        design.extract_kit(p)
