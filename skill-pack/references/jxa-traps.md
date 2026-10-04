@@ -39,7 +39,7 @@ New routes still need a probe and evidence first.
 | N6 | Can't merge across header/non-header boundaries; zero the header counts first | UPSTREAM | |
 | N7 | `rows.push()` always appends; inserting at the top needs a manual shift | UPSTREAM | |
 | N8 | JXA can't bind data to charts; chart creation needs AppleScript (via `NSAppleScript`) on a selection | UPSTREAM | Input for the chart-files Big Bet, not for today |
-| N9 | `table.sort()` moves each formula with its row but keeps its references relative, so a formula that reads another row (`=B2*0.1` below a base figure) ends up reading the wrong row or `#REF!` | AGREES | `numbers_sort` refuses those tables up front and offers `to_new_table` (a sorted values-only copy); the reorder check rolls back anything it misses |
+| N9 | `table.sort()` moves each formula with its row but keeps its references relative, so a formula that reads another row (`=B2*0.1` below a base figure) ends up reading the wrong row or `#REF!`. Locking it (`$B$2`) doesn't help: the address stays, the row under it changes. References into another table are kept | AGREES | `numbers_sort` refuses those tables up front and offers `to_new_table` (a sorted values-only copy); the reorder check rolls back anything it misses |
 
 ## Keynote
 

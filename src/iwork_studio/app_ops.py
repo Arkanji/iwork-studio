@@ -273,17 +273,16 @@ def _refs(formula: str):
 
 
 def _cross_row_formulas(tb) -> list[tuple[int, int, str]]:
-    """Body-row formulas that read a row other than their own (in this table, or a
-    relative row in another table): a sort would break them."""
+    """Body-row formulas that read another row of this table, locked ($B$2) or not: a
+    sort breaks them. References into other tables survive a sort."""
     out = []
     for r in range(tb.num_header_rows, tb.num_rows):
         for c in range(tb.num_cols):
             cell = tb.cell(r, c)
             if not cell.is_formula:
                 continue
-            for tname, r1, r2, locked in _refs(cell.formula):
-                own = tname is None or tname.split("::")[-1] == tb.name
-                if (own and (r1, r2) != (r, r)) or (not own and not locked):
+            for tname, r1, r2, _locked in _refs(cell.formula):
+                if (tname is None or tname == tb.name) and (r1, r2) != (r, r):
                     out.append((r, c, cell.formula))
                     break
     return out

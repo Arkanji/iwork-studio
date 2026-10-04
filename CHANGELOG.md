@@ -8,7 +8,7 @@ compare → atomic swap.
 
 Sorting that can't break your formulas.
 
-- **Safe sorting:** Numbers' own sort keeps each formula's references relative, so a formula that reads another row (say `=B2*0.1` under a base-figure row) ends up reading the wrong row or `#REF!`. `numbers_sort` now spots those formulas and refuses before Numbers touches the file, naming the first one.
+- **Safe sorting:** Numbers' own sort keeps each formula's references relative, so a formula that reads another row (say `=B2*0.1` under a base-figure row) ends up reading the wrong row or `#REF!`. Locking the reference (`$B$2`) doesn't help. `numbers_sort` now spots those formulas and refuses before Numbers touches the file, naming the first one. Formulas that read another table (an inputs table) are kept by Numbers, so those tables still sort in place.
 - **Sort into a new table:** `numbers_sort` with `to_new_table` leaves the table, its formulas and its charts exactly as they are and puts a sorted copy of its values in a new table on the same sheet (`new_table_name`, default "<table> sorted"). The copy is checked against the table row by row, and the original against itself. Chart the copy with a Keynote chart slide (`keynote_build_deck`).
 - **Fix:** `numbers_set_formula` refused formulas with `*`, `/`, `<>`, `<=` or `>=`, because Numbers reads them back as `×`, `÷`, `≠`, `≤`, `≥`. They're now treated as the same formula.
 
