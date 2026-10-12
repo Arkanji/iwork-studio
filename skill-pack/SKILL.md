@@ -3,7 +3,7 @@ name: iwork-studio
 description: Create, read, edit, design and export Apple iWork files safely — build designed Keynote decks from an outline (with charts and tables from Numbers data), apply the user's brand kit, review a deck's design, style tables with design kits, in Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text, template placeholders or tables; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Prefer the iwork-studio MCP tools when available; otherwise use the bundled scripts. Every write is backed up, verified and atomic, and can be undone.
 license: MIT
 metadata:
-  version: 2.6.0
+  version: 2.6.1
   author: iWork Studio
   homepage: https://github.com/Arkanji/iwork-studio
   tags: [iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl]
@@ -105,18 +105,18 @@ the end. The last slide can't be deleted.
 ## Install (if the tools aren't available yet)
 
 - Claude desktop app (Mac): `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh`, then quit Claude (Cmd-Q) and reopen.
-- Claude Code: `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`
-- Other MCP clients: `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` prints the JSON entry.
+- Claude Code: `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp`
+- Other MCP clients: `uvx --from iwork-studio@latest iwork-studio-mcp config` prints the JSON entry.
 
 No Python install needed; uv brings its own.
 
 ## No MCP? Use the scripts
 
-Run from this skill's folder. Prefixing with `uvx --from git+https://github.com/Arkanji/iwork-studio`
+Run from this skill's folder. Prefixing with `uvx --from iwork-studio@latest`
 needs no prior install (or use a Python 3.12 with the package installed). Output is JSON.
 
 ```bash
-U="uvx --from git+https://github.com/Arkanji/iwork-studio"
+U="uvx --from iwork-studio@latest"
 $U python scripts/read.py <file.numbers|.key|.pages>
 $U python scripts/edit_numbers.py edit-cell <file> --ref B3 --value "قيمة" [--sheet NAME] [--table NAME]
 $U python scripts/edit_key.py replace <file.key> "old text" "new text" [--regex]

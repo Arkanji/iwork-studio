@@ -13,6 +13,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_slides as ks, keynote_theme as kt  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 STYLE = {
     "theme": "Basic White",
@@ -85,7 +86,7 @@ def test_set_theme_ok(deck, app):
 def test_unknown_theme_refused_before_backup(deck, app):
     with pytest.raises(kt.ThemeError, match="available"):
         kt.set_theme(deck, "Neon")
-    assert app["calls"] == [] and not (deck.parent / "deck.key.backups").exists()
+    assert app["calls"] == [] and not backups.backup_dir_for(deck).exists()
 
 
 def test_theme_that_loses_text_rolls_back(deck, app):

@@ -1,0 +1,21 @@
+name: Show your deck
+description: Made something nice with iWork Studio? Share it (we may add it to the gallery, with your permission).
+labels: [showcase]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you made and the prompt you used
+    validations:
+      required: true
+  - type: textarea
+    id: images
+    attributes:
+      label: Screenshots
+      description: Drag images here. Only share what you're happy to make public.
+  - type: checkboxes
+    id: ok
+    attributes:
+      label: Gallery
+      options:
+        - label: OK to feature this in the iWork Studio gallery

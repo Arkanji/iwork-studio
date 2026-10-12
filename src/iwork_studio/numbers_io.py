@@ -21,10 +21,8 @@ All writes follow the AtomicSwap protocol:
 from __future__ import annotations
 
 import copy
-import datetime as _dt
 import json
 import os
-import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -38,6 +36,7 @@ warnings.filterwarnings("ignore", message="unsupported version", category=Runtim
 from numbers_parser import Document  # noqa: E402
 import numbers_parser.cell as _np_cell  # noqa: E402
 from numbers_parser.constants import DECIMAL128_BIAS as _D128_BIAS  # noqa: E402
+from iwork_studio.backups import backup_dir_for as _bdir_for  # noqa: E402
 
 
 def _exact_pack_decimal128(value) -> bytearray:
@@ -374,23 +373,10 @@ def _parse_ref(ref: str) -> tuple[int, int]:
 
 
 def _versioned_backup(target: Path, backup_dir: Path) -> Path:
-    """Step 1 of AtomicSwap: copy target to a timestamped, versioned backup.
+    """Step 1 of every write (shared: backups.make_backup — refuses a file open in the app)."""
+    from iwork_studio import backups
 
-    Backup keeps the .numbers suffix so numbers-parser (and Numbers itself)
-    can open it directly for restore/verification; the version stamp lives
-    in the stem: <name>.<stamp>[.N].numbers
-    """
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    n = 0
-    while True:
-        suffix = f".{stamp}.{n}" if n else f".{stamp}"
-        backup = backup_dir / f"{target.name}{suffix}.numbers"
-        if not backup.exists():
-            break
-        n += 1
-    shutil.copy2(target, backup)
-    return backup
+    return backups.make_backup(target, backup_dir, keep=0)
 
 
 def _semantic_key(model: dict) -> list:
@@ -441,7 +427,7 @@ def edit_cell(
         )
 
     if backup_dir is None:
-        backup_dir = target.parent / f"{target.name}.backups"
+        backup_dir = _bdir_for(target)
     backup_dir = Path(backup_dir)
 
     # Step 0: source model (pre-write semantic baseline)
@@ -490,6 +476,14 @@ def edit_cell(
                 f"edited cell {cell_ref} not found in source model"
             )
         new_payload = tmp_key[target_entry][3]
+        # the edited cell itself: read it back from the saved file and compare
+        got = Document(str(tmp_path))
+        _, tb_got = _resolve_cell(got, sh.name, tb.name)
+        read_back = tb_got.cell(row, col).value
+        if not _same_value(value, read_back):
+            raise WriteVerificationError(
+                f"{cell_ref} reads {read_back!r} after the write, not {value!r}; target untouched"
+            )
         expected_key[target_entry] = (
             sh.name,
             tb.name,
@@ -532,12 +526,29 @@ def edit_cell(
             "row": row,
             "col": col,
             "before": before,
-            "after": value,
+            "after": _jsonable(read_back),
         },
         "backup": str(backup_path),
         "sheets": sheets_after,
         **recalc_note(after),
     }
+
+
+def _same_value(want, got) -> bool:
+    """Does the read-back cell hold what was asked for (same kind, same value)?"""
+    if isinstance(want, bool) or isinstance(got, bool):
+        return isinstance(want, bool) and isinstance(got, bool) and want == got
+    if isinstance(want, (int, float)):
+        return isinstance(got, (int, float)) and abs(float(got) - float(want)) <= 1e-9 * max(1.0, abs(float(want)))
+    if isinstance(want, str):
+        return isinstance(got, str) and got == want
+    if hasattr(want, "isoformat") and hasattr(got, "isoformat"):
+        return want.isoformat()[:19] == got.isoformat()[:19]
+    return want == got
+
+
+def _jsonable(v):
+    return v.isoformat() if hasattr(v, "isoformat") else v
 
 
 def recalc_note(model: dict) -> dict:
@@ -552,24 +563,6 @@ def recalc_note(model: dict) -> dict:
 
 
 def _prune_backups(backup_dir: Path, max_backups: int) -> None:
-    try:
-        backups = sorted(
-            (
-                p
-                for p in backup_dir.iterdir()
-                if p.name.endswith(".numbers")
-                and ".bak" not in p.name
-                and p.name != backup_dir.name  # skip any stray originals
-            ),
-            key=lambda p: p.name,
-        )
-        # only files with a version stamp (….<YYYYMMDD-HHMMSS>[.N].numbers)
-        backups = [
-            b
-            for b in backups
-            if len(b.name.split(".")) >= 3 and b.name.split(".")[-2].isdigit()
-        ]
-        for old in backups[:-max_backups] if max_backups > 0 else []:
-            old.unlink()
-    except OSError:
-        pass
+    from iwork_studio import backups
+
+    backups.prune_dir(backup_dir, max_backups)

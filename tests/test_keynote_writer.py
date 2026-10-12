@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_io, keynote_applescript  # noqa: E402
+from iwork_studio import backups as bk  # noqa: E402
 
 KEY_SRC = REPO / "tests" / "fixtures" / "arabic.key"
 CHART_SRC = REPO / "tests" / "fixtures" / "chart.key"
@@ -159,7 +160,7 @@ class TestEditText:
         backup = Path(result["backup"])
         assert backup.exists()
         assert backup.suffix == ".key"
-        assert backup.parent.name == "fixture.key.backups"
+        assert backup.parent == bk.backup_dir_for(key_file)
         # backup is the PRE-write state
         assert "English bullet" in _all_texts(backup)
         assert "English bullet" not in _all_texts(key_file)
@@ -169,8 +170,7 @@ class TestEditText:
         with pytest.raises(keynote_io.EditTextError):
             keynote_io.edit_text(key_file, "لا يوجد هذا النص", "س")
         assert hashlib.sha256(key_file.read_bytes()).hexdigest() == before
-        backups = key_file.parent / "fixture.key.backups"
-        assert not backups.exists()  # pre-flight runs BEFORE any backup
+        assert not bk.backup_dir_for(key_file).exists()  # pre-flight runs BEFORE any backup
 
     def test_no_stray_tmp_files(self, key_file):
         keynote_io.edit_text(key_file, "English", "EN")
@@ -306,8 +306,7 @@ class TestApplescriptFallback:
         finally:
             key_file.chmod(0o644)
         # nothing was written and no backup churn happened
-        backups = key_file.parent / "fixture.key.backups"
-        assert not backups.exists()
+        assert not bk.backup_dir_for(key_file).exists()
         assert "English bullet" in _all_texts(key_file)
 
 

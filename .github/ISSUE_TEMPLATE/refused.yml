@@ -1,0 +1,33 @@
+name: It refused my file
+description: A tool said no (or rolled back) and you're not sure why.
+labels: [refusal]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks — refusals are how iWork Studio keeps files safe, but a confusing one is a bug.
+        Please don't attach private files. A made-up file that shows the same thing is perfect.
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool?
+      placeholder: e.g. numbers_sort, pages_replace_all
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: The error it returned
+      description: Paste the error type and message (remove anything private).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      placeholder: iWork Studio version · macOS version · Numbers/Keynote/Pages version · client (Claude Desktop, Claude Code…)

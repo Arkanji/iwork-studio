@@ -12,6 +12,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_io, numbers_format, numbers_io, numbers_structure as ns, pages_io, preview  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 
 def _sha(p):
@@ -19,7 +20,7 @@ def _sha(p):
 
 
 def _no_backups(p):
-    return not (Path(p).parent / f"{Path(p).name}.backups").exists()
+    return not backups.backup_dir_for(p).exists()
 
 
 def test_cell_edit_preview(numbers_file):

@@ -18,6 +18,7 @@ from mcp import Client, StdioServerParameters  # noqa: E402
 
 CORE_TOOLS = {
     "iwork_capabilities",
+    "iwork_samples",
     "iwork_read",
     "iwork_list_backups",
     "iwork_restore_backup",

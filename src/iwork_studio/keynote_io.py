@@ -41,7 +41,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import tempfile
 import zipfile
 from pathlib import Path
@@ -51,6 +50,7 @@ from keynote_parser import __version__ as KEYPAD_VERSION
 from keynote_parser.codec import IWAFile
 from keynote_parser.file_utils import process
 from keynote_parser.replacement import Replacement
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 # libyaml C loader when available: ~25x faster on a 50-file deck tree and
 # parse-identical to SafeLoader (verified on both test fixtures,
@@ -309,7 +309,7 @@ def read_manifest(target: str | os.PathLike, backup_dir: str | os.PathLike | Non
     """C5: the write manifest for a target file (JSONL entries, oldest first)."""
     target = Path(target)
     if backup_dir is None:
-        backup_dir = target.parent / f"{target.name}.backups"
+        backup_dir = _bdir_for(target)
     mp = _manifest_path(Path(backup_dir))
     if not mp.exists():
         return []
@@ -333,35 +333,16 @@ def _append_manifest(backup_dir: Path, entry: dict) -> Path:
 
 
 def _versioned_backup(target: Path, backup_dir: Path) -> Path:
-    """Step 1 of AtomicSwap: timestamped versioned backup keeping the .key
-    suffix (restorable by double-click / parser)."""
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    n = 0
-    while True:
-        suffix = f".{stamp}.{n}" if n else f".{stamp}"
-        backup = backup_dir / f"{target.name}{suffix}.key"
-        if not backup.exists():
-            break
-        n += 1
-    shutil.copy2(target, backup)
-    return backup
+    """Step 1 of every write (shared: backups.make_backup — refuses a file open in the app)."""
+    from iwork_studio import backups
+
+    return backups.make_backup(target, backup_dir, keep=0)
 
 
 def _prune_backups(backup_dir: Path, max_backups: int) -> None:
-    try:
-        backups = sorted(
-            (
-                p
-                for p in backup_dir.iterdir()
-                if p.name.endswith(".key") and p.name != backup_dir.name
-            ),
-            key=lambda p: p.name,
-        )
-        for old in backups[:-max_backups] if max_backups > 0 else []:
-            old.unlink()
-    except OSError:
-        pass
+    from iwork_studio import backups
+
+    backups.prune_dir(backup_dir, max_backups)
 
 
 def _sha256_file(p: str | os.PathLike) -> str:
@@ -429,7 +410,7 @@ def edit_text(
         ) from exc
 
     if backup_dir is None:
-        backup_dir = target.parent / f"{target.name}.backups"
+        backup_dir = _bdir_for(target)
     backup_dir = Path(backup_dir)
 
     # escape-aware for \u06xx sequences

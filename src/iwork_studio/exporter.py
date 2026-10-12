@@ -20,14 +20,13 @@ import csv
 import datetime as _dt
 import hashlib
 import io
-import json
 import shutil
 import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
 
-from iwork_studio.apps import app_name
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = ["export", "FORMATS", "ExportError"]
 
@@ -65,31 +64,31 @@ def _jxa_export(src: Path, out: Path, kind: str, as_name: str, props: dict) -> N
     from iwork_studio.keynote_slides import _assert_aqua
 
     _assert_aqua()
-    script = f"""function run(argv) {{
-  const params = JSON.parse(argv[0]);
-  const app = Application({json.dumps(app_name(kind))});
-  const already = app.documents().some(d => {{
-    try {{ const f = d.file(); return f && f.toString() === params.src; }} catch (e) {{ return false; }}
-  }});
-  if (already) return JSON.stringify({{open_in_app: true}});
+    from iwork_studio import safety
+
+    body = """  const already = app.documents().some(d => {
+    try { const f = d.file(); return f && f.toString() === params.src; } catch (e) { return false; }
+  });
+  if (already) return JSON.stringify({open_in_app: true});
   const doc = app.open(Path(params.src));
-  try {{
-    const opts = {{to: Path(params.out), as: params.as}};
+  try {
+    const opts = {to: Path(params.out), as: params.as};
     if (Object.keys(params.props).length) opts.withProperties = params.props;
     app.export(doc, opts);
-  }} finally {{
-    app.close(doc, {{saving: 'no'}});
-  }}
-  return JSON.stringify({{ok: true}});
-}}"""
-    r = subprocess.run(
-        ["osascript", "-l", "JavaScript", "-e", script,
-         json.dumps({"src": str(src), "out": str(out), "as": as_name, "props": props})],
-        capture_output=True, text=True, timeout=600,
-    )
-    if r.returncode != 0:
-        raise ExportError(f"{kind} export failed (rc={r.returncode}): {r.stderr.strip()[:400]}")
-    if json.loads(r.stdout.strip() or "{}").get("open_in_app"):
+  } finally {
+    app.close(doc, {saving: 'no'});
+  }
+  return JSON.stringify({ok: true});"""
+    # The password (if any) travels inside the script on stdin, never on the command line.
+    params = {"src": str(src), "out": str(out), "as": as_name, "props": props}
+    try:
+        res = safety.run_jxa(kind, body, params, timeout=600)
+    except safety.AppTimeoutError:
+        safety.close_without_saving(kind, src)
+        raise
+    except RuntimeError as exc:
+        raise ExportError(f"{kind} export failed: {str(exc)[:400]}") from None
+    if res.get("open_in_app"):
         from iwork_studio.keynote_slides import DocumentOpenError
 
         raise DocumentOpenError(f"{src.name} is open in {kind}. Save and close it first.")
@@ -288,7 +287,7 @@ def export(path, fmt: str, out=None, *, password: str | None = None, password_hi
         backup = None
         if dest.exists():
             stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-            bdir = dest.parent / f"{dest.name}.backups"
+            bdir = _bdir_for(dest)
             bdir.mkdir(exist_ok=True)
             backup = bdir / f"{dest.name}.{stamp}"
             shutil.move(str(dest), str(backup))

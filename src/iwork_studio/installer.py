@@ -22,8 +22,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from iwork_studio import __version__  # noqa: E402
+
 SERVER_NAME = "iwork-studio"
-SOURCE = "git+https://github.com/Arkanji/iwork-studio"
+SOURCE = f"iwork-studio=={__version__}"  # the released package from PyPI, pinned to this version
 UVX_CANDIDATES = ("~/.local/bin/uvx", "/opt/homebrew/bin/uvx", "/usr/local/bin/uvx", "~/.cargo/bin/uvx")
 
 

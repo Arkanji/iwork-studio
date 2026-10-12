@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import numbers_format as nf  # noqa: E402
 from iwork_studio.numbers_io import CellRefError, WriteVerificationError  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 
 def _sha(p):
@@ -82,7 +83,7 @@ def test_bad_requests_change_nothing(numbers_file, call, err):
     with pytest.raises(err):
         call(numbers_file)
     assert _sha(numbers_file) == before
-    assert not (numbers_file.parent / f"{numbers_file.name}.backups").exists()
+    assert not backups.backup_dir_for(numbers_file).exists()
 
 
 def test_silently_dropped_style_is_caught(numbers_file, monkeypatch):

@@ -135,7 +135,8 @@ in-place save and export only.
 | Toolsets: load only files / numbers / keynote / pages / design tools (`IWORK_STUDIO_TOOLSETS`, `serve --toolsets`) | Supported — core tools always load; prompts follow their tools |
 | Brand kits: extract from a deck or table, save / delete by name (`~/.iwork-studio/kits`, `IWORK_STUDIO_KITS_DIR`) | Supported — contrast checked; presets can't be shadowed |
 | Protocol stream kept clean (library output never reaches stdout) | Supported |
-| Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported |
+| Undo: list + atomic restore of versioned backups (restore is itself backed up) | Supported. Backups are private (`~/.iwork-studio/backups/`), the last 10 per file; older `<file>.backups/` folders are still read |
+| Writes to a file open in its app | REFUSED (`DocumentOpenError`): the app's next save would overwrite the change |
 | Path fence `IWORK_STUDIO_ROOTS` | Supported |
 
 ## Cross-format rules

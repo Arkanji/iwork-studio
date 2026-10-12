@@ -18,6 +18,7 @@ from numbers_parser import Document  # noqa: E402
 from iwork_studio import app_ops, numbers_structure as ns  # noqa: E402
 from iwork_studio import keynote_io, keynote_slides as ks, keynote_theme as kt, pages_io  # noqa: E402
 from iwork_studio.numbers_io import CellRefError, WriteVerificationError  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 
 def _tiny_png(size: int = 64) -> bytes:
@@ -345,7 +346,7 @@ def test_fill_placeholders_refuses_document_open_in_pages(letter):
     state["open_in_pages"] = True
     with pytest.raises(ks.DocumentOpenError):
         app_ops.fill_placeholders(p, {"Name": "x"})
-    assert p.read_bytes() == b"original" and not (p.parent / "letter.pages.backups").exists()
+    assert p.read_bytes() == b"original" and not backups.backup_dir_for(p).exists()
 
 
 def test_placeholder_reader_opens_with_jxa_and_finds_by_path(monkeypatch, tmp_path):

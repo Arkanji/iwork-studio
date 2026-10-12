@@ -8,16 +8,20 @@
 [![Version](https://img.shields.io/pypi/v/iwork-studio?label=version&color=1a7f79)](https://pypi.org/project/iwork-studio/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Arkanji/iwork-studio/tree/main/LICENSE)
 [![iWork](https://img.shields.io/badge/iWork-classic%20%2B%20Creator%20Studio-black?logo=apple&logoColor=white)](#what-it-can-do)
-[![MCP server](https://img.shields.io/badge/MCP-64%20tools-8A2BE2)](#all-64-tools)
+[![MCP server](https://img.shields.io/badge/MCP-server%20%2B%20skill-8A2BE2)](#install)
 [![Arabic safe](https://img.shields.io/badge/Arabic%2FRTL-exact%20round--trips-informational)](#arabic--rtl)
 [![Undo](https://img.shields.io/badge/every%20write-backed%20up%20%2B%20undoable-success)](#the-safety-model)
 
-### Give your AI the keys to Apple iWork.
+### The safe way to let AI edit your Numbers, Keynote and Pages files.
 
-Create, edit, format, theme and export **Numbers**, **Keynote** and **Pages** files from Claude or any AI agent.<br>
-Every write is backed up, checked and swapped in atomically, and any change can be undone with one call.
+Designed decks from your data and your brand, checked as rendered. Arabic-ready.<br>
+Every change is backed up, verified and undoable, and anything risky is refused, never guessed.
 
-[**Install**](#install) · [What it can do](#what-it-can-do) · [Safety](#the-safety-model) · [All 64 tools](#all-64-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
+| 🛡️ **Never damages your file** | 🎨 **Designed from your data** | ع **Arabic first-class** |
+|:--|:--|:--|
+| Backup → change a copy → re-read and compare → atomic swap. Open files are left alone. One call undoes any change. | Turn a spreadsheet into a Keynote deck with chart and table slides in your brand kit, then review it as rendered. | Arabic and right-to-left text round-trip exactly, in every app and every export. |
+
+[**Install**](#install) · [Try it](#just-ask-in-english-or-arabic) · [Safety](#the-safety-model) · [What it can do](#what-it-can-do) · [All tools](#all-65-tools) · [For AI agents](#for-ai-agents) · [Changelog](https://github.com/Arkanji/iwork-studio/blob/main/CHANGELOG.md)
 
 <br>
 
@@ -38,20 +42,22 @@ Every write is backed up, checked and swapped in atomically, and any change can 
 | **Claude desktop app, one click** (Mac) | Download `iwork-studio-<version>.mcpb` from the [latest release](https://github.com/Arkanji/iwork-studio/releases/latest), double-click it, pick the folders it may use |
 | **Claude desktop app** (Mac, from Terminal) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then quit Claude (Cmd-Q) and reopen |
 | **Claude Code, as a plugin** (tools + skill) | `/plugin marketplace add Arkanji/iwork-studio`, then `/plugin install iwork-studio@iwork-studio` |
-| **Claude Code, tools only** | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
-| **Cursor, VS Code, Codex, any MCP client** | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings. Also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Arkanji/iwork-studio` |
+| **Claude Code, tools only** | `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp` |
+| **Cursor, VS Code, Codex, any MCP client** | `uvx --from iwork-studio@latest iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings. Also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Arkanji/iwork-studio` |
 
 That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, and uv brings its own Python.
 
 - **Fence it** (recommended): `… | sh -s -- --roots ~/Documents ~/Desktop` limits it to those folders. Other clients: set `IWORK_STUDIO_ROOTS` (`:`-separated).
-- **Load less** (optional): only work in Keynote? Set `IWORK_STUDIO_TOOLSETS=keynote,design` (any of `files`, `numbers`, `keynote`, `pages`, `design`; default all). Fewer tools keep the AI focused and its context small. The Claude Desktop extension has a *Toolsets* field; in Claude Code: `claude mcp add iwork-studio -e IWORK_STUDIO_TOOLSETS=keynote,design -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp`. Capabilities, read, find, undo and the kit list always load.
+- **Load less** (optional): only work in Keynote? Set `IWORK_STUDIO_TOOLSETS=keynote,design` (any of `files`, `numbers`, `keynote`, `pages`, `design`; default all). Fewer tools keep the AI focused and its context small. The Claude Desktop extension has a *Toolsets* field; in Claude Code: `claude mcp add iwork-studio -e IWORK_STUDIO_TOOLSETS=keynote,design -- uvx --from iwork-studio@latest iwork-studio-mcp`. Capabilities, read, find, undo and the kit list always load.
 - **First run:** macOS asks once whether Claude may control Keynote / Pages / Numbers. Click **OK**. (Missed it? System Settings → Privacy & Security → Automation.)
 - **Check it:** ask *"what can iwork-studio do on this Mac?"*.
-- **Remove:** `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp uninstall`
+- **Remove:** `uvx --from iwork-studio@latest iwork-studio-mcp uninstall`
 
 > **AI agent setting this up for someone?** Pick the row for their app, run it, then call `iwork_capabilities`. Rules for using the tools are in [`AGENTS.md`](https://github.com/Arkanji/iwork-studio/blob/main/AGENTS.md).
 
 ## Just ask, in English or Arabic
+
+**No file handy?** Ask *"copy the iWork Studio samples to my Desktop and turn sample-sales.numbers into a board deck"*. The samples are synthetic sales data with an English and an Arabic sheet.
 
 > *"Build a 6-slide pitch deck for a solar-panel startup in the midnight kit, with speaker notes, and export it to PowerPoint."*
 >
@@ -135,12 +141,14 @@ backup → change a scratch copy → re-open it and compare → atomic swap
                        ↘ anything off: your file is untouched, the error says why
 ```
 
-- **Backup first**, versioned, next to the file in `<file>.backups/`.
-- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder, and refuses up front when the table's formulas read other rows (Numbers' own sort would break them). On files with charts, every chart is counted before and after; on decks with tables, every table's cells are compared. An export is read back with a second, independent tool.
+- **Backup first**, versioned and private: in `~/.iwork-studio/backups/` (or `IWORK_STUDIO_BACKUP_DIR`), never beside your file, so backups don't fill or sync your iCloud Desktop and Documents. The last 10 per file are kept.
+- **Never behind the app's back**: if the file is open in Numbers, Keynote or Pages, the write is refused. The app's next save would quietly overwrite the change.
+- **Re-read and compared**: exactly the requested change happened, and nothing else did. A cell edit reads the edited cell back and checks every other cell. A row insert checks every cell at its new position. A slide op checks every other slide. A sort checks it's a pure reorder, and refuses up front when the table's formulas read other rows (Numbers' own sort would break them). On files with charts, every chart is counted before and after; on decks with tables, every table's cells are compared. An export is read back with a second, independent tool.
 - **Atomic swap**: the file is replaced in one step, so a crash can't leave half a file.
 - **The app's "ok" is never trusted.** App-driven writes are re-read from disk, and a write that "succeeded" but didn't land is rolled back.
 - **Undo is one call**: `iwork_list_backups` → `iwork_restore_backup`. The restore backs up the current version first, so undo can be undone too.
-- **Preview first**: every write takes `dry_run=true`. It runs the real change on a throwaway copy, with every check, and shows exactly what would change. Your file isn't touched.
+- **Preview first**: every write that changes an existing document takes `dry_run=true` (restore and export are the exceptions). It runs the real change on a throwaway copy, with every check, and shows exactly what would change. Your file isn't touched.
+- **Find and replace keeps formatting**: in Pages, only the paragraphs that contain the text are rewritten.
 - **New files never overwrite** an existing one.
 - **Refuse, don't mangle.** The worst case is a clear "no", never a broken file.
 
@@ -151,7 +159,7 @@ backup → change a scratch copy → re-open it and compare → atomic swap
 - Values are kept as typed: Arabic-Indic digits (`١٢٣`), `"$1,234.56"` and `=…` text stay text. Pass a real number when you want a number.
 - When checking a rendered PDF, assert **one** Arabic word. PDF text layers reorder multi-word RTL text.
 
-## All 64 tools
+## All 65 tools
 
 Writes are marked destructive and reads read-only, so clients can ask before writing. Every write that changes an existing file takes `dry_run=true` for a preview. Every tool has a title, every parameter a description, and every tool says when to use it instead of its siblings. Need fewer? Load only some toolsets (see *Load less* under [Install](#install)).
 
@@ -163,6 +171,7 @@ Writes are marked destructive and reads read-only, so clients can ask before wri
 | `iwork_capabilities` | What this machine can do: apps, GUI session, which routes work |
 | `iwork_read` | Any `.numbers` / `.key` / `.pages` → JSON |
 | `iwork_find` | Find iWork files by kind and name (Spotlight on a Mac) |
+| `iwork_samples` | Copy sample files (synthetic sales data, English and Arabic) to try it with nothing of your own |
 | `iwork_metadata` · `iwork_thumbnail` | Template, app builds, format version, slide count · the stored preview image |
 | `iwork_create` · `iwork_create_from_template` | New file from Apple's built-in templates · copy of your own file |
 | `iwork_list_templates` | Built-in templates (Numbers, Pages) and themes (Keynote) |

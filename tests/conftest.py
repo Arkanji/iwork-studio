@@ -25,6 +25,12 @@ NUMBERS_SRC = REPO / "tests" / "fixtures" / "arabic.numbers"
 CHART_SRC = REPO / "tests" / "fixtures" / "chart.numbers"
 
 
+@pytest.fixture(autouse=True)
+def _private_backups(tmp_path_factory, monkeypatch):
+    """Backups go to a per-test folder, never the real ~/.iwork-studio."""
+    monkeypatch.setenv("IWORK_STUDIO_BACKUP_DIR", str(tmp_path_factory.mktemp("backups")))
+
+
 @pytest.fixture()
 def numbers_file(tmp_path) -> Path:
     """A fresh copy of the Arabic+English+numbers 4x3 fixture."""

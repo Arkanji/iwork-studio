@@ -11,9 +11,9 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 
 | # | Feature | Release | Status | Spec |
 |---|---|---|---|---|
-| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | 📋 | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
+| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ⏳ built + headless green; waiting on live check | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
 | 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.2 | 🔨 | [spec](004-show-it/spec.md) |
-| 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.2 | 📋 | [spec](002-front-door/spec.md) |
+| 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.1 (ships with the trust patch) | 🔨 built; GIF slot + chart probe pending | [spec](002-front-door/spec.md) · [tasks](002-front-door/tasks.md) |
 
 ## Next
 
@@ -28,17 +28,21 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 
 | Action | When | Status |
 |---|---|---|
-| Update the GitHub About box + topics (text in `docs/listing.md`) | after 002 | 📋 |
+| Update the GitHub About box + topics (text in `docs/listing.md`) | now | 📋 |
 | Submit to mcp.so, PulseMCP, Smithery, Cursor directory, LobeHub, mcpservers.org | after 002 | 📋 |
 | `npx skills add Arkanji/iwork-studio` once (skills.sh listing; feeds Hermes Skills Hub) | anytime | 📋 |
-| Turn on GitHub Discussions | after 002 | 📋 |
+| Turn on GitHub Discussions | now | 📋 |
+| Add the `TRAFFIC_TOKEN` secret (fine-grained, Administration: read) for the weekly traffic snapshot | now | 📋 |
 | Live Mac check for each release (aqua tests + probes) | each release | — |
 | Launch posts (Show HN, r/ClaudeAI, r/macapps, Arabic X/LinkedIn) | after 004 + 005 | 📋 |
 | awesome-mcp-servers listing | — | ✅ merged 2026-10-08 |
 
 ## Waiting on a live check (⏳)
 
-Nothing yet. Each entry: what to run, what it proves, the result once known.
+| What | Command (on the Mac, repo on the branch) | Proves | Result |
+|---|---|---|---|
+| 002 Numbers chart probe | `uv run python scripts/probe_numbers_chart.py` | whether Numbers' scripting dictionary can add a chart (no UI scripting) | — |
+| 001 trust patch | `uv run --extra test pytest -m aqua -k "trust or pages or sort or formula or keynote_slides"` | open-file refusal on real Numbers; Pages replace keeps other paragraphs' formatting; app routes still pass with the new runner and backup folder | — |
 
 ## Re-analyse (decisions to revisit with new evidence)
 
@@ -50,6 +54,8 @@ Nothing yet. Each entry: what to run, what it proves, the result once known.
 | Open-document guard cost | One app query per write when the app runs | if users report slowness |
 | Formula checks on comma-decimal locales | Untested; may false-fail | after a live check on such a locale |
 | Hermes plugin vs skills.sh only | Small audience; skills.sh may be enough | after 30-day metrics |
+| keynote_slides / pages_io runners on `safety.run_jxa` | They carry no secrets, so they kept their own timeout handling in 2.6.1 | next time those modules change |
+| Same-second backup numbering | Found by the new prune test and fixed (never reuse a pruned name) | — (fixed, keep the test) |
 
 ## Parked: Big Bets (later, probe first)
 
@@ -80,3 +86,4 @@ chasing the competitor's tool count · default-on telemetry.
 ## Log
 
 - 2026-10-12: Review by product engineer, PM and CPO agents; constitution 1.0.0; specs 001–006 written; GIF production started.
+- 2026-10-12: 001 built (36 regression tests); 002 mostly built. Found and removed more identity leaks: the company's Arabic name, its taglines and brand pillars were used as sample text in README and tests (a guard test now blocks them in English and Arabic). New bug found by the prune test: same-second backups reused pruned names (fixed).

@@ -14,7 +14,6 @@ save → fresh re-read → expectation check → restore on any mismatch.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -24,6 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 from iwork_studio.apps import app_name
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = [
     "set_formula", "sort_table", "list_placeholders", "fill_placeholders", "set_transition",
@@ -46,16 +46,11 @@ _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff", ".heic", ".pdf"
 
 
 def _jxa(kind: str, body: str, params: dict, timeout: int = 300) -> dict:
+    from iwork_studio import safety
     from iwork_studio.keynote_slides import _assert_aqua
 
     _assert_aqua()
-    script = ("function run(argv) {\n  const params = JSON.parse(argv[0]);\n"
-              f"  const app = Application({json.dumps(app_name(kind))});\n{body}\n}}")
-    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", script, json.dumps(params)],
-                       capture_output=True, text=True, timeout=timeout)
-    if r.returncode != 0:
-        raise RuntimeError(f"JXA failed (rc={r.returncode}): {r.stderr.strip()[:500]}")
-    return json.loads(r.stdout.strip() or "{}")
+    return safety.run_jxa(kind, body, params, timeout)
 
 
 _OPEN_CHECK = """
@@ -68,9 +63,15 @@ _OPEN_CHECK = """
 
 def _edit_in_app(kind: str, path: Path, body: str, params: dict) -> dict:
     """open → body (has `doc`) → in-place save → close. Refuses a document already open."""
-    out = _jxa(kind, _OPEN_CHECK + "  const doc = app.open(Path(params.path));\n  let result = {};\n  try {\n"
-               + body + "\n    app.save(doc);\n  } finally {\n    app.close(doc, {saving: 'no'});\n  }\n"
-               "  return JSON.stringify(result);", {"path": str(path), **params})
+    from iwork_studio import safety
+
+    try:
+        out = _jxa(kind, _OPEN_CHECK + "  const doc = app.open(Path(params.path));\n  let result = {};\n  try {\n"
+                   + body + "\n    app.save(doc);\n  } finally {\n    app.close(doc, {saving: 'no'});\n  }\n"
+                   "  return JSON.stringify(result);", {"path": str(path), **params})
+    except safety.AppTimeoutError:
+        safety.close_without_saving(kind, path)  # so the rollback doesn't land under an open window
+        raise
     if out.get("open_in_app"):
         from iwork_studio.keynote_slides import DocumentOpenError
 
@@ -138,7 +139,7 @@ def _numbers_write(path, sheet, table, op: str, body: str, params: dict, expect,
     where = {} if whole_document else {"sheet": sh.name, "table": tb.name}
     before = _values(doc)
     has_charts = nio.contains_charts(target)  # Numbers does the edit itself, so its charts stay linked
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = nio._versioned_backup(target, bdir)
     nio._prune_backups(bdir, max_backups)
     try:
@@ -618,7 +619,7 @@ def fill_placeholders(path, values: dict, *, backup_dir=None, max_backups: int =
     close d saving no
   end tell
 end run"""
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = pages_io._versioned_backup(target, bdir)
     pages_io._prune_backups(bdir, max_backups)
     try:
@@ -857,7 +858,7 @@ def set_table_cells(path, table, cells: dict, *, backup_dir=None, max_backups: i
         lines.append(f'      set value of cell "{r}" of table {idx} of d to {rhs}')
     inner = "\n".join(lines) + "\n      save d\n      set out to \"ok\""
 
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = pages_io._versioned_backup(target, bdir)
     pages_io._prune_backups(bdir, max_backups)
     try:

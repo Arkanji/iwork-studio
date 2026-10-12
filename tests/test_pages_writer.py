@@ -24,6 +24,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import pages_io  # noqa: E402
+from iwork_studio import backups as bk  # noqa: E402
 from iwork_studio.pages_io import (  # noqa: E402
     AquaSessionError,
     EditVerificationError,
@@ -186,7 +187,7 @@ class TestD2RollbackContract:
         canned_body = json.dumps(ARABIC_BODY)  # contains '42'
 
         def selectively_failing_jxa(script, timeout=180):
-            if "doc.bodyText = " in script:
+            if "app.save(doc)" in script:
                 raise RuntimeError("JXA failed (rc=1): simulated app crash")
             return canned_body
 
@@ -202,7 +203,7 @@ class TestD2RollbackContract:
         # — either way content identical to source
         assert dest.read_bytes() == before_bytes
         # backup was created (versioned, .pages suffix) and pruned dir exists
-        backup_root = dest.parent / f"{dest.name}.backups"
+        backup_root = bk.backup_dir_for(dest)
         assert backup_root.is_dir()
         backups = list(backup_root.glob("*.pages"))
         assert len(backups) >= 1

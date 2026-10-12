@@ -12,7 +12,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from iwork_studio import installer  # noqa: E402
+from iwork_studio import __version__, installer  # noqa: E402
 
 UVX = "/Users/someone/.local/bin/uvx"
 
@@ -26,7 +26,7 @@ def test_fresh_install_writes_absolute_uvx(tmp_path):
     r = installer.install(cfg, UVX)
     entry = _read(cfg)["mcpServers"]["iwork-studio"]
     assert entry["command"] == UVX  # absolute: the desktop app has no shell PATH
-    assert entry["args"] == ["--from", "git+https://github.com/Arkanji/iwork-studio", "iwork-studio-mcp"]
+    assert entry["args"] == ["--from", f"iwork-studio=={__version__}", "iwork-studio-mcp"]
     assert r["action"] == "added" and r["backup"] is None
 
 

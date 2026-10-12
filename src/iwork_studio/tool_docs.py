@@ -137,6 +137,7 @@ PARAMS: dict[str, dict[str, str]] = {
         "image_format": "Slide images only: jpeg | png | tiff.",
     },
     "iwork_thumbnail": {"out_dir": "Folder for the extracted JPEG; omit for a temporary folder."},
+    "iwork_samples": {"folder": "Folder to copy the samples into (created if missing), e.g. ~/Desktop."},
     "iwork_find": {
         "folder": "Folder to search; omit to search the allowed folders, else Documents, Desktop and Downloads.",
         "kind": "numbers | keynote | pages; omit for all three.",
@@ -233,6 +234,8 @@ USAGE = {
                           "available, which toolsets are loaded. Not needed before plain reads of .numbers or .key files.",
     "iwork_read": "Use to see a file's content before editing it. Not for formatting details: use numbers_inspect_format "
                   "(Numbers) or keynote_inspect_style (Keynote). For file facts only, iwork_metadata is cheaper.",
+    "iwork_samples": "Use when the user wants to try iWork Studio but has no file handy, or asks for an example; then "
+                     "follow one of the returned try_it prompts. Not for the user's own files.",
     "iwork_find": "Use when the user names a file loosely (\"my sales deck\") or you don't know its path; then read it with "
                   "iwork_read. Not needed when you already have the path.",
     "iwork_metadata": "Use for file facts (template, app build, slide count) without reading content. For the content "

@@ -6,7 +6,7 @@ lives in the library, so an agent cannot reach a write without it.
 
 Install:
     Claude desktop app:  curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh
-    Claude Code:         claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp
+    Claude Code:         claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp
     Anything else:       iwork-studio-mcp config   (prints the JSON entry)
 
 Environment:
@@ -51,8 +51,9 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   .numbers and .key reads/edits are pure Python (no app needed). .pages, render
   verification and Keynote slide ops drive the real app and need a logged-in
   macOS GUI session.
-- Keynote slide ops refuse a deck that is open in Keynote: ask the user to save
-  and close it. Slide numbers are 1-based.
+- Every write refuses a file that is open in its app (DocumentOpenError): the
+  app's next save would overwrite the change. Ask the user to save and close it.
+  Slide numbers are 1-based.
 - Charts: tools that work without the app refuse files containing charts
   (ChartRefusalError) — their rewrite could break chart links. Tools that drive
   the app (Keynote slide/theme/image/transition ops, Numbers formulas and sort)
@@ -72,9 +73,12 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
 - After a write the user cares about, call iwork_verify_render with a word that
   must appear. For Arabic, assert ONE word: PDF text layers reorder multi-word
   RTL text and produce false failures.
-- Every write tool takes dry_run=true: it runs the change on a temporary copy,
-  with all checks, and returns what would change. Use it to show the user a
-  preview before a broad or destructive change.
+- Writes that change an existing document take dry_run=true: the change runs on
+  a temporary copy, with all checks, and returns what would change. Use it to
+  show the user a preview before a broad or destructive change. Exceptions:
+  iwork_restore_backup and iwork_export (no preview), and the kit tools
+  (iwork_save_design_kit, iwork_delete_design_kit) change a kit, not a
+  document. Tools that create a new file never overwrite, so need no preview.
 - Never convert to docx/pptx/xlsx and back; it is lossy.
 """
 
@@ -122,6 +126,34 @@ def _out_path(path: str | None) -> Path | None:
     return None if not path else _fenced(Path(os.path.expanduser(path)).resolve())
 
 
+def _fence_outline(deck: Path | None, slides: Any) -> Any:
+    """Every file a deck outline reads (image, chart.from, table.from) resolves against the
+    deck's folder and must be inside IWORK_STUDIO_ROOTS, before anything is created."""
+    if not isinstance(slides, list) or deck is None:
+        return slides
+    base = deck.parent
+
+    def fix(value: Any) -> Any:
+        if not isinstance(value, str) or not value.strip():
+            return value
+        q = Path(os.path.expanduser(value))
+        return str(_fenced((q if q.is_absolute() else base / q).resolve()))
+
+    out = []
+    for sl in slides:
+        if not isinstance(sl, dict):
+            out.append(sl)
+            continue
+        sl = dict(sl)
+        if "image" in sl:
+            sl["image"] = fix(sl["image"])
+        for key in ("chart", "table"):
+            if isinstance(sl.get(key), dict) and sl[key].get("from"):
+                sl[key] = {**sl[key], "from": fix(sl[key]["from"])}
+        out.append(sl)
+    return out
+
+
 def _search_folders(folder: str | None) -> list[str]:
     if folder:
         return [str(_fenced(Path(os.path.expanduser(folder)).resolve()))]
@@ -138,12 +170,14 @@ _HINTS = {
     "OutOfScopeError": "Pages supports pages_replace_all, pages_set_body, pages_fill_placeholders and pages_set_table_cells only",
     "StructureError": "fix the request (positions are 1-based; new files must not exist yet)",
     "AppOpError": "fix the request; the message lists the valid choices",
+    "AutomationDeniedError": "the user must allow it once in System Settings → Privacy & Security → Automation; don't retry until they have",
+    "AppTimeoutError": "a dialog is probably open in the app: ask the user to dismiss it, then retry once; nothing was changed",
     "SortBreaksFormulasError": "call numbers_sort again with to_new_table=true for a sorted copy; the table is untouched",
     "WriteVerificationError": "the result didn't match the request, so nothing was changed",
     "EditVerificationError": "the result didn't match the request; the backup was restored",
     "SlideOpVerificationError": "Keynote did something other than asked; the backup was restored",
     "FileLockedError": "the file is locked or open in Keynote; ask the user to close it",
-    "DocumentOpenError": "ask the user to save and close the deck in Keynote first",
+    "DocumentOpenError": "ask the user to save and close the file in its app first, then retry",
     "CreatorStudioUnverifiedError": "only the Creator Studio app is installed and it is not verified yet",
     "SlideOpsDisabledError": "slide ops are switched off on this machine",
     "FormatError": "fix the request (range, colour as #RRGGBB, option names) and try again",
@@ -191,11 +225,27 @@ def _aqua_status() -> dict:
         return {"available": False, "reason": str(exc)}
 
 
+def _app_version(app: str) -> str | None:
+    """The installed app's version from its Info.plist (no Apple events, no launch)."""
+    import plistlib
+
+    for root in ("/Applications", "~/Applications"):
+        for name in (f"{app}.app", f"{app} Creator Studio.app"):
+            plist = Path(os.path.expanduser(root)) / name / "Contents" / "Info.plist"
+            try:
+                with open(plist, "rb") as fh:
+                    return plistlib.load(fh).get("CFBundleShortVersionString")
+            except (OSError, ValueError, plistlib.InvalidFileException):
+                continue
+    return None
+
+
 def _app_status() -> dict:
     out = {}
     for app in apps.IWORK_APPS:
         try:
-            out[app] = {"scripting_name": apps.app_name(app), **apps.app_bundle_candidates(app)}
+            out[app] = {"scripting_name": apps.app_name(app), **apps.app_bundle_candidates(app),
+                        "version": _app_version(app)}
         except apps.CreatorStudioUnverifiedError as exc:
             out[app] = {"scripting_name": None, "error": str(exc), **apps.app_bundle_candidates(app)}
     return out
@@ -207,10 +257,14 @@ def _app_status() -> dict:
 @mcp.tool(annotations=READ)
 def iwork_capabilities() -> dict[str, Any]:
     """What this machine can do right now: routes, GUI session, installed apps, Keynote slide-op status. Call first when unsure."""
+    from iwork_studio import backups, samples
+
+    gui = _aqua_status()
+    fence = os.environ.get("IWORK_STUDIO_ROOTS", "")
     return {
         "version": __version__,
         "platform": platform.platform(),
-        "gui_session": _aqua_status(),
+        "gui_session": gui,
         "apps": _app_status(),
         "routes": {
             "no_app_needed": "read any .numbers/.key; create Numbers files (data, CSV); edit, format and restructure "
@@ -219,14 +273,30 @@ def iwork_capabilities() -> dict[str, Any]:
                              "theming, transitions, images, charts, slideshow; new files from Apple templates; "
                              "export; render and format checks",
         },
-        "keynote_slide_ops": {"enabled": keynote_slides.slide_ops_enabled()},
+        "keynote_slide_ops": {"enabled": keynote_slides.slide_ops_enabled(),
+                              "runnable_here": bool(gui.get("available"))},
         "toolsets": _TOOLSET_STATE,
+        "folder_fence": ([str(Path(os.path.expanduser(r)).resolve()) for r in fence.split(os.pathsep) if r]
+                         if fence else "none: any folder the user can access"),
+        "backups": {"folder": str(backups.backup_dir_for(Path.home() / "x.numbers").parent), "kept_per_file": backups.KEEP},
+        "automation": "macOS asks once per app the first time a tool drives Numbers, Keynote or Pages. If it was "
+                      "refused, tools raise AutomationDeniedError: allow it in System Settings → Privacy & Security "
+                      "→ Automation.",
+        "try_it": samples.TRY_IT,
         "refused_by_design": [
             "no-app writes to files containing charts (app-driven tools work on them)",
             "Pages edits beyond replace / set body / placeholders / table cells; creating Pages tables",
             "docx/pptx/xlsx round-trip conversion",
         ],
     }
+
+
+@mcp.tool(annotations=KIT)
+def iwork_samples(folder: str) -> dict[str, Any]:
+    """Copy sample files (sample-sales.numbers with English and Arabic sheets of synthetic sales data, and sample-outline.md for a deck) into a folder, so a first try needs none of the user's own files. Never overwrites. Returns try-it prompts."""
+    from iwork_studio import samples
+
+    return _call(samples.copy_samples, _out_path(folder))
 
 
 @mcp.tool(annotations=READ)
@@ -878,7 +948,9 @@ if keynote_slides.slide_ops_enabled():
         """Build a new Keynote deck from an outline. slides = [{"title": "…", "body": ["bullet", "bullet"], "layout": "Title & Bullets", "notes": "…", "image": "/path/pic.png"}, …]; the first slide defaults to a title layout, the rest to Title & Bullets. theme from keynote_list_themes; optional transition for every slide (e.g. dissolve). Every slide is read back and checked; on any mismatch the new file is removed. Never overwrites. kit = a design kit (iwork_list_design_kits) for a designed deck in one call. Chart slides: add "chart": {"type": "bar", "rows": ["2025", "2026"], "columns": ["Q1", "Q2"], "data": [[1, 2], [3, 4]]} or {"type": "line", "from": "/path/report.numbers", "columns": ["Q1", "Q2"]} (header row → column names, first column → row names); chart slides default to Title Only. Table slides: "table": {"rows": [["Region", "Q1"], ["Riyadh", 1200]]} or {"from": "/path/report.numbers", "columns": ["Q1"], "max_rows": 8}; with a kit the table is styled too. Needs macOS + Keynote."""
         from iwork_studio import keynote_deck
 
-        return _call(keynote_deck.build_deck, _out_path(path), slides, theme=theme, transition=transition, kit=kit)
+        deck = _out_path(path)
+        return _call(keynote_deck.build_deck, deck, _fence_outline(deck, slides), theme=theme, transition=transition,
+                     kit=kit)
 
     @mcp.tool(annotations=WRITE)
     def keynote_add_table(path: str, slide: int, rows: list[list[Any]], header_rows: int = 1, kit: Any = None,
@@ -955,6 +1027,7 @@ _TITLE_OVERRIDES = {
     "iwork_capabilities": "What this Mac can do",
     "iwork_read": "Read an iWork file",
     "iwork_find": "Find iWork files",
+    "iwork_samples": "Copy sample files to try",
     "iwork_metadata": "File details",
     "iwork_thumbnail": "Preview image",
     "iwork_export": "Export (PDF, Excel, Word, PowerPoint…)",

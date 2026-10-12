@@ -1,7 +1,7 @@
 """iWork Studio — toolsets: load only the tools a client needs.
 
 Every connected client reads every tool's description, so a Keynote-only user
-shouldn't carry 64. Pick toolsets with IWORK_STUDIO_TOOLSETS (or
+shouldn't carry 65. Pick toolsets with IWORK_STUDIO_TOOLSETS (or
 `iwork-studio-mcp serve --toolsets keynote,design`); the default is all of them.
 The core tools (capabilities, read, find, undo, the kit list) are always loaded.
 """
@@ -23,7 +23,7 @@ TOOLSETS: dict[str, str] = {
     "design": "design kits and brand kits, restyling, deck building and the design review",
 }
 
-_FILES = {"iwork_metadata", "iwork_thumbnail", "iwork_list_templates", "iwork_create", "iwork_create_from_template",
+_FILES = {"iwork_samples", "iwork_metadata", "iwork_thumbnail", "iwork_list_templates", "iwork_create", "iwork_create_from_template",
           "iwork_export", "iwork_verify_render", "iwork_verify_format"}
 _DESIGN = {"iwork_extract_design_kit", "iwork_save_design_kit", "iwork_delete_design_kit", "numbers_apply_design",
            "keynote_apply_design", "keynote_build_deck", "keynote_review_deck", "keynote_slide_image"}

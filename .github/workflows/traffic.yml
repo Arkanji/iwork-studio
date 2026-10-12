@@ -1,0 +1,70 @@
+name: Traffic snapshot
+
+# GitHub keeps only 14 days of traffic. Every Monday this saves views, clones,
+# referrers, popular paths and release downloads as JSON on the `traffic-data`
+# branch, so growth can be compared over months. Nothing about visitors is
+# stored beyond what GitHub's own traffic page shows the repo owner.
+#
+# Needs one secret: TRAFFIC_TOKEN — a fine-grained token for this repository
+# with "Administration: read" (the traffic API requires it; the default
+# GITHUB_TOKEN can't be given that permission) and "Contents: read".
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the token
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: |
+          if [ -z "$TRAFFIC_TOKEN" ]; then
+            echo "::error::Add a TRAFFIC_TOKEN secret (fine-grained token, Administration: read) — see the comment at the top of traffic.yml"
+            exit 1
+          fi
+      - name: Fetch traffic
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          day=$(date -u +%Y-%m-%d)
+          mkdir -p out
+          {
+            echo "{\"date\": \"$day\","
+            echo "\"views\": $(gh api repos/$REPO/traffic/views),"
+            echo "\"clones\": $(gh api repos/$REPO/traffic/clones),"
+            echo "\"referrers\": $(gh api repos/$REPO/traffic/popular/referrers),"
+            echo "\"paths\": $(gh api repos/$REPO/traffic/popular/paths),"
+            echo "\"repo\": $(gh api repos/$REPO --jq '{stars: .stargazers_count, forks: .forks_count, watchers: .subscribers_count, open_issues: .open_issues_count}'),"
+            echo "\"release_downloads\": $(gh api repos/$REPO/releases --jq '[.[] | {tag: .tag_name, assets: [.assets[] | {name, download_count}]}]')"
+            echo "}"
+          } > "out/$day.json"
+          python3 -m json.tool "out/$day.json" > /dev/null
+      - name: Commit to the traffic-data branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          git config user.name "traffic-bot"
+          git config user.email "traffic-bot@users.noreply.github.com"
+          git fetch origin traffic-data || true
+          if git rev-parse --verify origin/traffic-data >/dev/null 2>&1; then
+            git worktree add data origin/traffic-data
+            git -C data switch -c traffic-data
+          else
+            git worktree add --orphan -b traffic-data data
+          fi
+          mkdir -p data/snapshots
+          cp out/*.json data/snapshots/
+          git -C data add snapshots
+          git -C data commit -m "Traffic snapshot $(date -u +%Y-%m-%d)" || echo "nothing new"
+          git -C data push origin traffic-data

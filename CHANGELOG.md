@@ -4,6 +4,19 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## 2.6.1
+
+The trust patch: the safety promise, now true in every corner.
+
+- **Open files are refused by every write.** Edits made without the app (cells, formatting, rows, tables, designs, Keynote find/replace, restore) now check whether Numbers, Keynote or Pages has the file open. Before, the app's next save could quietly overwrite the change.
+- **Pages find and replace keeps your formatting.** Only the paragraphs that contain the text are rewritten; before, the whole document's formatting was reset. Finds that span a paragraph break are refused (use `pages_set_body`).
+- **Backups are private and bounded.** They now live in `~/.iwork-studio/backups/` (or `IWORK_STUDIO_BACKUP_DIR`), never beside your file, so they don't fill or sync your iCloud Desktop and Documents. Numbers and Pages backups were never pruned before; now every file type keeps its last 10. Older `<file>.backups/` folders are still listed and restorable.
+- **The edited cell is checked too.** `numbers_edit_cell` reads the cell back from the saved file and reports what it read.
+- **The folder fence covers deck outlines.** Images and chart/table sources in `keynote_build_deck` resolve against the deck's folder and must be inside the allowed folders.
+- **Timeouts leak nothing.** Scripts and their parameters (such as an export password) go to the app on stdin, never on the command line. A timeout is a clear `AppTimeoutError`, and the document is closed before any rollback. `AutomationDeniedError` says exactly where to allow access.
+- **Installs come from PyPI.** The installer pins the released version, and no longer needs Apple's developer tools.
+- **Honest docs.** The instructions now name the writes that don't take `dry_run`. Example names are neutral.
+
 ## 2.6.0
 
 Sorting that can't break your formulas.

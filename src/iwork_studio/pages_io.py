@@ -42,7 +42,6 @@ post-save readback disagrees with the requested edit.
 
 from __future__ import annotations
 
-import datetime as _dt
 import json
 import os
 import shutil
@@ -51,6 +50,7 @@ import tempfile
 from pathlib import Path
 
 from iwork_studio.apps import app_name
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = [
     "read_pages",
@@ -340,20 +340,10 @@ def read_pages(path: str | os.PathLike) -> dict:
 
 
 def _versioned_backup(target: Path, backup_dir: Path) -> Path:
-    """Copy target to a timestamped, versioned backup (<name>.<stamp>
-    [.N].pages) before any write. Keeps the .pages suffix so Pages can
-    open the backup directly for restore."""
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    n = 0
-    while True:
-        suffix = f".{stamp}.{n}" if n else f".{stamp}"
-        backup = backup_dir / f"{target.name}{suffix}.pages"
-        if not backup.exists():
-            break
-        n += 1
-    shutil.copy2(target, backup)
-    return backup
+    """Step 1 of every write (shared: backups.make_backup — refuses a file open in the app)."""
+    from iwork_studio import backups
+
+    return backups.make_backup(target, backup_dir, keep=0)
 
 
 def edit_pages_body(
@@ -401,6 +391,12 @@ def edit_pages_body(
             raise PagesOutOfScopeError(
                 "mode 'replace_all' requires `replace` (use '' to delete)"
             )
+        if any(ch in find + replace for ch in "\r\n\u2029"):
+            raise PagesOutOfScopeError(
+                "find/replace text can't contain a paragraph break: replace works paragraph by "
+                "paragraph so the rest of the document keeps its formatting. To rewrite across "
+                "paragraphs use pages_set_body (it resets body formatting)."
+            )
     else:  # set_body
         if new_body is None:
             raise PagesOutOfScopeError(
@@ -429,7 +425,7 @@ def edit_pages_body(
     dirs_before = _directions_or_none(target)
 
     if backup_dir is None:
-        backup_dir = target.parent / f"{target.name}.backups"
+        backup_dir = _bdir_for(target)
     backup_dir = Path(backup_dir)
     backup_path = _versioned_backup(target, backup_dir)
     _prune_backups(backup_dir, max_backups)
@@ -437,12 +433,29 @@ def edit_pages_body(
     if mode == "replace_all":
         assert find is not None and replace is not None
         new_text = before.replace(find, replace)
+        # Only paragraphs that contain `find` are rewritten; every other paragraph keeps
+        # its formatting (setting doc.bodyText would reset the whole document's).
+        script = f"""
+(() => {{
+  const app = Application({json.dumps(app_name(_APP))});
+  const doc = app.open(Path({_js_path(target)}));
+  const find = {json.dumps(find, ensure_ascii=False)}, repl = {json.dumps(replace, ensure_ascii=False)};
+  const paras = doc.bodyText.paragraphs;
+  const n = paras.length, changed = [];
+  for (let i = 0; i < n; i++) {{
+    const t = paras[i]();
+    if (t.indexOf(find) >= 0) {{ paras[i] = t.split(find).join(repl); changed.push(i); }}
+  }}
+  app.save(doc);            // IN-PLACE save only — GATE-SAVE
+  app.close(doc, {{saving: 'no'}});
+  return JSON.stringify({{changed: changed, paragraphs: n}});
+}})()
+"""
     else:
         assert new_body is not None
         new_text = new_body
-
-    # ── the write: open → set bodyText → IN-PLACE save (GATE-SAVE) ────
-    script = f"""
+        # ── the write: open → set bodyText → IN-PLACE save (GATE-SAVE) ────
+        script = f"""
 (() => {{
   const app = Application({app_name(_APP)!r});
   const doc = app.open(Path({_js_path(target)}));
@@ -452,8 +465,14 @@ def edit_pages_body(
   return 'saved';
 }})()
 """
+    rewrote = None
     try:
-        _jxa(script, timeout=300)
+        out = _jxa(script, timeout=300)
+        if mode == "replace_all":
+            try:
+                rewrote = json.loads(out)
+            except (TypeError, ValueError):
+                rewrote = None
     except Exception:
         # App-side failure before/around save — the file may or may not
         # have been touched; verify and roll back if it moved.
@@ -484,6 +503,10 @@ def edit_pages_body(
         "changed": before != after,
         "backup": str(backup_path),
         "direction": direction,
+        **({"replacements": before.count(find), "paragraphs_rewritten": len(rewrote.get("changed") or []),
+            "note": "only paragraphs containing the text were rewritten; inline formatting inside those "
+                    "paragraphs may reset, every other paragraph keeps its formatting"}
+           if mode == "replace_all" and isinstance(rewrote, dict) else {}),
     }
 
 
@@ -505,24 +528,9 @@ def _restore(target: Path, backup: Path) -> None:
 
 
 def _prune_backups(backup_dir: Path, max_backups: int) -> None:
-    try:
-        backups = sorted(
-            (
-                p
-                for p in backup_dir.iterdir()
-                if p.name.endswith(".pages") and p.name != backup_dir.name
-            ),
-            key=lambda p: p.name,
-        )
-        backups = [
-            b
-            for b in backups
-            if len(b.name.split(".")) >= 3 and b.name.split(".")[-2].isdigit()
-        ]
-        for old in backups[:-max_backups] if max_backups > 0 else []:
-            old.unlink()
-    except OSError:
-        pass
+    from iwork_studio import backups
+
+    backups.prune_dir(backup_dir, max_backups)
 
 
 # ── D4: render-verify (Pages export → pdfminer.six) ────────────────────────────────

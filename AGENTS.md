@@ -9,8 +9,8 @@ working **with** or **on** this repo.
 |---|---|
 | Claude desktop app (Mac) | `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then the user quits Claude (Cmd-Q) and reopens |
 | Claude Code (plugin: tools + skill) | `claude plugin marketplace add Arkanji/iwork-studio` then `claude plugin install iwork-studio@iwork-studio` |
-| Claude Code (tools only) | `claude mcp add iwork-studio -- uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp` |
-| Any other MCP client | `uvx --from git+https://github.com/Arkanji/iwork-studio iwork-studio-mcp config` → paste the printed JSON into the client's MCP config |
+| Claude Code (tools only) | `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp` |
+| Any other MCP client | `uvx --from iwork-studio@latest iwork-studio-mcp config` → paste the printed JSON into the client's MCP config |
 
 - The installer installs `uv` if missing; uv brings its own Python. **Don't tell the user to install Python.**
 - Recommend a folder fence: `… | sh -s -- --roots ~/Documents ~/Desktop` (or env `IWORK_STUDIO_ROOTS`, `:`-separated).
@@ -62,6 +62,9 @@ Use it whenever a request touches one of those.
 
 - **Every write is backed up, checked and atomic.** If a tool errors, the file is
   untouched. Report the error to the user; do not retry with tricks.
+- **Open files are refused** (`DocumentOpenError`) by every write: ask the user to save
+  and close the file. `AutomationDeniedError` means the user must allow Automation
+  once in System Settings; `AppTimeoutError` means a dialog is open in the app.
 - **Start with `iwork_capabilities`** when unsure what the machine can do.
   `AquaSessionError` = no macOS GUI here: say so, don't retry.
 - **Charts**: the no-app routes refuse files with charts (`ChartRefusalError`); the

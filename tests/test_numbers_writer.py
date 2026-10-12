@@ -21,6 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import numbers_io, render_verify  # noqa: E402
+from iwork_studio import backups as bk  # noqa: E402
 
 AR_VALUE = "أحمد"
 AR_SHEET = "بيانات"
@@ -90,7 +91,7 @@ class TestEditCell:
         backup = Path(result["backup"])
         assert backup.exists()
         assert backup.suffix == ".numbers"  # openable by numbers-parser
-        assert backup.parent.name == "fixture.numbers.backups"
+        assert backup.parent == bk.backup_dir_for(numbers_file)
         # backup is the PRE-write state
         from numbers_parser import Document
 

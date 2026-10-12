@@ -40,6 +40,7 @@ from pathlib import Path
 from iwork_studio import keynote_io
 from iwork_studio.apps import app_name
 from iwork_studio.keynote_applescript import _assert_aqua
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = [
     "read_slides",
@@ -362,7 +363,7 @@ def _run(path, op: str, params: dict, backup_dir=None, max_backups: int = 10) ->
     _validate(op, params, len(before))
     expected = _expected(before, op, params)
 
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = keynote_io._versioned_backup(target, bdir)
     keynote_io._prune_backups(bdir, max_backups)
     try:

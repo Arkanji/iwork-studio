@@ -1,0 +1,21 @@
+name: Request a capability
+description: Something you'd like your AI to do with Numbers, Keynote or Pages.
+labels: [request]
+body:
+  - type: textarea
+    id: job
+    attributes:
+      label: What are you trying to get done?
+      description: The outcome, in your words (e.g. "turn my monthly CSV into a 6-slide report").
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What happens today?
+  - type: dropdown
+    id: app
+    attributes:
+      label: Which app?
+      multiple: true
+      options: [Numbers, Keynote, Pages]

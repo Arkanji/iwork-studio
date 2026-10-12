@@ -32,6 +32,7 @@ from numbers_parser import Document
 
 from iwork_studio.numbers_format import FormatError, _doc_snap, _protected_write
 from iwork_studio.numbers_io import WriteVerificationError, read_numbers
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = ["create", "import_csv", "insert", "delete", "add_table", "create_from_template", "StructureError"]
 
@@ -315,7 +316,7 @@ def add_table(path, table_name: str, rows: list[list], *, sheet: str | None = No
         t = sh.add_table(table_name, num_rows=len(tb_spec["rows"]), num_cols=len(tb_spec["rows"][0]),
                          num_header_rows=tb_spec["header_rows"], num_header_cols=tb_spec["header_columns"])
     _fill(t, tb_spec["rows"])
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = _versioned_backup(target, bdir)
     _prune_backups(bdir, max_backups)
     fd, tmp = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.tbl", suffix=".numbers")

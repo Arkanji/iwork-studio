@@ -34,6 +34,7 @@ from pathlib import Path
 from iwork_studio import keynote_io
 from iwork_studio import keynote_slides as ks
 from iwork_studio.apps import app_name
+from iwork_studio.backups import backup_dir_for as _bdir_for
 
 __all__ = ["list_themes", "read_style", "set_theme", "set_slide_layout", "format_text", "ThemeError"]
 
@@ -232,7 +233,7 @@ def _run(path, op: str, plan, *, backup_dir=None, max_backups: int = 10) -> dict
             "so the result can't be checked; refusing")
     script, params, expect, summary = plan(before)  # validates; raises ThemeError before any backup
 
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
     backup = keynote_io._versioned_backup(target, bdir)
     keynote_io._prune_backups(bdir, max_backups)
     try:

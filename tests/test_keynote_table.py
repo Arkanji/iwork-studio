@@ -14,6 +14,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import design, keynote_deck as kd, keynote_io, keynote_slides as ks, keynote_table as ktab  # noqa: E402
 from iwork_studio import keynote_theme as kt, numbers_structure as ns  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 GRID = [["المنطقة", "Q1", "Q2"], ["الرياض", 1200, 1500.5], ["Jeddah", 950, None]]
 
@@ -182,7 +183,7 @@ def test_bad_table_refused_before_backup(deck, rows, kw, msg):
     d, state = deck
     with pytest.raises(ktab.TableError, match=msg):
         ktab.add_table(d, 1, rows, **kw)
-    assert state["script"] is None and not (d.parent / f"{d.name}.backups").exists()
+    assert state["script"] is None and not backups.backup_dir_for(d).exists()
 
 
 def test_slide_out_of_range(deck):

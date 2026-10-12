@@ -68,10 +68,10 @@ def test_roles_checked_by_position_not_index():
 
 def test_keynote_default_boxes_win():
     """With Keynote's own title/body boxes reported, the check uses them, not positions."""
-    slide = {"items": PROBE_TITLE_SLIDE, "title_box": {"text": "شمس"}, "body_box": {"text": "البنية"}}
-    kd._check_roles(slide, "شمس", "البنية", "slide 1")
+    slide = {"items": PROBE_TITLE_SLIDE, "title_box": {"text": "شمس"}, "body_box": {"text": "الطاقة"}}
+    kd._check_roles(slide, "شمس", "الطاقة", "slide 1")
     with pytest.raises(ks.SlideOpVerificationError, match="title box"):
-        kd._check_roles({**slide, "title_box": {"text": "البنية"}}, "شمس", None, "slide 1")
+        kd._check_roles({**slide, "title_box": {"text": "الطاقة"}}, "شمس", None, "slide 1")
 
 
 def test_fill_script_writes_through_default_boxes():

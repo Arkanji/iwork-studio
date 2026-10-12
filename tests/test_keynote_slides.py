@@ -18,6 +18,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from iwork_studio import keynote_io, keynote_slides as ks  # noqa: E402
+from iwork_studio import backups  # noqa: E402
 
 KEY_SRC = REPO / "tests" / "fixtures" / "arabic.key"
 CHART_SRC = REPO / "tests" / "fixtures" / "chart.key"
@@ -78,7 +79,7 @@ class TestGate:
         with pytest.raises(ks.SlideOpsDisabledError):
             ks.set_presenter_notes(key_file, 1, "hi")
         assert fake_app["calls"] == []
-        assert not (key_file.parent / "deck.key.backups").exists()
+        assert not backups.backup_dir_for(key_file).exists()
 
     def test_verified_ops_match_live_probe(self):
         # Keynote Creator Studio 15.3.1 probe, 2026-10-02: 7/7 PASS.
@@ -154,7 +155,7 @@ class TestPreflight:
         with pytest.raises(ks.SlideOpError):
             call(key_file)
         assert fake_app["calls"] == []
-        assert not (key_file.parent / "deck.key.backups").exists()
+        assert not backups.backup_dir_for(key_file).exists()
         assert _sha(key_file) == before
 
     def test_cannot_delete_only_slide(self, key_file, unverified_ok, monkeypatch):
@@ -172,8 +173,8 @@ class TestExpectationGate:
         with pytest.raises(ks.SlideOpVerificationError):
             ks.delete_slide(key_file, 2)
         assert _sha(key_file) == original
-        backups = list((key_file.parent / "deck.key.backups").glob("*.key"))
-        assert len(backups) == 1
+        left = list(backups.backup_dir_for(key_file).glob("*.key"))
+        assert len(left) == 1
 
     def test_collateral_change_rolls_back(self, key_file, unverified_ok, fake_app):
         original = _sha(key_file)

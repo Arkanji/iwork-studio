@@ -34,6 +34,7 @@ from typing import Any, Callable
 from numbers_parser import RGB, Border, Document
 from numbers_parser.cell import CURRENCIES, NegativeNumberStyle
 
+from iwork_studio.backups import backup_dir_for as _bdir_for
 from iwork_studio.numbers_io import (
     CellRefError,
     ChartRefusalError,
@@ -253,7 +254,7 @@ def _protected_write(
         raise ChartRefusalError(f"GATE-CHART: {target.name} contains charts; formatting writes are refused")
 
     before = _doc_snap(Document(str(target)))
-    bdir = Path(backup_dir) if backup_dir else target.parent / f"{target.name}.backups"
+    bdir = Path(backup_dir) if backup_dir else _bdir_for(target)
 
     doc = Document(str(target))
     sh, tb = _resolve_cell(doc, sheet, table)
