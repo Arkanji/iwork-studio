@@ -12,7 +12,7 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 | # | Feature | Release | Status | Spec |
 |---|---|---|---|---|
 | 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ⏳ built + headless green; waiting on live check | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
-| 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.2 | 🔨 | [spec](004-show-it/spec.md) |
+| 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.1 | ✅ GIF (3.2 MB, 15.5 s) + MP4 1080p; rebuild with `assets/demo/render.sh` | [spec](004-show-it/spec.md) |
 | 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.1 (ships with the trust patch) | 🔨 built; GIF slot + chart probe pending | [spec](002-front-door/spec.md) · [tasks](002-front-door/tasks.md) |
 
 ## Next

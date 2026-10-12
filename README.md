@@ -25,6 +25,12 @@ Every change is backed up, verified and undoable, and anything risky is refused,
 
 <br>
 
+<img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/demo.gif" alt="iWork Studio in 15 seconds: a prompt turns sales.numbers into a designed Keynote slide, a write that didn't match is rolled back with the file untouched, and the same slide comes back in Arabic, right to left" width="100%">
+
+<sub>15 seconds: data → designed deck → a safe rollback → Arabic. <a href="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/demo.mp4">HD video</a></sub>
+
+<br><br>
+
 <a href="https://arkanji.com/images/posts/iwork-studio-film-v3.mp4">
   <img src="https://raw.githubusercontent.com/Arkanji/iwork-studio/main/assets/iwork-studio-film.webp" alt="iWork Studio in action: an AI agent edits a Numbers cell and keeps its formula, updates every Keynote slide without touching the formatting, and writes an Arabic letter in Pages" width="100%">
 </a>

@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>iWork Studio demo</title>
+    <!-- vendor/ and fonts/ are fetched by ./setup.sh (gitignored) -->
+    <link rel="stylesheet" href="fonts/fonts.css" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg0: #0b0d17;
+        --bg1: #101426;
+        --bg2: #1a1040;
+        --ink: #f5f5f7;
+        --ink2: #c7c7d1;
+        --ink3: #8e8ea0;
+        --line: rgba(255, 255, 255, 0.1);
+        --orange: #ff9f0a;
+        --pink: #ff375f;
+        --violet: #bf5af2;
+        --ok: #30d158;
+        --accent: linear-gradient(90deg, #ff9f0a 0%, #ff375f 52%, #bf5af2 100%);
+        --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+        --arabic: "IBM Plex Sans Arabic", "IBM Plex Sans", sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: var(--bg0);
+        font-family: var(--sans);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .abs { position: absolute; }
+      .num { font-variant-numeric: tabular-nums; }
+
+      /* ---------- background (static: GIF-friendly) ---------- */
+      .bg {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(1100px 640px at 50% 30%, rgba(191, 90, 242, 0.16), rgba(191, 90, 242, 0) 70%),
+          radial-gradient(900px 600px at 8% 100%, rgba(255, 159, 10, 0.07), rgba(255, 159, 10, 0) 70%),
+          linear-gradient(135deg, var(--bg0) 0%, var(--bg1) 55%, var(--bg2) 100%);
+      }
+
+      /* ---------- chrome: kicker, mini brand, tool ticker ---------- */
+      .kicker {
+        position: absolute; left: 120px; top: 84px;
+        display: flex; align-items: center; gap: 18px;
+        font-size: 30px; font-weight: 500; letter-spacing: 0.01em; color: var(--ink2);
+        opacity: 0;
+      }
+      .kicker b {
+        font-family: var(--mono); font-weight: 500; font-size: 24px;
+        color: var(--bg0); background: var(--accent);
+        border-radius: 999px; padding: 4px 14px 3px;
+      }
+      #mini {
+        position: absolute; right: 120px; top: 80px;
+        display: flex; align-items: center; gap: 14px;
+        font-size: 28px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em;
+      }
+      #mini svg { width: 44px; height: 44px; }
+      .tick {
+        position: absolute; left: 0; right: 0; top: 994px; text-align: center;
+        font-family: var(--mono); font-size: 25px; color: var(--ink3); opacity: 0;
+      }
+      .tick em { font-style: normal; color: var(--ink2); }
+
+      /* ---------- scene 1: prompt ---------- */
+      #prompt {
+        position: absolute; left: 400px; top: 196px; width: 1120px; height: 100px;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1.5px solid rgba(255, 255, 255, 0.13);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        display: flex; align-items: center; padding: 0 26px 0 22px; gap: 22px;
+      }
+      #prompt .avatar {
+        width: 58px; height: 58px; border-radius: 50%; flex: none;
+        background: var(--accent);
+        display: grid; place-items: center;
+      }
+      #prompt .avatar svg { width: 30px; height: 30px; }
+      #ptext { flex: 1; font-size: 37px; font-weight: 400; color: var(--ink); white-space: nowrap; letter-spacing: -0.005em; }
+      #ptext .file { color: var(--orange); font-weight: 500; }
+      #ptext .brand { color: #d78cff; font-weight: 500; }
+      #caret { display: inline-block; width: 3px; height: 42px; background: var(--ink); vertical-align: -8px; margin-left: 3px; border-radius: 2px; }
+      #send {
+        width: 58px; height: 58px; border-radius: 50%; flex: none;
+        background: rgba(255, 255, 255, 0.12); display: grid; place-items: center;
+      }
+      #send svg { width: 26px; height: 26px; }
+
+      /* ---------- shell: sheet → slide ---------- */
+      /* #shell has the slide's geometry; the card scales from the sheet's box to the slide's */
+      #shell { position: absolute; left: 320px; top: 200px; width: 1280px; height: 720px; z-index: 5; }
+      #card {
+        position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: #fbfbfd;
+        box-shadow: 0 50px 120px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      #sheet { position: absolute; left: 120px; top: 172px; width: 1040px; height: 440px; color: #1d1d1f; border-radius: 22px; overflow: hidden; }
+      #slide { border-radius: 22px; overflow: hidden; }
+      #sheet .tab {
+        height: 76px; display: flex; align-items: center; gap: 16px; padding: 0 30px;
+        border-bottom: 1px solid #e5e5ea; background: #f2f2f7;
+        font-size: 27px; font-weight: 600; color: #1d1d1f;
+      }
+      #sheet .tab .muted { margin-left: auto; font-weight: 500; color: #8e8e93; font-size: 23px; }
+      #sheet table { width: 100%; border-collapse: collapse; font-size: 30px; }
+      #sheet th, #sheet td { height: 60px; padding: 0 30px; border-bottom: 1px solid #ececf0; text-align: right; }
+      #sheet th { font-size: 23px; font-weight: 600; color: #6e6e73; letter-spacing: 0.04em; text-transform: uppercase; background: #fafafc; }
+      #sheet th:first-child, #sheet td:first-child { text-align: left; }
+      #sheet td:first-child { font-weight: 500; }
+      #sheet tr.total td { font-weight: 700; border-bottom: none; background: #f5f5fa; }
+      #sheet td { font-variant-numeric: tabular-nums; }
+
+      .slide {
+        position: absolute; left: 0; top: 0; width: 1280px; height: 720px;
+        background:
+          radial-gradient(900px 500px at 85% 0%, rgba(191, 90, 242, 0.20), rgba(191, 90, 242, 0) 70%),
+          linear-gradient(160deg, #161a33 0%, #121427 60%, #170f33 100%);
+        color: var(--ink);
+      }
+      .slide .eyebrow { position: absolute; left: 76px; top: 62px; font-size: 22px; font-weight: 600; letter-spacing: 0.16em; color: var(--ink3); }
+      .slide .eyebrow i { display: inline-block; width: 36px; height: 5px; border-radius: 3px; background: var(--accent); vertical-align: 5px; margin-right: 16px; }
+      .slide h1 { position: absolute; left: 76px; top: 104px; font-size: 62px; line-height: 1.08; font-weight: 700; letter-spacing: -0.025em; white-space: nowrap; }
+      .grad { background: var(--accent); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .slide .foot { position: absolute; left: 76px; right: 76px; bottom: 34px; display: flex; justify-content: space-between; font-size: 20px; color: #8e8ea0; letter-spacing: 0.04em; }
+      .chart { position: absolute; left: 76px; top: 236px; width: 780px; height: 400px; }
+      .chart .base { position: absolute; left: 0; right: 0; top: 344px; height: 2px; background: rgba(255, 255, 255, 0.16); }
+      .bar {
+        position: absolute; bottom: 56px; width: 128px; height: 0;
+        border-radius: 14px 14px 4px 4px;
+        background: linear-gradient(180deg, #4a4f7a, #343858);
+        transform-origin: 50% 100%;
+      }
+      .bar.hi { background: linear-gradient(180deg, #ffb340 0%, #ff375f 100%); box-shadow: 0 18px 50px rgba(255, 55, 95, 0.35); }
+      .bar .v { position: absolute; left: -20px; right: -20px; top: -46px; text-align: center; font-size: 29px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+      .xl { position: absolute; bottom: 0; width: 128px; text-align: center; font-size: 26px; font-weight: 500; color: var(--ink3); }
+      .kpi { position: absolute; left: 896px; top: 240px; width: 320px; }
+      .kpi .big { font-size: 116px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+      .kpi .lbl { margin-top: 12px; font-size: 26px; line-height: 1.3; color: var(--ink2); }
+      .kpi .rule { height: 1px; background: var(--line); margin: 34px 0 30px; }
+      .kpi .mid { font-size: 60px; font-weight: 700; color: var(--orange); letter-spacing: -0.03em; line-height: 1; }
+
+      #wipe { position: absolute; inset: 0; border-radius: 22px; background: var(--accent); clip-path: inset(0 100% 0 0); z-index: 3; }
+
+      /* table slide behind */
+      #slide2 { left: 320px; top: 200px; border-radius: 22px; overflow: hidden; z-index: 4; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); opacity: 0; }
+      #slide2 h1 { font-size: 48px; }
+      #slide2 .tbl { position: absolute; left: 76px; right: 76px; top: 236px; font-size: 30px; }
+      #slide2 .row { display: grid; grid-template-columns: 1.6fr repeat(4, 1fr); height: 74px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 22px; font-variant-numeric: tabular-nums; }
+      #slide2 .row > span:not(:first-child) { text-align: right; }
+      #slide2 .row.head { font-size: 22px; font-weight: 600; letter-spacing: 0.1em; color: var(--ink3); height: 56px; }
+      #slide2 .row.lead { background: rgba(255, 159, 10, 0.10); box-shadow: inset 5px 0 0 var(--orange); font-weight: 600; }
+      #slide2 .dim { position: absolute; inset: 0; background: rgba(8, 9, 18, 0.35); }
+
+      #badge {
+        position: absolute; left: 1050px; top: 884px; height: 72px; padding: 0 30px 0 18px;
+        border-radius: 36px; display: flex; align-items: center; gap: 14px;
+        background: rgba(20, 24, 40, 0.92); border: 1.5px solid rgba(48, 209, 88, 0.45);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+        font-size: 28px; font-weight: 500; color: var(--ink); z-index: 8; opacity: 0;
+      }
+      #badge .dot { width: 40px; height: 40px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; }
+      #badge .dot svg { width: 22px; height: 22px; }
+      #badge small { font-size: 28px; color: var(--ink3); font-weight: 400; }
+
+      /* ---------- scene 3: safety ---------- */
+      #doc {
+        position: absolute; left: 330px; top: 268px; width: 400px; height: 470px;
+        border-radius: 28px; background: rgba(255, 255, 255, 0.05);
+        border: 1.5px solid rgba(255, 255, 255, 0.12); opacity: 0; z-index: 2;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+      }
+      #doc .fold { position: absolute; right: -1.5px; top: -1.5px; width: 70px; height: 70px; background: linear-gradient(225deg, var(--bg1) 50%, rgba(255, 255, 255, 0.16) 50%); border-bottom-left-radius: 16px; }
+      #doc .name { position: absolute; left: 0; right: 0; bottom: 40px; text-align: center; font-family: var(--mono); font-size: 29px; color: var(--ink); }
+      #doc .ver span { position: absolute; left: 0; right: 0; }
+      #ver2 { color: var(--ok); opacity: 0; font-weight: 600; }
+      #doc .ver { position: absolute; left: 0; right: 0; bottom: 92px; height: 30px; text-align: center; font-size: 22px; color: var(--ink3); letter-spacing: 0.08em; }
+      #halo { position: absolute; inset: -3px; border-radius: 30px; border: 3px solid var(--ok); box-shadow: 0 0 60px rgba(48, 209, 88, 0.35), inset 0 0 40px rgba(48, 209, 88, 0.12); opacity: 0; }
+      #shield { position: absolute; right: -26px; bottom: 120px; width: 76px; height: 76px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); opacity: 0; }
+      #shield svg { width: 40px; height: 40px; }
+
+      #steps { position: absolute; left: 860px; top: 268px; width: 760px; opacity: 0; }
+      #steps .hd { height: 50px; position: relative; font-size: 26px; font-weight: 600; letter-spacing: 0.12em; color: var(--ink3); }
+      #steps .hd span { position: absolute; left: 0; top: 0; }
+      .step { position: relative; height: 104px; display: flex; align-items: center; gap: 28px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+      .ic { position: relative; width: 56px; height: 56px; flex: none; }
+      .ic > * { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; }
+      .ic .pend { border: 2.5px solid rgba(255, 255, 255, 0.22); }
+      .ic .okc { background: var(--ok); opacity: 0; }
+      .ic .bad { background: var(--pink); opacity: 0; }
+      .ic .rew { background: #3a3f63; opacity: 0; }
+      .ic svg { width: 30px; height: 30px; }
+      .st { position: relative; flex: 1; height: 56px; font-size: 38px; font-weight: 500; letter-spacing: -0.01em; }
+      .st span { position: absolute; left: 0; top: 2px; white-space: nowrap; }
+      .st .alt { opacity: 0; }
+      .st .alt.badtxt { color: #ff8aa0; }
+      #undo { margin-top: 36px; white-space: nowrap; display: flex; align-items: center; gap: 20px; font-size: 32px; color: var(--ink2); opacity: 0; }
+      #undo code { font-family: var(--mono); font-size: 28px; color: var(--ink); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); padding: 6px 16px; border-radius: 12px; }
+
+      /* ---------- scene 4: RTL ---------- */
+      #rtl { left: 320px; top: 200px; border-radius: 22px; overflow: hidden; z-index: 6; box-shadow: 0 50px 120px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); opacity: 0; font-family: var(--arabic); }
+      #rtl .eyebrow { left: auto; right: 76px; letter-spacing: 0; font-size: 24px; }
+      #rtl .eyebrow i { margin-right: 0; margin-left: 16px; }
+      #rtl h1 { left: auto; right: 76px; font-size: 60px; letter-spacing: 0; line-height: 1.25; top: 92px; }
+      #rtl .chart { left: auto; right: 76px; }
+      #rtl .kpi { left: 76px; text-align: right; }
+      #rtl .kpi .lbl { font-size: 25px; line-height: 1.4; }
+      #rtl .foot { flex-direction: row-reverse; letter-spacing: 0; }
+      #rtl .bar .v, #rtl .xl { font-family: var(--arabic); }
+
+      /* ---------- scene 5: end card ---------- */
+      #end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; opacity: 0; }
+      #end .logo { margin-top: 196px; width: 208px; height: 208px; filter: drop-shadow(0 30px 60px rgba(191, 90, 242, 0.35)); }
+      #end h2 { margin-top: 44px; font-size: 112px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+      #end .bar2 { margin-top: 30px; width: 320px; height: 8px; border-radius: 4px; background: var(--accent); transform-origin: 50% 50%; }
+      #end p { margin-top: 40px; font-size: 42px; font-weight: 400; color: var(--ink2); letter-spacing: -0.005em; }
+      #end p b { font-weight: 600; color: var(--ink); }
+      #end .pip { margin-top: 44px; font-family: var(--mono); font-size: 36px; color: var(--ink); background: rgba(255, 255, 255, 0.07); border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 18px; padding: 16px 34px; }
+      #end .pip span { color: var(--ink3); margin-right: 18px; }
+
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="demo" data-start="0" data-duration="15.5" data-width="1920" data-height="1080">
+      <div class="bg"></div>
+
+      <!-- persistent mini brand -->
+      <div id="mini">
+        <svg viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="mo" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff7a00"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+            <linearGradient id="mg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#1fb04b"/><stop offset="1" stop-color="#5ee38a"/></linearGradient>
+            <linearGradient id="mb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#0a6cff"/><stop offset="1" stop-color="#5ab0ff"/></linearGradient>
+          </defs>
+          <rect x="86" y="118" width="340" height="236" rx="26" fill="none" stroke="#e3e7fb" stroke-width="22"/>
+          <rect x="136" y="250" width="56" height="70" rx="12" fill="url(#mo)"/>
+          <rect x="228" y="206" width="56" height="114" rx="12" fill="url(#mg)"/>
+          <rect x="320" y="160" width="56" height="160" rx="12" fill="url(#mb)"/>
+          <rect x="230" y="360" width="52" height="36" fill="#e3e7fb"/>
+          <rect x="166" y="390" width="180" height="22" rx="11" fill="#e3e7fb"/>
+        </svg>
+        iWork Studio
+      </div>
+
+      <div class="kicker" id="k1"><b>01</b> Just ask your AI</div>
+      <div class="kicker" id="k2"><b>02</b> Designed decks from your data &amp; brand</div>
+      <div class="kicker" id="k3"><b>03</b> Never damages your file</div>
+      <div class="kicker" id="k4"><b>04</b> Arabic &amp; RTL, first-class</div>
+
+      <div class="tick" id="t1">› <em>iwork_read</em> sales.numbers</div>
+      <div class="tick" id="t2">› <em>keynote_build_deck</em> kit: brand · <em>keynote_review_deck</em></div>
+      <div class="tick" id="t3">› backup · re-read &amp; compare · atomic swap · <em>iwork_restore_backup</em></div>
+      <div class="tick" id="t4">› same deck, <em>dir: rtl</em> · Arabic text round-trips exactly</div>
+
+      <!-- ===== scene 1: prompt ===== -->
+      <div id="prompt">
+        <div class="avatar">
+          <svg viewBox="0 0 24 24"><path d="M12 2.5l2.1 6.4 6.4 2.1-6.4 2.1L12 19.5l-2.1-6.4L3.5 11l6.4-2.1z" fill="#fff"/></svg>
+        </div>
+        <div id="ptext"></div>
+        <div id="send">
+          <svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- ===== table slide (behind) ===== -->
+      <div id="slide2" class="slide">
+        <div class="eyebrow"><i></i>BY REGION · REVENUE $K</div>
+        <h1>The Gulf leads every quarter</h1>
+        <div class="tbl">
+          <div class="row head"><span>REGION</span><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span></div>
+          <div class="row lead"><span>Gulf</span><span>400</span><span>480</span><span>590</span><span>700</span></div>
+          <div class="row"><span>Europe</span><span>310</span><span>300</span><span>305</span><span>311</span></div>
+          <div class="row"><span>Levant</span><span>260</span><span>285</span><span>310</span><span>345</span></div>
+          <div class="row"><span>North Africa</span><span>190</span><span>205</span><span>225</span><span>245</span></div>
+        </div>
+        <div class="foot"><span></span><span>03</span></div>
+        <div class="dim"></div>
+      </div>
+
+      <!-- ===== shell: Numbers sheet morphs into the designed slide ===== -->
+      <div id="shell">
+        <div id="card"></div>
+        <div id="sheet">
+          <div class="tab">
+            <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+              <rect x="1.5" y="1.5" width="31" height="31" rx="7" fill="#ff9f0a"/>
+              <path d="M1.5 12h31M1.5 22h31M12 1.5v31" stroke="#fff" stroke-width="2.2"/>
+            </svg>
+            sales.numbers
+            <span class="muted">Revenue · $K</span>
+          </div>
+          <table>
+            <tr><th>Region</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr>
+            <tr class="r"><td>Gulf</td><td>400</td><td>480</td><td>590</td><td>700</td></tr>
+            <tr class="r"><td>Europe</td><td>310</td><td>300</td><td>305</td><td>311</td></tr>
+            <tr class="r"><td>Levant</td><td>260</td><td>285</td><td>310</td><td>345</td></tr>
+            <tr class="r"><td>North Africa</td><td>190</td><td>205</td><td>225</td><td>245</td></tr>
+            <tr class="r total"><td>Total</td><td>1,160</td><td>1,270</td><td>1,430</td><td>1,601</td></tr>
+          </table>
+        </div>
+
+        <div id="slide" class="slide">
+          <div class="eyebrow"><i></i>BOARD REVIEW · REVENUE $K</div>
+          <h1 id="title">Revenue up <span class="grad">38%</span> — the Gulf leads</h1>
+          <div class="chart" id="chart-ltr"><div class="base"></div></div>
+          <div class="kpi" id="kpi-ltr">
+            <div class="big grad">+38%</div>
+            <div class="lbl">revenue growth,<br />Q4 vs Q1</div>
+            <div class="rule"></div>
+            <div class="mid">44%</div>
+            <div class="lbl">of Q4 revenue came<br />from the Gulf</div>
+          </div>
+          <div class="foot"><span></span><span>02</span></div>
+        </div>
+        <div id="wipe"></div>
+      </div>
+
+      <div id="badge">
+        <div class="dot"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#0b0d17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        Design review <small>· 0 errors</small>
+      </div>
+
+      <!-- ===== scene 3: safety ===== -->
+      <div id="doc">
+        <div class="fold"></div>
+        <div class="ver"><span id="ver1">BACKUP v12 SAVED</span><span id="ver2">ORIGINAL INTACT</span></div>
+        <div class="name">board-deck.key</div>
+        <div id="halo"></div>
+        <div id="shield"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#0b0d17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div id="steps">
+        <div class="hd"><span id="hd1">EDIT 1 OF 2</span><span id="hd2" style="opacity: 0">EDIT 2 OF 2</span></div>
+        <div class="step" id="s-a">
+          <div class="ic"><div class="pend"></div><div class="okc"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#0b0d17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+          <div class="st"><span class="main">Backup saved</span></div>
+        </div>
+        <div class="step" id="s-b">
+          <div class="ic"><div class="pend"></div><div class="okc"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#0b0d17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bad"><svg viewBox="0 0 24 24"><path d="M12 6v8M12 18.2v.1" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg></div></div>
+          <div class="st"><span class="main">Re-read &amp; verified</span><span class="alt badtxt">Something didn’t match</span></div>
+        </div>
+        <div class="step" id="s-c">
+          <div class="ic"><div class="pend"></div><div class="okc"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#0b0d17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="rew"><svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v4h4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+          <div class="st"><span class="main">Swapped in atomically</span><span class="alt">Rolled back — file untouched</span></div>
+        </div>
+        <div id="undo">Undo anything in one call <code>iwork_restore_backup</code></div>
+      </div>
+
+      <!-- ===== scene 4: the same slide, mirrored RTL ===== -->
+      <div id="rtl" class="slide" dir="rtl" lang="ar">
+        <div class="eyebrow"><i></i>مراجعة مجلس الإدارة · الإيرادات بالآلاف</div>
+        <h1 id="title-ar">الإيرادات ارتفعت <span class="grad">٣٨٪</span> — الخليج في الصدارة</h1>
+        <div class="chart" id="chart-rtl"><div class="base"></div></div>
+        <div class="kpi" id="kpi-rtl">
+          <div class="big grad">٣٨٪</div>
+          <div class="lbl">نمو الإيرادات،<br />الربع الرابع مقابل الأول</div>
+          <div class="rule"></div>
+          <div class="mid">٤٤٪</div>
+          <div class="lbl">من إيرادات الربع الرابع<br />جاءت من الخليج</div>
+        </div>
+        <div class="foot"><span></span><span>٠٢</span></div>
+      </div>
+
+      <!-- ===== scene 5: end card ===== -->
+      <div id="end">
+        <svg class="logo" viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="ebg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1b2040"/><stop offset="0.55" stop-color="#151a33"/><stop offset="1" stop-color="#2a1866"/></linearGradient>
+            <linearGradient id="eo" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff7a00"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+            <linearGradient id="eg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#1fb04b"/><stop offset="1" stop-color="#5ee38a"/></linearGradient>
+            <linearGradient id="eb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#0a6cff"/><stop offset="1" stop-color="#5ab0ff"/></linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="114" fill="url(#ebg)"/>
+          <rect x="1.5" y="1.5" width="509" height="509" rx="112" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="3"/>
+          <rect x="86" y="118" width="340" height="236" rx="26" fill="none" stroke="#e3e7fb" stroke-width="16"/>
+          <rect class="lb" x="136" y="250" width="56" height="70" rx="12" fill="url(#eo)"/>
+          <rect class="lb" x="228" y="206" width="56" height="114" rx="12" fill="url(#eg)"/>
+          <rect class="lb" x="320" y="160" width="56" height="160" rx="12" fill="url(#eb)"/>
+          <rect x="230" y="360" width="52" height="36" fill="#e3e7fb"/>
+          <rect x="166" y="390" width="180" height="18" rx="9" fill="#e3e7fb"/>
+        </svg>
+        <h2>iWork Studio</h2>
+        <div class="bar2"></div>
+        <p><b>Safe, designed, Arabic-ready</b> — for Numbers, Keynote &amp; Pages</p>
+        <div class="pip"><span>$</span>pip install iwork-studio</div>
+      </div>
+
+    </div>
+
+    <script>
+      (function () {
+        // ---------- data (synthetic) ----------
+        var Q = [1160, 1270, 1430, 1601];
+        var MAX = 1601, H = 288;
+        var AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+        function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
+        function fmtAr(n) {
+          return fmt(n).replace(/,/g, "٬").replace(/[0-9]/g, function (d) { return AR_DIGITS[+d]; });
+        }
+
+        // ---------- build bar charts (LTR + mirrored RTL) ----------
+        function buildChart(el, rtl) {
+          var slotW = 195, barW = 128;
+          Q.forEach(function (v, i) {
+            var slot = rtl ? 3 - i : i;              // RTL: Q1 sits on the right
+            var x = slot * slotW + (slotW - barW) / 2;
+            var bar = document.createElement("div");
+            bar.className = "bar" + (i === 3 ? " hi" : "");
+            bar.style.left = x + "px";
+            bar.style.height = Math.round((v / MAX) * H) + "px";
+            var lab = document.createElement("div");
+            lab.className = "v";
+            lab.setAttribute("data-layout-allow-overflow", "");
+            lab.textContent = rtl ? fmtAr(v) : fmt(v);
+            bar.appendChild(lab);
+            el.appendChild(bar);
+            var xl = document.createElement("div");
+            xl.className = "xl";
+            xl.style.left = x + "px";
+            xl.textContent = rtl ? "الربع " + AR_DIGITS[i + 1] : "Q" + (i + 1);
+            el.appendChild(xl);
+          });
+        }
+        buildChart(document.getElementById("chart-ltr"), false);
+        buildChart(document.getElementById("chart-rtl"), true);
+        // the table slide sits deliberately behind the chart slide (a fanned deck)
+        document.querySelectorAll("#slide2 h1, #slide2 .row span, #title, #kpi-ltr > *").forEach(function (el) {
+          el.setAttribute("data-layout-allow-overlap", "");
+          el.setAttribute("data-layout-allow-occlusion", "");
+        });
+
+        // ---------- typed prompt: one span per character ----------
+        var parts = [
+          ["Turn ", ""], ["sales.numbers", "file"], [" into a board deck, in ", ""], ["our brand", "brand"], [".", ""]
+        ];
+        var ptext = document.getElementById("ptext");
+        var chars = [];
+        parts.forEach(function (p) {
+          var wrap = document.createElement("span");
+          if (p[1]) wrap.className = p[1];
+          p[0].split("").forEach(function (c) {
+            var s = document.createElement("span");
+            s.textContent = c;
+            s.style.display = "none";
+            wrap.appendChild(s);
+            chars.push(s);
+          });
+          ptext.appendChild(wrap);
+        });
+        var caret = document.createElement("span");
+        caret.id = "caret";
+        ptext.appendChild(caret);
+
+        // ---------- timeline ----------
+        var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+        var E = "power3.inOut";
+
+        function kick(id, tin, tout) {
+          tl.fromTo(id, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, tin);
+          if (tout != null) tl.to(id, { opacity: 0, y: -10, duration: 0.3, ease: "power2.in" }, tout);
+        }
+
+        // initial states
+        gsap.set("#prompt", { opacity: 0, y: 24 });
+        gsap.set("#shell", { opacity: 0, y: 70 });
+        gsap.set("#card, #wipe", { scaleX: 1040 / 1280, scaleY: 440 / 720, y: 32, borderRadius: "27px / 36px" });
+        gsap.set("#sheet tr", { opacity: 0, y: 10 });
+        gsap.set("#mini", { opacity: 0 });
+        gsap.set("#chart-ltr .bar", { scaleY: 0 });
+        gsap.set("#chart-ltr .bar .v, #chart-ltr .xl", { opacity: 0 });
+        gsap.set("#slide", { opacity: 0 });
+        gsap.set("#title, #slide .eyebrow, #kpi-ltr > *", { opacity: 0, y: 18 });
+        gsap.set("#title-ar", { clipPath: "inset(-30% 0% -50% 100%)" });
+        gsap.set("#end .logo", { scale: 0.86, opacity: 0 });
+        gsap.set("#end h2, #end p, #end .pip", { opacity: 0, y: 22 });
+        gsap.set("#end .bar2", { scaleX: 0 });
+        gsap.set("#slide2", { transformPerspective: 2400, transformOrigin: "100% 50%" });
+        gsap.set("#shell, #rtl", { transformPerspective: 2400 });
+
+        // ===== 1 · prompt (0 – 2.8) =====
+        tl.to("#mini", { opacity: 1, duration: 0.5 }, 0.05);
+        kick("#k1", 0.1, 2.75);
+        tl.fromTo("#t1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 1.4);
+        tl.to("#t1", { opacity: 0, duration: 0.3 }, 2.75);
+        tl.to("#prompt", { opacity: 1, y: 0, duration: 0.55 }, 0.12);
+        var t0 = 0.45, step = 0.021;
+        chars.forEach(function (c, i) { tl.set(c, { display: "inline" }, t0 + i * step); });
+        var typedEnd = t0 + chars.length * step;
+        // caret blink (deterministic)
+        [typedEnd + 0.2, typedEnd + 0.7].forEach(function (t) {
+          tl.set("#caret", { opacity: 0 }, t);
+          tl.set("#caret", { opacity: 1 }, t + 0.25);
+        });
+        tl.to("#send", { backgroundColor: "#ff375f", scale: 1.08, duration: 0.2, ease: "power2.out" }, typedEnd + 0.05);
+        tl.to("#send", { scale: 1, duration: 0.25, ease: "power2.inOut" }, typedEnd + 0.25);
+        tl.to("#shell", { opacity: 1, y: 0, duration: 0.7 }, 1.15);
+        tl.to("#sheet tr", { opacity: 1, y: 0, duration: 0.4, stagger: 0.06 }, 1.3);
+
+        // ===== 2 · designed slide (2.8 – 6.4) =====
+        tl.to("#prompt", { opacity: 0, y: -30, duration: 0.45, ease: "power2.in" }, 2.8);
+        kick("#k2", 3, 6.3);
+        tl.fromTo("#t2", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 3.3);
+        tl.to("#t2", { opacity: 0, duration: 0.3 }, 6.3);
+        // shell grows from sheet into a 16:9 slide
+        tl.to("#sheet", { scale: 1280 / 1040, y: -32, duration: 0.8, ease: E }, 2.9);
+        tl.set("#sheet", { opacity: 0 }, 3.54);
+        tl.to("#card, #wipe", { scaleX: 1, scaleY: 1, y: 0, borderRadius: "22px / 22px", duration: 0.8, ease: E }, 2.9);
+        // brand colour wipe hides the content swap
+        tl.to("#wipe", { clipPath: "inset(0 0% 0 0)", duration: 0.42, ease: "power2.in" }, 3.12);
+        tl.set("#card", { backgroundColor: "#141831" }, 3.54);
+        tl.set("#slide", { opacity: 1 }, 3.54);
+        tl.to("#wipe", { clipPath: "inset(0 0 0 100%)", duration: 0.48, ease: "power2.out" }, 3.54);
+        tl.to("#slide .eyebrow", { opacity: 1, y: 0, duration: 0.45 }, 3.8);
+        tl.to("#title", { opacity: 1, y: 0, duration: 0.55 }, 3.86);
+        tl.to("#chart-ltr .bar", { scaleY: 1, duration: 0.7, stagger: 0.09, ease: "power3.out" }, 4.05);
+        tl.to("#chart-ltr .bar .v, #chart-ltr .xl", { opacity: 1, duration: 0.35, stagger: 0.05 }, 4.3);
+        tl.to("#kpi-ltr > *", { opacity: 1, y: 0, duration: 0.5, stagger: 0.07 }, 4.45);
+        // the table slide flips in behind; the deck fans out
+
+        tl.fromTo("#slide2", { opacity: 0, rotationY: -70, x: 250, y: -26, scale: 0.84 },
+                  { opacity: 1, rotationY: 0, x: 250, y: -26, scale: 0.84, duration: 0.8, ease: E }, 5);
+        tl.to("#shell", { x: -110, duration: 0.8, ease: E }, 5);
+        tl.fromTo("#badge", { opacity: 0, y: 16, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45 }, 5.55);
+
+        // ===== 3 · safety (6.4 – 9.8) =====
+        kick("#k3", 6.55, 10);
+        tl.fromTo("#t3", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 6.9);
+        tl.to("#t3", { opacity: 0, duration: 0.3 }, 10);
+        tl.to("#badge", { opacity: 0, y: 10, duration: 0.3, ease: "power2.in" }, 6.35);
+        tl.to("#slide2", { opacity: 0, x: 330, duration: 0.45, ease: "power2.in" }, 6.4);
+        // the slide shrinks into the file's thumbnail
+        tl.to("#shell", { x: 530 - 960, y: 440 - 560, scale: 0.25, duration: 0.75, ease: E }, 6.45);
+        tl.to("#card, #slide", { borderRadius: 60, duration: 0.75, ease: E }, 6.45);
+        tl.fromTo("#doc", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.5 }, 6.85);
+        tl.fromTo("#steps", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5 }, 6.9);
+        // pass 1: all green
+        ["#s-a", "#s-b", "#s-c"].forEach(function (s, i) {
+          tl.to(s + " .okc", { opacity: 1, duration: 0.22, ease: "power2.out" }, 7.25 + i * 0.22);
+          tl.fromTo(s + " .okc", { scale: 0.6 }, { scale: 1, duration: 0.3, ease: "back.out(2)" }, 7.25 + i * 0.22);
+        });
+        // pass 2: verify fails → rolled back
+        var p2 = 7.9;
+        tl.to("#hd1", { opacity: 0, duration: 0.2 }, p2);
+        tl.to("#hd2", { opacity: 1, duration: 0.2 }, p2 + 0.1);
+        tl.to("#s-a .okc, #s-b .okc, #s-c .okc", { opacity: 0, duration: 0.2 }, p2);
+        tl.to("#s-a .okc", { opacity: 1, duration: 0.2 }, p2 + 0.25);
+        tl.to("#s-b .main", { opacity: 0, duration: 0.2 }, p2 + 0.45);
+        tl.to("#s-b .alt", { opacity: 1, duration: 0.25 }, p2 + 0.5);
+        tl.fromTo("#s-b .bad", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, p2 + 0.45);
+        tl.to("#s-c .main", { opacity: 0, duration: 0.2 }, p2 + 0.8);
+        tl.to("#s-c .alt", { opacity: 1, duration: 0.25 }, p2 + 0.85);
+        tl.fromTo("#s-c .rew", { opacity: 0, rotation: 200 }, { opacity: 1, rotation: 0, duration: 0.5, ease: "power3.out" }, p2 + 0.8);
+        tl.to("#halo", { opacity: 1, duration: 0.45 }, p2 + 0.9);
+        tl.to("#ver1", { opacity: 0, duration: 0.2 }, p2 + 0.9);
+        tl.to("#ver2", { opacity: 1, duration: 0.3 }, p2 + 1.0);
+        tl.fromTo("#shield", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.8)" }, p2 + 1.0);
+        tl.fromTo("#undo", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, p2 + 1.1);
+
+        // ===== 4 · Arabic RTL (9.8 – 12.6) =====
+        kick("#k4", 10.25, 13);
+        tl.fromTo("#t4", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 10.6);
+        tl.to("#t4", { opacity: 0, duration: 0.3 }, 13);
+        tl.to("#steps", { opacity: 0, x: 30, duration: 0.35, ease: "power2.in" }, 10.05);
+        tl.to("#doc", { opacity: 0, scale: 0.96, duration: 0.35, ease: "power2.in" }, 10.1);
+        tl.to("#shell", { x: 0, y: 0, scale: 1, duration: 0.6, ease: E }, 10.15);
+        tl.to("#card, #slide", { borderRadius: 22, duration: 0.6, ease: E }, 10.15);
+        // mirror flip
+        tl.to("#shell", { rotationY: 90, duration: 0.3, ease: "power2.in" }, 10.8);
+        tl.set("#shell", { opacity: 0 }, 11.1);
+        tl.fromTo("#rtl", { opacity: 0, rotationY: -90 }, { opacity: 1, rotationY: 0, duration: 0.4, ease: "power2.out" }, 11.1);
+        tl.to("#title-ar", { clipPath: "inset(-30% 0% -50% 0%)", duration: 0.65, ease: "power2.inOut" }, 11.3);
+
+        // ===== 5 · end card (12.6 – 15) =====
+        tl.to("#rtl", { opacity: 0, scale: 0.96, duration: 0.4, ease: "power2.in" }, 13.05);
+        tl.to("#mini", { opacity: 0, duration: 0.3 }, 13.05);
+        tl.set("#end", { opacity: 1 }, 13.4);
+        tl.to("#end .logo", { opacity: 1, scale: 1, duration: 0.6 }, 13.4);
+        tl.fromTo("#end .lb", { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: 0.5, stagger: 0.07 }, 13.55);
+        tl.to("#end h2", { opacity: 1, y: 0, duration: 0.5 }, 13.6);
+        tl.to("#end .bar2", { scaleX: 1, duration: 0.55, ease: E }, 13.75);
+        tl.to("#end p", { opacity: 1, y: 0, duration: 0.5 }, 13.85);
+        tl.to("#end .pip", { opacity: 1, y: 0, duration: 0.5 }, 14);
+        // fade to the opening background for a clean loop
+        tl.to("#end", { opacity: 0, duration: 0.4, ease: "power1.in" }, 15.05);
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["demo"] = tl;
+        tl.seek(0);
+      })();
+    </script>
+  </body>
+</html>

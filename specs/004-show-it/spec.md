@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-12
 
-**Status**: In progress (GIF in production)
+**Status**: GIF done (US1); gallery (US2) next
 
 **Target release**: v2.6.2 (GIF) / v2.7.x (gallery)
 
