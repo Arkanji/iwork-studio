@@ -58,21 +58,23 @@ MCP Registry name: `io.github.Arkanji/iwork-studio`
 
 ## Directories
 
-Ordered by reach per minute. Each entry was checked on 2026-10-13; anything marked *unverified*
-couldn't be confirmed from the site itself.
+Status as of 2026-10-13. Re-check pending reviews after two weeks.
 
-| # | Directory | What to do | Notes |
-|---|---|---|---|
-| 1 | **skills.sh** | Run once: `npx skills add Arkanji/iwork-studio --skill iwork-studio` | No form. The leaderboard counts installs, so the listing appears after the first one. Always pass `--skill iwork-studio`. Also feeds the Hermes Agent Skills Hub. |
-| 2 | **Glama** | Nothing to submit (already listed). To claim it: open the server's page on glama.ai, sign in with GitHub, click **Claim ownership** | Uses `glama.json` (already on `main`). Re-claim after editing that file. |
-| 3 | **mcp.so** | Form: https://mcp.so/submit, paste the GitHub URL | Takes public GitHub servers. Other fields *unverified*. |
-| 4 | **mcpservers.org** | Form: https://mcpservers.org/submit | Fields: name, category (Productivity), short description, repo link, MCP Registry name (`io.github.Arkanji/iwork-studio`), leave "remote" unticked, contact email. Choose the free plan (review within about 2 weeks). No PRs accepted. |
-| 5 | **LobeHub** | In Terminal: `npx -y @lobehub/market-cli login`, then `npx -y @lobehub/market-cli github connect`, then `npx -y @lobehub/market-cli plugin submit https://github.com/Arkanji/iwork-studio` | Import takes a few minutes; check with `… plugin list --output json`. GitHub issues asking for a listing get closed. |
-| 6 | **cursor.directory** | https://cursor.directory/plugins/new, sign in, paste the repo URL | Reads `.mcp.json` as the install config (it points at the PyPI package). |
-| 7 | **PulseMCP** | Probably nothing: it pulls from the official MCP Registry, where we're listed | Its submit form was reported paused in October 2026 (*unverified*). Check pulsemcp.com in a week. |
-| — | **Smithery** | Optional, later | Local servers are listed only as an uploaded `.mcpb` (`smithery mcp publish ./iwork-studio-<version>.mcpb -n <your-org>/iwork-studio`). Our bundle's `"type": "uv"` may be rejected (*unverified*); try it once and tell us the error. |
-| ✅ | awesome-mcp-servers (punkpeye) | Done (merged 2026-10-08) | |
-| ✅ | Official MCP Registry | Done (published by every release) | |
+| Directory | Status | Notes |
+|---|---|---|
+| Official MCP Registry | ✅ Listed | Published by every release |
+| awesome-mcp-servers (punkpeye) | ✅ Listed | Merged 2026-10-08 |
+| Glama | ✅ Claimed | Verified owner. Its README copy refreshes on its own crawl (Admin tab may offer a sync). Its quality score marks tool count 2/5 |
+| skills.sh | ✅ Installed once | Appears once its install count catches up. Always use `npx skills add Arkanji/iwork-studio --skill iwork-studio` |
+| cursor.directory | ⏳ Submitted | Public after their security scan. Reads `.mcp.json` |
+| mcpservers.org | ⏳ Submitted (free plan) | Review within about 2 weeks, email on approval |
+| mcp.so | ⏳ Free ticket sent | Listing itself is paid ($39); not worth it. Leave the ticket |
+| PulseMCP | — Nothing to do | Pulls from the official Registry |
+| LobeHub | ✗ Skipped | Its GitHub connect asks for private-repo access. Revisit only if it offers public-only access |
+| Smithery | — Later, optional | Local servers only as an uploaded `.mcpb`; our `"type": "uv"` may be rejected |
+
+**Rule for any directory:** GitHub sign-in with profile and email is fine; never grant repository
+access (public or private) for a listing.
 
 ## Screenshots, in this order
 
