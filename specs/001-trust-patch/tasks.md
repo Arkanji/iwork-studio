@@ -39,7 +39,7 @@
 - [x] T016 Docs: CHANGELOG 2.6.1, README safety section (backup location and env), capability matrix, jxa-traps (P3 confirmed or not), AGENTS rules
 - [x] T017 Bump to 2.6.1 in every version file; ruff and the headless suite green
 - [x] T018 Owner live check on the Mac: aqua tests (`-k "trust or pages or sort or formula"`), then record the result in `specs/ROADMAP.md`
-- [ ] T019 Merge, tag v2.6.1, verify PyPI, Registry, GitHub release and plugin
+- [x] T019 Merge, tag v2.6.1, verify PyPI, Registry, GitHub release and plugin
 
 ## Dependencies
 

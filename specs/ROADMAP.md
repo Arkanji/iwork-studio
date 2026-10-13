@@ -11,9 +11,9 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 
 | # | Feature | Release | Status | Spec |
 |---|---|---|---|---|
-| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ✅ live check passed 2026-10-13; releasing | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
-| 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.1 | ✅ GIF (3.2 MB, 15.5 s) + MP4 1080p; rebuild with `assets/demo/render.sh` | [spec](004-show-it/spec.md) |
-| 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.1 (ships with the trust patch) | 🔨 built; GIF slot + chart probe pending | [spec](002-front-door/spec.md) · [tasks](002-front-door/tasks.md) |
+| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ✅ released 2026-10-13 (PyPI, Registry, GitHub .mcpb, plugin) | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
+| 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.1 | ✅ released; GIF (3.2 MB, 15.5 s) + MP4 1080p; rebuild with `assets/demo/render.sh` | [spec](004-show-it/spec.md) |
+| 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.1 | ✅ released (chart probe + owner actions pending) | [spec](002-front-door/spec.md) · [tasks](002-front-door/tasks.md) |
 
 ## Next
 
@@ -90,3 +90,4 @@ chasing the competitor's tool count · default-on telemetry.
 - 2026-10-12: Review by product engineer, PM and CPO agents; constitution 1.0.0; specs 001–006 written; GIF production started.
 - 2026-10-12: 001 built (36 regression tests); 002 mostly built. Found and removed more identity leaks: the company's Arabic name, its taglines and brand pillars were used as sample text in README and tests (a guard test now blocks them in English and Arabic). New bug found by the prune test: same-second backups reused pruned names (fixed).
 - 2026-10-13: Identity cleanup. Git history rewritten (git-filter-repo replace-text; verified 0 leftovers in English and Arabic across every commit) and force-pushed; GitHub releases + tags v2.2.0–v2.6.0 deleted (v2.0.0/v2.1.0 predate the leak and are clean). Owner: delete PyPI 2.2.0–2.6.0 on pypi.org; 2.6.1 will be the first clean release.
+- 2026-10-13: v2.6.1 released (trust patch + front door + demo). PyPI still lists 2.3.0–2.6.0 until the owner deletes them on pypi.org.
