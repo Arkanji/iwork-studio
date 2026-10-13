@@ -188,6 +188,13 @@ def test_timeout_message_has_no_script_or_secret(monkeypatch):
     assert "s3cret-pw" not in str(exc.value) and "return 1" not in str(exc.value)
 
 
+def test_apple_event_timeout_is_an_app_timeout(monkeypatch):
+    monkeypatch.setattr(safety.subprocess, "run", lambda cmd, **kw: _R(1, "", "execution error: Error: AppleEvent timed "
+                                                                              "out. (-1712)"))
+    with pytest.raises(safety.AppTimeoutError, match="dialog"):
+        safety.run_jxa("Pages", "return 1;", {})
+
+
 def test_automation_denied_has_a_hint(monkeypatch):
     monkeypatch.setattr(safety.subprocess, "run", lambda cmd, **kw: _R(1, "", "execution error: Not authorized "
                                                                               "to send Apple events (-1743)"))
@@ -364,7 +371,7 @@ def test_live_trust_open_numbers_file_is_refused(tmp_path):
 def test_live_trust_pages_replace_keeps_other_paragraphs_formatting(tmp_path):
     p = tmp_path / "styled.pages"
     p.write_bytes(PAGES_SRC.read_bytes())
-    pages_io.edit_pages_body(p, new_body="alpha one\rbeta two\rgamma three")
+    pages_io.edit_pages_body(p, mode="set_body", new_body="alpha one\rbeta two\rgamma three")
     style = """  const doc = app.open(Path(params.p));
   const par = doc.bodyText.paragraphs[2];
   par.font = 'Courier'; par.size = 30;

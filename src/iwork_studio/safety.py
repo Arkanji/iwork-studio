@@ -58,6 +58,9 @@ def run_jxa(kind: str, body: str, params: dict, timeout: int = 300, *, raw: bool
             raise AutomationDeniedError(
                 f"macOS isn't letting iWork Studio control {kind}. Allow it in System Settings → Privacy & "
                 "Security → Automation (your AI app → " + kind + "), then try again.")
+        if "-1712" in err:  # the app didn't answer an Apple event in time: almost always a dialog
+            raise AppTimeoutError(f"{kind} didn't answer (AppleEvent timed out, -1712). A dialog may be open in "
+                                  f"{kind}; bring it to the front and dismiss it, then try again.")
         raise RuntimeError(f"{kind} scripting failed (rc={r.returncode}): {err[:500]}")
     out = r.stdout.strip()
     return out if raw else json.loads(out or "{}")
