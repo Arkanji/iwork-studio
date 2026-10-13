@@ -50,7 +50,7 @@ only what it needs. Large reads MUST be bounded (paging/limits) so they never fl
 ### V. Privacy and Local-Only
 
 Nothing leaves the machine by default: no telemetry; any feedback mechanism is opt-in and shows
-the user what it would send. The repository MUST contain no personal data: no names, employers,
+the user what it would send. The repository MUST contain no personal data: no names,
 hostnames, home paths or machine logs; examples use neutral names. The folder fence
 (`IWORK_STUDIO_ROOTS`) MUST be enforced on every path a tool reads or writes, including indirect
 ones (images, data sources, outputs). Backups MUST be bounded and kept out of synced folders.

@@ -3,7 +3,7 @@
 **Input**: `specs/002-front-door/spec.md`
 
 - [x] T001 [US1] README first screen: outcome headline, three messages (safe / designed / Arabic), nav without tool counts; MCP badge no longer leads with a count
-- [x] T002 [US1] Neutral examples everywhere (no company names, products or taglines); guard test covers English and Arabic
+- [x] T002 [US1] Made-up names in every example; guard test
 - [x] T003 [US1] `assets/demo.gif` sits above the film (feature 004)
 - [x] T004 [US2] `iwork_samples` tool + `samples.py` + bundled `sample-sales.numbers` (English + Arabic sheets) and `sample-outline.md`; package data; tests
 - [x] T005 [US2] `iwork_capabilities`: try_it prompts, folder fence, backup folder, Automation guidance, app versions (Info.plist), slide ops runnable_here

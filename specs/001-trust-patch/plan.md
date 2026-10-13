@@ -39,7 +39,7 @@ the edited cell, timeout handling that leaks nothing, PyPI installs, honest docs
 | II. Honest claims | dry_run exceptions documented; results report read-back values |
 | III. Tests prove it | Headless tests for every fix; Pages per-paragraph replace and open guard need the owner's live check |
 | IV. Agent-first | New errors are typed with hints (`DocumentOpenError`, `AutomationDeniedError`, `AppTimeoutError`) |
-| V. Privacy | Backups leave synced folders; secrets never on command lines; employer name removed; fence covers deck inputs |
+| V. Privacy | Backups leave synced folders; secrets never on command lines; examples use made-up names; fence covers deck inputs |
 | VI. Arabic | Paragraph rewrite keeps Arabic text exact (tests with Arabic paragraphs) |
 
 Result: PASS. No exceptions.

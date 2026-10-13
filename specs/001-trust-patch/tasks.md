@@ -32,7 +32,7 @@
 ## Phase 5: US7–US8 (P2/P3)
 
 - [x] T014 [US7] `installer.SOURCE` → `iwork-studio==<version>`; `install.sh` → `uvx --from iwork-studio@latest`; README, AGENTS, mcp_server docstring and llms.txt install lines use PyPI; test
-- [x] T015 [US8] Server instructions name the writes without `dry_run`; hints for `AutomationDeniedError` and `AppTimeoutError`; remove the employer name from README examples (neutral "Acme"); a test fails if it reappears
+- [x] T015 [US8] Server instructions name the writes without `dry_run`; hints for `AutomationDeniedError` and `AppTimeoutError`; examples use made-up names ("Acme"); a guard test
 
 ## Phase 6: Polish and release
 

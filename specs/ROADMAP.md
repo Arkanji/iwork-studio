@@ -29,15 +29,13 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 | Action | When | Status |
 |---|---|---|
 | Update the GitHub About box + topics (text in `docs/listing.md`) | now | 📋 |
-| Submit to mcp.so, PulseMCP, Smithery, Cursor directory, LobeHub, mcpservers.org | after 002 | 📋 |
-| `npx skills add Arkanji/iwork-studio` once (skills.sh listing; feeds Hermes Skills Hub) | anytime | 📋 |
+| Directory listings: follow `docs/listing.md` (mcp.so, mcpservers.org, LobeHub CLI, cursor.directory; claim Glama) | now | 📋 |
+| `npx skills add Arkanji/iwork-studio --skill iwork-studio` once (skills.sh listing; feeds the Hermes Skills Hub) | now | 📋 |
 | Turn on GitHub Discussions | now | 📋 |
 | Add the `TRAFFIC_TOKEN` secret (fine-grained, Administration: read) for the weekly traffic snapshot | now | 📋 |
 | Live Mac check for each release (aqua tests + probes) | each release | — |
 | Launch posts (Show HN, r/ClaudeAI, r/macapps, Arabic X/LinkedIn) | after 004 + 005 | 📋 |
 | awesome-mcp-servers listing | — | ✅ merged 2026-10-08 |
-| Delete PyPI releases 2.2.0–2.6.0 (pypi.org → iwork-studio → Releases → Options → Delete) | now | 📋 |
-| Reset the Mac clone to the rewritten history (`git fetch && git checkout main && git reset --hard origin/main`, after `git status` is clean) | now | 📋 |
 
 ## Waiting on a live check (⏳)
 
@@ -88,6 +86,5 @@ chasing the competitor's tool count · default-on telemetry.
 ## Log
 
 - 2026-10-12: Review by product engineer, PM and CPO agents; constitution 1.0.0; specs 001–006 written; GIF production started.
-- 2026-10-12: 001 built (36 regression tests); 002 mostly built. Found and removed more identity leaks: the company's Arabic name, its taglines and brand pillars were used as sample text in README and tests (a guard test now blocks them in English and Arabic). New bug found by the prune test: same-second backups reused pruned names (fixed).
-- 2026-10-13: Identity cleanup. Git history rewritten (git-filter-repo replace-text; verified 0 leftovers in English and Arabic across every commit) and force-pushed; GitHub releases + tags v2.2.0–v2.6.0 deleted (v2.0.0/v2.1.0 predate the leak and are clean). Owner: delete PyPI 2.2.0–2.6.0 on pypi.org; 2.6.1 will be the first clean release.
-- 2026-10-13: v2.6.1 released (trust patch + front door + demo). PyPI still lists 2.3.0–2.6.0 until the owner deletes them on pypi.org.
+- 2026-10-12: 001 built (36 regression tests); 002 mostly built. Examples made neutral, with a guard test. New bug found by the prune test: same-second backups reused pruned names (fixed).
+- 2026-10-13: v2.6.1 released (trust patch + front door + demo).

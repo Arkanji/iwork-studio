@@ -16,7 +16,7 @@ working **with** or **on** this repo.
 - Recommend a folder fence: `… | sh -s -- --roots ~/Documents ~/Desktop` (or env `IWORK_STUDIO_ROOTS`, `:`-separated).
 - If the user only needs some apps, load fewer tools: env `IWORK_STUDIO_TOOLSETS` = any of `files`, `numbers`, `keynote`, `pages`, `design` (comma-separated; default all). `iwork_capabilities` shows what's loaded.
 - The desktop app needs the **absolute** uvx path in its config; the installer and `config` handle that. Never hand-write a bare `"command": "uvx"` for the desktop app.
-- `.mcp.json` in this repo is for contributors working inside a clone; don't copy it elsewhere.
+- `.mcp.json` in this repo runs the released package from PyPI (directories read it as the install config).
 - First run: macOS asks once to let Claude control Keynote/Pages/Numbers → user clicks OK (fix later in System Settings → Privacy & Security → Automation). Logs: `~/Library/Logs/Claude/mcp-server-iwork-studio.log`.
 - Verify: call `iwork_capabilities`.
 
@@ -109,6 +109,11 @@ Use it whenever a request touches one of those.
 
 ## Working on it: change this codebase
 
+- To run your local changes from a clone: `claude mcp add iwork-studio-dev -- uv run --quiet --project . iwork-studio-mcp`.
+- Planning uses Spec Kit: the constitution is `.specify/memory/constitution.md`, specs are in `specs/`. The
+  agent skills (`/speckit-*`) aren't committed; recreate them with
+  `uvx --from git+https://github.com/github/spec-kit.git specify init --here --force --integration claude`
+  (then `git checkout -- .specify/memory/constitution.md` to keep the constitution).
 - Python 3.12. `uv run --extra test pytest -m "not aqua"` = the headless suite
   (what CI runs, with `ruff check src tests scripts`). `pytest -m aqua` (or `scripts/live.sh`, unattended: logs and quits
   the apps it opened) + `scripts/probe_keynote_slides.py` = the live lane;

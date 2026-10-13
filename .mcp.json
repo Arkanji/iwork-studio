@@ -2,8 +2,8 @@
   "mcpServers": {
     "iwork-studio": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--quiet", "--project", ".", "iwork-studio-mcp"]
+      "command": "uvx",
+      "args": ["--from", "iwork-studio@latest", "iwork-studio-mcp"]
     }
   }
 }

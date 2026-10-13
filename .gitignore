@@ -7,3 +7,7 @@ build/
 dist/
 playground/
 .venv/
+# Spec Kit agent skills: dev tooling, regenerated locally (see AGENTS.md); kept out of the
+# repo so skill directories (npx skills, cursor.directory) only find iWork Studio's skill
+.claude/skills/speckit-*/
+.github/skills/

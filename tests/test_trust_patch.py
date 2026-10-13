@@ -321,7 +321,7 @@ def test_server_instructions_name_writes_without_dry_run():
     assert "dry_run" in text and "iwork_restore_backup" in text and "iwork_export" in text
 
 
-def test_no_employer_or_personal_names_in_the_repo():
+def test_examples_use_made_up_names():
     banned = ["".join(["Re", "sal"]).lower()]
     roots = ["src", "tests", "skill-pack", "specs", "scripts", "mcpb", "assets", ".specify/memory"]
     files = [REPO / f for f in ["README.md", "AGENTS.md", "llms.txt", "CHANGELOG.md", "PRIVACY.md", "server.json",

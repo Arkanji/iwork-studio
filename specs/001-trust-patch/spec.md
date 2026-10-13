@@ -12,8 +12,7 @@
 anything else". Edits made without the app can be silently overwritten; Pages find/replace
 wipes formatting; backups grow without limit inside synced folders; one tool skips the folder
 fence; the most-used write doesn't check the cell it edited; a timeout can leak an export
-password; the installer runs unreleased code; docs overclaim dry_run; the README names an
-employer.
+password; the installer runs unreleased code; docs overclaim dry_run; examples use real-world names.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -162,14 +161,14 @@ released package from PyPI.
 
 ### User Story 8 - The docs only promise what's true (Priority: P3)
 
-The server instructions say every write takes `dry_run`, but some don't. The README uses an
-employer's name in example prompts. After this feature, the docs name the writes without
+The server instructions say every write takes `dry_run`, but some don't. Some examples use
+real-world names. After this feature, the docs name the writes without
 `dry_run`, and examples use neutral names.
 
 **Acceptance Scenarios**:
 
 1. **Given** the server instructions, **Then** they list the writes that don't take `dry_run`.
-2. **Given** the repository, **Then** no employer or personal name appears in examples.
+2. **Given** the repository, **Then** examples use only made-up names.
 
 ### Edge Cases
 
@@ -210,7 +209,7 @@ employer's name in example prompts. After this feature, the docs name the writes
 - **FR-011**: The installer and documented install commands MUST install from PyPI; the
   installer MUST pin the version that wrote the config.
 - **FR-012**: Server instructions MUST name the writes that don't take `dry_run`.
-- **FR-013**: The repository MUST contain no employer or personal names in examples.
+- **FR-013**: Examples MUST use only made-up names.
 
 ### Key Entities
 
