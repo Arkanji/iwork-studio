@@ -1,0 +1,42 @@
+name: Roadmap board
+
+# Keeps the "iWork Studio roadmap" GitHub Project's Attractiveness and Quadrant columns
+# computed from Vision Fit + Market Signals + Financial Potential and Sprints
+# (GitHub Projects has no formula fields). Run it with mode "setup" once to create the
+# board from specs/roadmap.json.
+#
+# Needs one secret: ROADMAP_TOKEN, a classic token with the `project` scope (add `repo`
+# to also link the board to this repository).
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "setup (create the board) or score (recompute the quadrant)"
+        default: score
+        type: choice
+        options: [score, setup]
+
+permissions:
+  contents: read
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the token
+        env:
+          ROADMAP_TOKEN: ${{ secrets.ROADMAP_TOKEN }}
+        run: |
+          if [ -z "$ROADMAP_TOKEN" ]; then
+            echo "::error::Add a ROADMAP_TOKEN secret (classic token, project scope) — see the comment at the top of roadmap.yml"
+            exit 1
+          fi
+      - name: Run
+        env:
+          ROADMAP_TOKEN: ${{ secrets.ROADMAP_TOKEN }}
+        run: python3 scripts/roadmap_project.py "${{ inputs.mode || 'score' }}"

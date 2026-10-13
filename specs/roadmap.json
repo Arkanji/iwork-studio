@@ -1,0 +1,30 @@
+{
+  "project": "iWork Studio roadmap",
+  "scoring": "Attractiveness Playbook: Vision Fit + Market Signals + Financial Potential (1-5 each, /15) vs Sprints. Attractiveness >= 11 is high; Sprints <= 1.5 is high feasibility. Gold Mine = high + high; Quick Win = lower + high; Big Bet = high + low; Trap = lower + low.",
+  "items": [
+    {"title": "Trust patch: open-file guard, private bounded backups, cell read-back, safe timeouts", "vf": 5, "ms": 4, "fp": 2, "sprints": 1.5, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/001-trust-patch/spec.md"},
+    {"title": "Pages find and replace keeps formatting (per paragraph)", "vf": 5, "ms": 3, "fp": 1, "sprints": 1, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/001-trust-patch/spec.md"},
+    {"title": "Install from PyPI (no developer tools, pinned version)", "vf": 5, "ms": 4, "fp": 2, "sprints": 0.5, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/001-trust-patch/spec.md"},
+    {"title": "README first screen, About box and topics", "vf": 4, "ms": 5, "fp": 1, "sprints": 0.1, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/002-front-door/spec.md"},
+    {"title": "Samples, try-it prompts and an honest iwork_capabilities", "vf": 4, "ms": 4, "fp": 1, "sprints": 0.5, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/002-front-door/spec.md"},
+    {"title": "Feedback loop: issue templates, Discussions, weekly traffic snapshots", "vf": 4, "ms": 3, "fp": 2, "sprints": 0.5, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/002-front-door/spec.md"},
+    {"title": "Demo GIF (HyperFrames)", "vf": 5, "ms": 5, "fp": 3, "sprints": 0.5, "status": "Done", "track": "Now", "release": "v2.6.1", "spec": "specs/004-show-it/spec.md"},
+    {"title": "MCP directory listings (mcp.so, mcpservers.org, LobeHub, cursor.directory, Glama claim)", "vf": 4, "ms": 4, "fp": 1, "sprints": 0.5, "status": "In Progress", "track": "Now", "release": "", "spec": "docs/listing.md"},
+    {"title": "skills.sh listing (also feeds the Hermes Skills Hub)", "vf": 4, "ms": 3, "fp": 1, "sprints": 0.25, "status": "Todo", "track": "Now", "release": "", "spec": "docs/listing.md"},
+    {"title": "Numbers chart probe (settle what scripting can do)", "vf": 4, "ms": 4, "fp": 2, "sprints": 0.5, "status": "In Progress", "track": "Now", "release": "", "spec": "specs/002-front-door/spec.md"},
+    {"title": "One call per slide: add_slide with layout and text, batch reorder", "vf": 5, "ms": 4, "fp": 1, "sprints": 1, "status": "Todo", "track": "Next", "release": "v2.7.0", "spec": "specs/003-agent-efficiency/spec.md"},
+    {"title": "Batch cell writes", "vf": 4, "ms": 4, "fp": 2, "sprints": 1, "status": "Todo", "track": "Next", "release": "v2.7.0", "spec": "specs/003-agent-efficiency/spec.md"},
+    {"title": "Paged reads for big files (iwork_read range and limits)", "vf": 4, "ms": 3, "fp": 1, "sprints": 0.5, "status": "Todo", "track": "Next", "release": "v2.7.0", "spec": "specs/003-agent-efficiency/spec.md"},
+    {"title": "Formulas that tell the truth (errors, comma-decimal locales)", "vf": 5, "ms": 3, "fp": 1, "sprints": 1.5, "status": "Todo", "track": "Next", "release": "v2.7.0", "spec": "specs/003-agent-efficiency/spec.md"},
+    {"title": "Gallery of decks it made + launch posts", "vf": 5, "ms": 5, "fp": 3, "sprints": 1.5, "status": "Todo", "track": "Next", "release": "v2.7.x", "spec": "specs/004-show-it/spec.md"},
+    {"title": "Arabic README and landing + Arabic sample deck", "vf": 5, "ms": 4, "fp": 3, "sprints": 1, "status": "Todo", "track": "Next", "release": "v2.8.0", "spec": "specs/005-arabic-and-kits/spec.md"},
+    {"title": "Six new design kits (two Arabic-first)", "vf": 5, "ms": 3, "fp": 4, "sprints": 1, "status": "Todo", "track": "Next", "release": "v2.8.0", "spec": "specs/005-arabic-and-kits/spec.md"},
+    {"title": "Numbers breadth: real dates, rename, clear, checkbox cells", "vf": 3, "ms": 3, "fp": 1, "sprints": 1, "status": "Todo", "track": "Later", "release": "v2.8.x", "spec": "specs/006-numbers-breadth/spec.md"},
+    {"title": "Opt-in iwork_feedback (local only, pre-filled issue)", "vf": 3, "ms": 2, "fp": 2, "sprints": 1, "status": "Todo", "track": "Later", "release": "v2.8.x", "spec": "specs/006-numbers-breadth/spec.md"},
+    {"title": "Hermes portable plugin + catalog PR", "vf": 3, "ms": 2, "fp": 1, "sprints": 1.5, "status": "Todo", "track": "Later", "release": "", "spec": "specs/006-numbers-breadth/spec.md"},
+    {"title": "Homebrew tap and docs site", "vf": 3, "ms": 2, "fp": 1, "sprints": 1.5, "status": "Todo", "track": "Later", "release": "", "spec": ""},
+    {"title": "Anthropic directory (after a clean-Mac .mcpb test)", "vf": 5, "ms": 5, "fp": 3, "sprints": 2, "status": "Todo", "track": "Parked", "release": "", "spec": ""},
+    {"title": "Edit the document while it's open", "vf": 5, "ms": 5, "fp": 3, "sprints": 2.5, "status": "Todo", "track": "Parked", "release": "", "spec": ""},
+    {"title": "Slide shapes: position, align, resize", "vf": 5, "ms": 4, "fp": 2, "sprints": 2, "status": "Todo", "track": "Parked", "release": "", "spec": ""}
+  ]
+}

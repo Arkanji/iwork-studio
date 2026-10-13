@@ -5,6 +5,10 @@ re-analyse. Specs live in `specs/NNN-*/`; the rules are in `.specify/memory/cons
 Priorities come from the Attractiveness Playbook (Vision Fit + Market Signals + Financial
 Potential vs sprints). **Traps are out. Big Bets are parked for later.**
 
+**Live board:** the private GitHub Project "iWork Studio roadmap" (created from `specs/roadmap.json` by the
+Roadmap board workflow). Its Attractiveness and Quadrant columns are computed every hour from Vision Fit,
+Market Signals, Financial Potential and Sprints. Edit scores on the board; this file keeps the specs and decisions.
+
 Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac check · 📋 specced · 💤 parked
 
 ## Now
