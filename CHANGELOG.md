@@ -16,6 +16,9 @@ The trust patch: the safety promise, now true in every corner.
 - **Timeouts leak nothing.** Scripts and their parameters (such as an export password) go to the app on stdin, never on the command line. A timeout is a clear `AppTimeoutError`, and the document is closed before any rollback. `AutomationDeniedError` says exactly where to allow access.
 - **Installs come from PyPI.** The installer pins the released version, and no longer needs Apple's developer tools.
 - **Honest docs.** The instructions now name the writes that don't take `dry_run`. Example names are neutral.
+- **Try it with nothing of your own.** `iwork_samples` copies synthetic sample files (sales data with an English and an Arabic sheet, plus a deck outline) into a folder you choose.
+- **A clearer `iwork_capabilities`.** It reports the folder fence, the backup folder, app versions and three prompts to try.
+- **A 15-second demo** at the top of the README, and issue templates for refusals, requests and showing your deck.
 
 ## 2.6.0
 

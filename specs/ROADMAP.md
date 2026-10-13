@@ -11,7 +11,7 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 
 | # | Feature | Release | Status | Spec |
 |---|---|---|---|---|
-| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ⏳ built + headless green; waiting on live check | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
+| 001 | Trust patch: open-file guard, Pages per-paragraph replace, private bounded backups, deck fence, cell read-back, timeouts without leaks, PyPI install, honest docs | v2.6.1 | ✅ live check passed 2026-10-13; releasing | [spec](001-trust-patch/spec.md) · [plan](001-trust-patch/plan.md) · [tasks](001-trust-patch/tasks.md) |
 | 004 | Show it: HyperFrames demo GIF/MP4 (gallery later) | v2.6.1 | ✅ GIF (3.2 MB, 15.5 s) + MP4 1080p; rebuild with `assets/demo/render.sh` | [spec](004-show-it/spec.md) |
 | 002 | Front door: outcome-first README, samples + try-it, honest capabilities, issue templates, traffic snapshots, listing kit, Numbers chart probe | v2.6.1 (ships with the trust patch) | 🔨 built; GIF slot + chart probe pending | [spec](002-front-door/spec.md) · [tasks](002-front-door/tasks.md) |
 
@@ -43,8 +43,8 @@ Legend: ✅ done · 🔨 in progress · ⏳ waiting on the owner's live Mac chec
 
 | What | Command (on the Mac, repo on the branch) | Proves | Result |
 |---|---|---|---|
-| 002 Numbers chart probe | `uv run python scripts/probe_numbers_chart.py` | whether Numbers' scripting dictionary can add a chart (no UI scripting) | — |
-| 001 trust patch | `uv run --extra test pytest -m aqua -k "trust or pages or sort or formula or keynote_slides"` | open-file refusal on real Numbers; Pages replace keeps other paragraphs' formatting; app routes still pass with the new runner and backup folder | — |
+| 002 Numbers chart probe | `uv run python scripts/probe_numbers_chart.py` | whether Numbers' scripting dictionary can add a chart (no UI scripting) | — first run wrote no result file; re-run on its own. README now says "not reliably scriptable" until proven |
+| 001 trust patch | `uv run --extra test pytest -m aqua -k "trust or pages or sort or formula or keynote_slides"` | open-file refusal on real Numbers; Pages replace keeps other paragraphs' formatting; app routes still pass with the new runner and backup folder | ✅ 2026-10-13: all pass. A first run hit -1712 on Pages template creation; same tests passed on old and new code once a Pages dialog was cleared (environmental). -1712 now maps to AppTimeoutError |
 
 ## Re-analyse (decisions to revisit with new evidence)
 

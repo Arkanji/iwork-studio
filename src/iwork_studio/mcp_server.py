@@ -58,7 +58,7 @@ iWork Studio reads and edits Apple Numbers (.numbers), Keynote (.key) and Pages
   (ChartRefusalError) — their rewrite could break chart links. Tools that drive
   the app (Keynote slide/theme/image/transition ops, Numbers formulas and sort)
   work on them and check every chart is kept. keynote_add_chart adds a chart;
-  Numbers and Pages charts can't be created (Apple doesn't script them). Never
+  Numbers and Pages charts aren't created (not reliably scriptable). Never
   work around a refusal; tell the user.
 - Numbers doesn't recalculate formulas when it opens a file changed without it.
   If a no-app edit returns formulas_need_recalc, call numbers_recalculate (Mac)

@@ -112,7 +112,7 @@ That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, a
 On purpose, so it never breaks a file:
 
 - **Files with charts** are refused by the tools that work without the app: their rewrite can silently break a chart's link to its data. The app-driven tools (Keynote slides, theming, transitions, images; Numbers formulas and sort) work on them and check every chart is still there.
-- **Charts in Numbers and Pages** can't be created: Apple doesn't make them scriptable. Keynote charts can be added. To chart sorted data without touching a Numbers chart, sort into a new table (`numbers_sort` with `to_new_table`) and build a Keynote chart slide from it.
+- **Charts in Numbers and Pages** aren't created: they aren't reliably scriptable, and we refuse rather than click through the app's menus and risk your file. Keynote charts can be added. To chart sorted data without touching a Numbers chart, sort into a new table (`numbers_sort` with `to_new_table`) and build a Keynote chart slide from it.
 - **Pages** is limited to text and existing tables: replace, set body, placeholders and table cells. New tables can't be created (Pages 15 doesn't script it), and page-layout documents, like most letter templates, have no body text. There is no Pages file format parser anywhere, so it doesn't fake one.
 - **Formulas and row shifts**: in a table that has formulas, rows and columns can only be appended without the app. Inserting in the middle would leave references pointing at the wrong cells.
 - **Not scriptable by Apple**, so not offered: Numbers table styles, Keynote shape fill and text alignment, deleting a Keynote table, editing a theme's master slides. Page margins and page setup are planned.
