@@ -29,14 +29,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check the token
+        id: token
         env:
           ROADMAP_TOKEN: ${{ secrets.ROADMAP_TOKEN }}
         run: |
-          if [ -z "$ROADMAP_TOKEN" ]; then
-            echo "::error::Add a ROADMAP_TOKEN secret (classic token, project scope) — see the comment at the top of roadmap.yml"
-            exit 1
+          if [ -n "$ROADMAP_TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "::notice::No ROADMAP_TOKEN yet; skipping (scheduled runs stay quiet until it's added)"
+            exit 0
           fi
+          echo "::error::Add a ROADMAP_TOKEN secret (classic token, project scope) — see the comment at the top of roadmap.yml"
+          exit 1
       - name: Run
+        if: steps.token.outputs.ok == 'true'
         env:
           ROADMAP_TOKEN: ${{ secrets.ROADMAP_TOKEN }}
         run: python3 scripts/roadmap_project.py "${{ inputs.mode || 'score' }}"
