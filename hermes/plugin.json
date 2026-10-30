@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "iwork-studio",
+  "version": "2.6.1",
+  "description": "Create, edit, design and export Apple Numbers, Keynote and Pages files: designed decks with charts and tables, your brand kit, a design review of what Keynote draws. Every write is backed up, verified and undoable; Arabic-safe.",
+  "author": {
+    "name": "Arkanji",
+    "url": "https://github.com/Arkanji"
+  },
+  "repository": "https://github.com/Arkanji/iwork-studio/tree/main/hermes",
+  "license": "MIT",
+  "keywords": [
+    "iwork",
+    "numbers",
+    "keynote",
+    "pages",
+    "arabic",
+    "mcp",
+    "local"
+  ]
+}

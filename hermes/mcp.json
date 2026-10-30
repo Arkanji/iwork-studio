@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "iwork-studio": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "iwork-studio==2.6.1", "iwork-studio-mcp"],
+      "env": {
+        "IWORK_STUDIO_ROOTS": "${IWORK_STUDIO_ROOTS}",
+        "IWORK_STUDIO_TOOLSETS": "${IWORK_STUDIO_TOOLSETS}"
+      }
+    }
+  }
+}

@@ -4,6 +4,10 @@ Versions follow [semantic versioning](https://semver.org). Every write in every
 version follows the same safety model: backup → scratch copy → re-read and
 compare → atomic swap.
 
+## Unreleased
+
+- **Hermes Agent package.** `hermes/` packages the MCP server and the skill for the Hermes plugin catalog (`hermes plugins install iwork-studio`). The server is pinned to the exact release.
+
 ## 2.6.1
 
 The trust patch: the safety promise, now true in every corner.

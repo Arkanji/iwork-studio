@@ -49,6 +49,7 @@ Every change is backed up, verified and undoable, and anything risky is refused,
 | **Claude desktop app** (Mac, from Terminal) | Paste in Terminal: `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh \| sh`, then quit Claude (Cmd-Q) and reopen |
 | **Claude Code, as a plugin** (tools + skill) | `/plugin marketplace add Arkanji/iwork-studio`, then `/plugin install iwork-studio@iwork-studio` |
 | **Claude Code, tools only** | `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp` |
+| **Hermes Agent** (tools + skill) | `hermes plugins install iwork-studio`, then `hermes plugins enable iwork-studio`. See [`hermes/`](hermes/README.md) |
 | **Cursor, VS Code, Codex, any MCP client** | `uvx --from iwork-studio@latest iwork-studio-mcp config`, then paste the printed JSON into the client's MCP settings. Also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Arkanji/iwork-studio` |
 
 That's it. The installer sets up [`uv`](https://docs.astral.sh/uv/) if needed, and uv brings its own Python.

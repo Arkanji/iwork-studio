@@ -11,12 +11,14 @@ working **with** or **on** this repo.
 | Claude Code (plugin: tools + skill) | `claude plugin marketplace add Arkanji/iwork-studio` then `claude plugin install iwork-studio@iwork-studio` |
 | Claude Code (tools only) | `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp` |
 | Any other MCP client | `uvx --from iwork-studio@latest iwork-studio-mcp config` → paste the printed JSON into the client's MCP config |
+| Hermes Agent | `hermes plugins install iwork-studio`, then `hermes plugins enable iwork-studio` |
 
 - The installer installs `uv` if missing; uv brings its own Python. **Don't tell the user to install Python.**
 - Recommend a folder fence: `… | sh -s -- --roots ~/Documents ~/Desktop` (or env `IWORK_STUDIO_ROOTS`, `:`-separated).
 - If the user only needs some apps, load fewer tools: env `IWORK_STUDIO_TOOLSETS` = any of `files`, `numbers`, `keynote`, `pages`, `design` (comma-separated; default all). `iwork_capabilities` shows what's loaded.
 - The desktop app needs the **absolute** uvx path in its config; the installer and `config` handle that. Never hand-write a bare `"command": "uvx"` for the desktop app.
 - `.mcp.json` in this repo runs the released package from PyPI (directories read it as the install config).
+- `hermes/` is the Hermes catalog package (Agent Plugins v1: `plugin.json`, `mcp.json`, `skills/`). Its server is pinned to the exact release, never `@latest`: the catalog bans self-updating code. Each release bumps its version, then a PR on NousResearch/hermes-agent moves the catalog pin; `tests/test_packaging.py` checks the versions agree.
 - First run: macOS asks once to let Claude control Keynote/Pages/Numbers → user clicks OK (fix later in System Settings → Privacy & Security → Automation). Logs: `~/Library/Logs/Claude/mcp-server-iwork-studio.log`.
 - Verify: call `iwork_capabilities`.
 

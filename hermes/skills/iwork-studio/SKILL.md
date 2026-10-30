@@ -1,0 +1,115 @@
+---
+name: iwork-studio
+description: Create, read, edit, design and export Apple iWork files safely — build designed Keynote decks from an outline (with charts and tables from Numbers data), apply the user's brand kit, review a deck's design, style tables with design kits, in Numbers (.numbers), Keynote (.key), Pages (.pages). Use for any request that mentions a Numbers, Keynote or Pages file; spreadsheet cells, formulas, rows, tables, CSV import, cell formatting or currency; slides (add, duplicate, delete, move, hide), themes, layouts, fonts, transitions, images, presenter notes, slideshows; Pages text, template placeholders or tables; or exporting to PDF, Excel, Word, PowerPoint — including Arabic/RTL content and Arabic requests (كينوت، نمبرز، بيجز، شريحة، عرض تقديمي، جدول، تنسيق). Use the iwork-studio MCP tools. Every write is backed up, verified and atomic, and can be undone.
+license: MIT
+metadata:
+  version: "2.6.1"
+  author: iWork Studio
+  homepage: https://github.com/Arkanji/iwork-studio
+  tags: "iwork, numbers, keynote, pages, mcp, applescript, arabic, rtl"
+---
+
+# iWork Studio
+
+Safe reads and edits of Numbers, Keynote and Pages files. Every write is backed
+up first, applied to a scratch copy, re-read and checked, then swapped in
+atomically. If anything doesn't match, the user's file is left untouched and
+you get a typed error. Arabic/RTL text round-trips exactly.
+
+## How to work (every request)
+
+1. **Read before you write.** `iwork_read` the file and use what's actually there
+   (real slide numbers, cell refs, exact text to replace).
+2. **Confirm destructive or broad changes** in one line before doing them (or
+   show a preview: every write takes `dry_run=true` and returns what would change):
+   deleting slides, `pages_set_body` (it resets the body's formatting), or a
+   find/replace that hits many places.
+3. **Write with one tool call per change.** Don't retry a failed write with a
+   different trick; report the error (see the table below).
+4. **Tell the user what changed** and that a backup exists. After an important
+   change, offer `iwork_verify_render` (macOS) to confirm it's visibly there.
+5. **Mistake? Undo** with `iwork_list_backups` → `iwork_restore_backup`.
+
+## What you can do
+
+| Task | MCP tool | Needs |
+|---|---|---|
+| What this machine can do | `iwork_capabilities` | anywhere — call it first when unsure |
+| Read any iWork file to JSON · find files · metadata · thumbnail | `iwork_read` · `iwork_find` · `iwork_metadata` · `iwork_thumbnail` | anywhere (.pages read needs the Mac app) |
+| New Numbers file from data / from a CSV | `numbers_create` · `numbers_import_csv` | anywhere |
+| New file from Apple's templates / from the user's own file | `iwork_list_templates` + `iwork_create` · `iwork_create_from_template` | Mac + the app · anywhere |
+| Set one Numbers cell (`ref` like `B2`, optional `sheet`/`table`) | `numbers_edit_cell` | anywhere |
+| Insert/delete rows or columns · add a table or sheet | `numbers_insert` · `numbers_delete` · `numbers_add_table` | anywhere |
+| Formula in a cell · recalculate formulas · sort a table (or a sorted copy in a new table: `to_new_table`) | `numbers_set_formula` · `numbers_recalculate` · `numbers_sort` | Mac + Numbers, file closed |
+| See / set Numbers formatting: style · number format · borders · widths/heights · headers · merge | `numbers_inspect_format` · `numbers_set_cell_style` · `numbers_set_number_format` · `numbers_set_borders` · `numbers_set_dimensions` · `numbers_set_headers` · `numbers_merge_cells` | anywhere |
+| Find/replace text on every slide (literal; `regex=true` for patterns) | `keynote_replace_text` | anywhere |
+| Build a designed deck from an outline (chart / table slides from data or a Numbers table) · fill a slide's title/bullets | `keynote_build_deck` (with `kit=`) · `keynote_set_slide_text` | Mac + Keynote |
+| Make a deck or table look designed | `iwork_list_design_kits` · `keynote_apply_design` · `numbers_apply_design` | Keynote: Mac · Numbers: anywhere |
+| The user's brand: kit from their file · save · delete | `iwork_extract_design_kit` · `iwork_save_design_kit` · `iwork_delete_design_kit` | anywhere (from a `.key`: Mac + Keynote) |
+| Review a deck as rendered (overflow, off-slide, overlap, small text, crowded) · look at a slide | `keynote_review_deck` · `keynote_slide_image` | Mac + Keynote |
+| List slides · notes · hide/show · duplicate · delete · move · add | `keynote_list_slides` · `keynote_set_presenter_notes` · `keynote_skip_slide` · `keynote_duplicate_slide` · `keynote_delete_slide` · `keynote_move_slide` · `keynote_add_slide` | Mac + Keynote, deck closed |
+| Theme · layout · text font/size/colour · transition · image · chart · table | `keynote_list_themes` · `keynote_inspect_style` · `keynote_set_theme` · `keynote_set_slide_layout` · `keynote_format_text` · `keynote_set_transition` · `keynote_add_image` · `keynote_add_chart` · `keynote_add_table` | Mac + Keynote, deck closed |
+| Present (start/stop/next/previous) | `keynote_slideshow` | Mac + Keynote |
+| Pages: replace text · replace the whole body · fill template fields · table cells | `pages_replace_all` · `pages_set_body` · `pages_list_placeholders` + `pages_fill_placeholders` · `pages_read_tables` + `pages_set_table_cells` | Mac + Pages; run `pages_preflight` first |
+| Export: PDF, xlsx, csv, docx, epub, txt, rtf, pptx, slide images, movie | `iwork_export` | Mac + the app |
+| Check the rendered PDF shows a word · uses a font/size/colour | `iwork_verify_render` · `iwork_verify_format` | Mac + the app |
+| Undo | `iwork_list_backups` · `iwork_restore_backup` | anywhere |
+
+Formatting tips: inspect first; ranges are `A1` or `A1:D9`; colours are `#RRGGBB`;
+only the attributes you pass change. Merges are refused if they'd hide data. Numbers
+has no scriptable table styles; Pages margins/page setup/paragraph styles and
+Keynote shape fill/text alignment are not exposed — say so, don't improvise.
+
+Building a spreadsheet: `numbers_create` (or `numbers_import_csv`) → format the
+header with `numbers_set_cell_style` → `numbers_set_number_format` for money/% →
+`numbers_set_dimensions` → `numbers_set_formula` for totals (Mac). After no-app edits
+to a file with formulas (the result says `formulas_need_recalc`), run `numbers_recalculate`:
+Numbers otherwise keeps showing the old totals. New files are
+never overwritten. In a table with formulas, rows/columns can only be appended
+headlessly.
+
+Slide numbers are 1-based. `keynote_move_slide(slide, to)` puts the slide *at*
+position `to`. `keynote_add_slide(after=0)` adds at the front, no `after` adds at
+the end. The last slide can't be deleted.
+
+## When a tool says no
+
+| Error | What it means | Tell the user |
+|---|---|---|
+| `DocumentOpenError` | The deck is open in Keynote | "Please save and close it in Keynote, then I'll retry." |
+| `ChartRefusalError` | The file has charts, and this tool works without the app (its rewrite could break chart links) | Say so plainly; app-driven tools still work on it. Don't look for a workaround |
+| `PagesOutOfScopeError` | Pages only supports its text and table-cell operations — or the document is page layout (most letter/flyer templates), which has no body text | Offer `pages_replace_all` / `pages_set_body` / `pages_fill_placeholders` if they fit; page-layout documents only take placeholders |
+| `StructureError` / `AppOpError` / `FormatError` / `ThemeError` | The request itself is invalid (exists already, out of range, unknown name) | Fix the request from the message; it lists the valid choices |
+| `WriteVerificationError` / `EditVerificationError` | The result didn't match the request; rolled back | Nothing changed; report it |
+| `PagesUnavailableError` / -1712 | A dialog in Pages is blocking | "Please click away the dialog in Pages once." Don't loop |
+| `AquaSessionError` | No Mac GUI here | The app-driven part can't run on this machine |
+| `FileLockedError` | File locked or open | Ask the user to close it |
+| `SlideOpVerificationError` / `SchemaDriftError` | The app did something other than asked; rolled back | Nothing changed; report it |
+| `CreatorStudioUnverifiedError` | An unknown Creator Studio app version | Report it; don't set the override yourself |
+| "outside IWORK_STUDIO_ROOTS" | The file is outside the folders the user allowed | Ask them to move it or widen the fence |
+
+## Arabic / RTL
+
+- Write Arabic exactly as given; it round-trips byte-exact.
+- For `iwork_verify_render`, assert **one Arabic word**, not a phrase: PDF text
+  layers reorder multi-word RTL text and the check would fail falsely.
+- Numbers keeps values as typed (CSV import too): Arabic-Indic digits (`١٢٣`) and strings like
+  `"$1,234.56"` stay text. Pass a real number (e.g. `2500`) when the user wants a number.
+
+## Never
+
+- Convert to docx/pptx/xlsx and back (lossy).
+- Use AppleScript `save in <path>` on the user's files (the iWork sandbox denies it).
+- Edit the files directly or with other tools while bypassing these routes.
+
+## If the tools aren't there
+
+The tools come from this plugin's `iwork-studio` MCP server. If they're missing, the plugin is
+installed but not enabled: `hermes plugins enable iwork-studio`, then start a new session. The
+first start downloads the server (about 60 MB).
+
+## References
+
+- `references/design-guide.md` — how to make decks and tables look designed (read before building a deck)
+- `references/capability-matrix.md` — what each route supports and refuses
+- `references/keynote-1700-defect.md`, `references/tcc-preflight.md` — background on specific macOS/iWork behaviour

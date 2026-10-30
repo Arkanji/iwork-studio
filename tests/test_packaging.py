@@ -75,3 +75,21 @@ def test_readme_has_no_hardcoded_version():
     readme = (REPO / "README.md").read_text()
     assert "img.shields.io/badge/version-" not in readme
     assert "img.shields.io/pypi/v/iwork-studio" in readme
+
+
+def test_hermes_package_matches_release():
+    """The Hermes catalog package pins the same release and carries the same skill references."""
+    import json
+
+    v = tomllib.load(open(REPO / "pyproject.toml", "rb"))["project"]["version"]
+    hermes = REPO / "hermes"
+    assert json.loads((hermes / "plugin.json").read_text())["version"] == v
+    server = json.loads((hermes / "mcp.json").read_text())["mcpServers"]["iwork-studio"]
+    assert server["args"] == ["--from", f"iwork-studio=={v}", "iwork-studio-mcp"]  # never @latest
+    skill = (hermes / "skills" / "iwork-studio" / "SKILL.md").read_text()
+    assert re.search(r'^  version: "(\S+)"$', skill, re.M).group(1) == v
+    assert "scripts/" not in skill  # the Hermes package ships no scripts
+    for ref in (hermes / "skills" / "iwork-studio" / "references").iterdir():
+        assert ref.read_text() == (REPO / "skill-pack" / "references" / ref.name).read_text(), ref.name
+    readme = (hermes / "README.md").read_text()
+    assert f"iwork-studio=={v}" in readme and f"/v{v}/" in readme

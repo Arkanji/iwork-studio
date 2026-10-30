@@ -36,6 +36,7 @@ jobs:
               "server.json": json.load(open("server.json"))["version"],
               "mcpb manifest": json.load(open("mcpb/manifest.json"))["version"],
               "claude plugin": json.load(open("skill-pack/.claude-plugin/plugin.json"))["version"],
+              "hermes plugin": json.load(open("hermes/plugin.json"))["version"],
               "skill": re.search(r"^  version: (\S+)$", open("skill-pack/SKILL.md").read(), re.M).group(1),
               "llms.txt": re.search(r"Version (\d+\.\d+\.\d+)\.", open("llms.txt").read()).group(1),
           }

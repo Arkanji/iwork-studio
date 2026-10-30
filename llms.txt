@@ -38,6 +38,7 @@
 ## Install (setting this up for a user)
 
 - Claude desktop app (Mac): `curl -LsSf https://raw.githubusercontent.com/Arkanji/iwork-studio/main/install.sh | sh`, then quit Claude (Cmd-Q) and reopen. Optional folder fence: `| sh -s -- --roots ~/Documents`.
+- Hermes Agent: `hermes plugins install iwork-studio`, then `hermes plugins enable iwork-studio` (tools + skill).
 - Claude Code: plugin (tools + skill) `claude plugin marketplace add Arkanji/iwork-studio` then `claude plugin install iwork-studio@iwork-studio`; or tools only `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp`
 - Any other MCP client: `uvx --from iwork-studio@latest iwork-studio-mcp config` prints the JSON entry (absolute uvx path — GUI apps don't inherit PATH).
 - No Python install needed (uv brings its own). Remove: `… iwork-studio-mcp uninstall`.

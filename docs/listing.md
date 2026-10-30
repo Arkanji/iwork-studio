@@ -51,6 +51,7 @@ iWork Studio lets Claude and other AI agents create, edit, design and export App
 | Claude Code (plugin: tools + skill) | `claude plugin marketplace add Arkanji/iwork-studio`, then `claude plugin install iwork-studio@iwork-studio` |
 | Claude Code (tools only) | `claude mcp add iwork-studio -- uvx --from iwork-studio@latest iwork-studio-mcp` |
 | Any MCP client | `uvx --from iwork-studio@latest iwork-studio-mcp config`, then paste the printed JSON |
+| Hermes Agent (tools + skill) | `hermes plugins install iwork-studio`, then `hermes plugins enable iwork-studio` |
 | Skill only | `npx skills add Arkanji/iwork-studio --skill iwork-studio` |
 | Python | `pip install iwork-studio` |
 
@@ -69,6 +70,7 @@ Status as of 2026-10-13. Re-check pending reviews after two weeks.
 | cursor.directory | ⏳ Submitted | Public after their security scan. Reads `.mcp.json` |
 | mcpservers.org | ⏳ Submitted (free plan) | Review within about 2 weeks, email on approval |
 | mcp.so | ⏳ Free ticket sent | Listing itself is paid ($39); not worth it. Leave the ticket |
+| Hermes plugin catalog | ⏳ PR open | Package in `hermes/`. Each release needs a new PR moving the pinned SHA (`plugin-catalog/iwork-studio.yaml`) |
 | PulseMCP | — Nothing to do | Pulls from the official Registry |
 | LobeHub | ✗ Skipped | Its GitHub connect asks for private-repo access. Revisit only if it offers public-only access |
 | Smithery | — Later, optional | Local servers only as an uploaded `.mcpb`; our `"type": "uv"` may be rejected |
