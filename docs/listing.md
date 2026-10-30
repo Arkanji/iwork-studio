@@ -70,7 +70,7 @@ Status as of 2026-10-13. Re-check pending reviews after two weeks.
 | cursor.directory | ⏳ Submitted | Public after their security scan. Reads `.mcp.json` |
 | mcpservers.org | ⏳ Submitted (free plan) | Review within about 2 weeks, email on approval |
 | mcp.so | ⏳ Free ticket sent | Listing itself is paid ($39); not worth it. Leave the ticket |
-| Hermes plugin catalog | ⏳ PR open | Package in `hermes/`. Each release needs a new PR moving the pinned SHA (`plugin-catalog/iwork-studio.yaml`) |
+| Hermes plugin catalog | ⏳ [PR open](https://github.com/NousResearch/hermes-agent/pull/147001) | Package in `hermes/`. Each release needs a new PR moving the pinned SHA (`plugin-catalog/iwork-studio.yaml`) |
 | PulseMCP | — Nothing to do | Pulls from the official Registry |
 | LobeHub | ✗ Skipped | Its GitHub connect asks for private-repo access. Revisit only if it offers public-only access |
 | Smithery | — Later, optional | Local servers only as an uploaded `.mcpb`; our `"type": "uv"` may be rejected |
